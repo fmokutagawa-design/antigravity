@@ -1,0 +1,252 @@
+.materials-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--sidebar-bg);
+    color: var(--text-color);
+}
+
+.materials-header {
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color);
+    position: relative;
+}
+
+.materials-header h3 {
+    margin: 0 0 10px 0;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.materials-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.new-material-btn,
+.ai-organize-btn {
+    flex: 1;
+    padding: 6px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-paper);
+    color: var(--text-color);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+}
+
+.new-material-btn:hover,
+.ai-organize-btn:hover {
+    background: var(--hover-color);
+}
+
+.ai-organize-btn {
+    background: linear-gradient(135deg, #6e8efb, #a777e3);
+    color: white;
+    border: none;
+}
+
+.ai-organize-btn:hover {
+    opacity: 0.9;
+}
+
+.template-menu {
+    position: absolute;
+    top: 100%;
+    left: 10px;
+    right: 10px;
+    background: var(--bg-paper);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+    overflow: hidden;
+}
+
+.template-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.template-item:hover {
+    background: var(--hover-color);
+}
+
+.template-icon {
+    margin-right: 8px;
+    font-size: 1.2rem;
+}
+
+.template-name {
+    font-size: 0.9rem;
+}
+
+.materials-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 0;
+}
+
+.material-folder-header,
+.material-file {
+    display: flex;
+    align-items: center;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.material-folder-header:hover,
+.material-file:hover {
+    background: var(--hover-color);
+}
+
+.material-file.active {
+    background: var(--active-color);
+    color: var(--active-text);
+}
+
+.folder-children {
+    padding-left: 16px;
+    border-left: 1px solid var(--border-color);
+    margin-left: 7px;
+}
+
+.folder-icon,
+.file-icon {
+    margin-right: 6px;
+    font-size: 1rem;
+}
+
+.empty-state {
+    padding: 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    line-height: 1.5;
+}
+
+.tags-container {
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-paper);
+}
+
+.tags-header {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.clear-filter-btn {
+    background: none;
+    border: none;
+    color: #e74c3c;
+    cursor: pointer;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 3px;
+    transition: background 0.2s;
+}
+
+.clear-filter-btn:hover {
+    background: rgba(231, 76, 60, 0.1);
+}
+
+.tags-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.tag-chip {
+    display: inline-flex;
+    align-items: center;
+    background: var(--bg-main);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tag-chip:hover {
+    border-color: #6e8efb;
+    color: #6e8efb;
+}
+
+.tag-chip.active {
+    background: #6e8efb;
+    color: white;
+    border-color: #6e8efb;
+}
+
+.tag-count {
+    opacity: 0.7;
+    font-size: 0.7rem;
+    margin-left: 2px;
+}
+
+.tag-copy-btn {
+    margin-left: 4px;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    opacity: 0.6;
+    padding: 0 2px;
+}
+
+.tag-copy-btn:hover {
+    opacity: 1;
+    font-weight: bold;
+}
+
+.filtered-view {
+    padding: 0;
+}
+
+.filter-header {
+    padding: 8px 10px;
+    background: var(--bg-paper);
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.8rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.filter-header button {
+    border: none;
+    background: none;
+    color: #e74c3c;
+    cursor: pointer;
+    font-size: 0.75rem;
+}
+
+.file-path-hint {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-left: auto;
+    opacity: 0.7;
+}
+
+.loading {
+    padding: 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}

@@ -1,0 +1,1756 @@
+import React, { useRef, useImperativeHandle, forwardRef, useState, useEffect, useLayoutEffect } from 'react';
+import HighlightOverlay from './HighlightOverlay';
+import '../index.css';
+
+const Editor = forwardRef(({
+  value,
+  onChange,
+  settings,
+  onSave,
+  isVertical,
+  onOpenLink,
+  availableTags,
+  allFiles = [],
+  onCursorChange // Add this
+}, ref) => {
+  const textareaRef = useRef(null);
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [autocompletePosition, setAutocompletePosition] = useState({ top: 0, left: 0 });
+  const [filterText, setFilterText] = useState('');
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const rulerRef = useRef(null); // Ref for the ruler container
+  const overlayRef = useRef(null); // Ref for HighlightOverlay
+
+  // Scrollbar Compensation
+  const [sbSize, setSbSize] = useState(0);
+  useLayoutEffect(() => {
+    if (textareaRef.current) {
+      const measure = () => {
+        const val = settings.isVertical
+          ? textareaRef.current.offsetHeight - textareaRef.current.clientHeight
+          : textareaRef.current.offsetWidth - textareaRef.current.clientWidth;
+        if (val >= 0 && val !== sbSize) setSbSize(val);
+      };
+      measure();
+      const ro = new ResizeObserver(measure);
+      ro.observe(textareaRef.current);
+      return () => ro.disconnect();
+    }
+  }, [settings.isVertical, sbSize]); // Depend on vertical mode
+
+  // CRITICAL: Scrollbar & Metric Sync State
+  const [scrollbarWidth, setScrollbarWidth] = useState(0);
+  // --- Measured Metrics for Pixel-Perfect Grid Sync ---
+  const [measuredMetrics, setMeasuredMetrics] = useState(null);
+  const measureRef = useRef(null);
+
+  // AUDIT: Verify Computed vs Calculated Metrics & Wait for Font Load
+  useEffect(() => {
+    document.fonts.ready.then(() => {
+      const ta = textareaRef.current;
+      if (ta) {
+        const fnMeasure = () => {
+          // 1. Measure Scrollbar (Native width vs Client width)
+          const w = ta.offsetWidth - ta.clientWidth;
+          if (w !== scrollbarWidth) setScrollbarWidth(w);
+
+          // Measure Real Metrics
+          const cs = window.getComputedStyle(ta);
+
+          // Measure Pitch from Ghost
+          let pitchVal = parseFloat(cs.fontSize) || 16;
+          if (measureRef.current) {
+            const mRect = measureRef.current.getBoundingClientRect();
+            const size = settings.isVertical ? mRect.height : mRect.width;
+            if (size > 10) { // Ensure reasonable size
+              pitchVal = size / 10;
+            }
+          }
+          const pitchStr = pitchVal.toFixed(3) + "px";
+
+          // Only update if different to avoid potential loops (though dependency array protects mostly)
+          if (!measuredMetrics || measuredMetrics.fs !== cs.fontSize || measuredMetrics.lh !== cs.lineHeight || measuredMetrics.pitch !== pitchStr) {
+            setMeasuredMetrics({
+              fs: cs.fontSize,
+              lh: cs.lineHeight,
+              pitch: pitchStr
+            });
+            console.log('[Grid Sync] Calibrated:', pitchStr, cs.lineHeight);
+          }
+        };
+        fnMeasure();
+
+        // 2. Audit Metrics (Check for Double Standard)
+        const style = window.getComputedStyle(ta);
+        console.log('%c[Layout Audit] Font Ready', 'color: #00ff00; font-weight: bold;', {
+          computedFS: style.fontSize,
+          computedLH: style.lineHeight,
+          computedFont: style.fontFamily,
+          clientW: ta.clientWidth,
+          offsetW: ta.offsetWidth,
+          scrollbarW: ta.offsetWidth - ta.clientWidth
+        });
+
+        const ro = new ResizeObserver(fnMeasure);
+        ro.observe(ta);
+        return () => ro.disconnect();
+      }
+    });
+  }, [settings.fontSize, settings.fontFamily, settings.lineHeight]);
+
+  // Box Selection State
+  const [boxSelection, setBoxSelection] = useState({ active: false, start: null, end: null });
+
+  // Smart Reference State
+  const [activeReference, setActiveReference] = useState(null); // { name, content, rect }
+  const hoverTimeout = useRef(null);
+
+  // Undo/Redo History
+  // We use Refs to avoid re-renders impacting typing performance
+  const history = useRef([]);
+  const historyPtr = useRef(-1);
+  const lastSaveTime = useRef(0);
+  const isUndoing = useRef(false);
+  const pendingSave = useRef(null);
+  const wrapperRef = useRef(null); // Ref for wrapper to apply snap
+
+  // --- Grid Snapping Logic (Masking Limit) ---
+  React.useLayoutEffect(() => {
+    if (settings.paperStyle !== 'grid' && settings.paperStyle !== 'manuscript') {
+      // Cleanup if switching away
+      if (wrapperRef.current) {
+        wrapperRef.current.style.removeProperty('--snap-limit');
+      }
+      return;
+    }
+
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+
+    // --- FIX: Enforce Layout Parity & Grid Classes via JS to bypass Render issues ---
+    if (settings.paperStyle) wrapper.classList.add(settings.paperStyle);
+
+    if (textareaRef.current) {
+      // Nuclear Reset
+      const s = textareaRef.current.style;
+      s.position = 'absolute';
+      s.top = '0'; s.left = '0';
+      s.width = '100%'; s.height = '100%';
+      s.resize = 'none';
+      s.zIndex = '1';
+
+      // Force Red Color with Priority
+      s.setProperty('color', 'rgba(255, 0, 0, 0.5)', 'important');
+      s.setProperty('caret-color', 'red', 'important');
+      s.setProperty('opacity', '1', 'important');
+
+      console.log('[DEBUG] Applied Forced Red Style:', s.color);
+    }
+
+    const snapResize = () => {
+      // Re-check inside callback
+      if (settings.paperStyle !== 'grid' && settings.paperStyle !== 'manuscript') return;
+
+      const parentCallback = () => {
+        const rect = wrapper.getBoundingClientRect();
+        // Computed padding
+        const style = window.getComputedStyle(wrapper);
+        const padTop = parseFloat(style.paddingTop) || 0;
+        const padBot = parseFloat(style.paddingBottom) || 0;
+        const padLeft = parseFloat(style.paddingLeft) || 0;
+        const padRight = parseFloat(style.paddingRight) || 0;
+
+        const contentW = rect.width - padLeft - padRight;
+        const contentH = rect.height - padTop - padBot;
+
+        const fSize = settings.fontSize || 16;
+        const lHeightRatio = settings.lineHeight || 1.6;
+
+        if (settings.isVertical) {
+          // Vertical Mode: Snap WIDTH
+          const tileW = fSize * lHeightRatio;
+          if (tileW <= 0) return;
+
+          const visibleCols = Math.floor(contentW / tileW);
+          const limit = visibleCols * tileW;
+
+          // Set Variable for CSS Mask
+          // Note: In Vertical RL, background starts from Right.
+          // Mask should be "transparent" from Right 0 to Limit, then "mask-color" from Limit to End.
+          // CSS Gradient: `to left, transparent limit, color limit`
+          wrapper.style.setProperty('--snap-limit', `${limit}px`);
+
+        } else {
+          // Horizontal Mode: Snap HEIGHT
+          const tileH = fSize * lHeightRatio;
+          if (tileH <= 0) return;
+
+          const visibleRows = Math.floor(contentH / tileH);
+          const limit = visibleRows * tileH;
+
+          // CSS Gradient: `to bottom, transparent limit, color limit`
+          wrapper.style.setProperty('--snap-limit', `${limit}px`);
+        }
+      };
+
+      requestAnimationFrame(parentCallback);
+    };
+
+    const observer = new ResizeObserver(snapResize);
+    observer.observe(wrapper);
+
+    // Initial call
+    snapResize();
+
+    return () => {
+      observer.disconnect();
+      if (wrapper) wrapper.style.removeProperty('--snap-limit');
+    };
+  }, [settings.paperStyle, settings.isVertical, settings.fontSize, settings.lineHeight]);
+
+
+  // Initialize history with initial value
+  useEffect(() => {
+    if (history.current.length === 0 && value) {
+      history.current.push(value);
+      historyPtr.current = 0;
+    }
+  }, []); // Run once or when logical dependency would reset? 
+  // Actually, if we switch files, we might want to reset? 
+  // Ideally, Editor should be keyed by file in App.jsx.
+
+  const saveToHistory = (newValue, immediate = false) => {
+    const now = Date.now();
+    const timeSinceLast = now - lastSaveTime.current;
+
+    // If undoing, don't save
+    if (isUndoing.current) return;
+
+    // Logic: 
+    // If immediate (e.g. big action like paste/insert): push new state.
+    // If typing (rapid updates): debounce or update tip.
+
+    if (immediate || timeSinceLast > 1000) {
+      // Commit previous pending if exists?
+      // New Snapshot
+      history.current.push(newValue);
+      historyPtr.current++;
+      lastSaveTime.current = now;
+    } else {
+      // Update current tip (merge changes)
+      // Exception: If we just branched (redo path clearing), we must push.
+      if (historyPtr.current < history.current.length - 1) {
+        history.current = history.current.slice(0, historyPtr.current + 1);
+        history.current.push(newValue);
+        historyPtr.current++;
+        lastSaveTime.current = now;
+      } else {
+        // Just update the tip
+        history.current[history.current.length - 1] = newValue;
+      }
+    }
+  };
+
+  // NORMALIZE Tabs to Spaces for Grid Stability
+  // NORMALIZE Tabs to Spaces for Grid Stability
+  const sanitizeInput = (text) => {
+    // Replace tabs with 2 spaces (matching CSS tab-size)
+    // Also consider replacing Half-width with Full-width?
+    return text.replace(/\t/g, '  ');
+  };
+
+  // Capture value changes from parent (e.g. typing handling in App that feeds back here)
+  useEffect(() => {
+    // This runs whenever `value` prop changes.
+    // We need to distinguish between "User Typed" (handled by onChange -> saveToHistory)
+    // and "Undo/Redo applied by App" (if App handled it) - but here Editor handles it.
+    // AND "File Switch" (Value changed completely).
+
+    // Simple heuristic for now: Just track it.
+    // Ideally we trigger save logic inside the handleInput/insert functions, but simple tracking works too.
+    if (!isUndoing.current) {
+      saveToHistory(value);
+    }
+  }, [value]);
+
+  const undo = () => {
+    if (historyPtr.current > 0) {
+      isUndoing.current = true;
+      historyPtr.current--;
+      const prevValue = history.current[historyPtr.current];
+      onChange(prevValue);
+      // Allow loop to finish before resetting flag
+      setTimeout(() => isUndoing.current = false, 0);
+    }
+  };
+
+  const redo = () => {
+    if (historyPtr.current < history.current.length - 1) {
+      isUndoing.current = true;
+      historyPtr.current++;
+      const nextValue = history.current[historyPtr.current];
+      onChange(nextValue);
+      setTimeout(() => isUndoing.current = false, 0);
+    }
+  };
+
+  // Use CSS variables for size/height to support specific paper styles (Grid etc)
+  const style = {
+    fontFamily: settings.fontFamily,
+  };
+
+  // FIlter files... (keep existing)
+  const filteredFiles = allFiles.filter(file =>
+    file.name.toLowerCase().includes(filterText.toLowerCase()) &&
+    !file.name.startsWith('.')
+  ).slice(0, 10);
+
+  // ... (keep insertRuby, insertText)
+  const insertRuby = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = value.substring(start, end);
+
+    const insertion = selectedText ? `｜${selectedText}《》` : '｜《》';
+    const newText = value.substring(0, start) + insertion + value.substring(end);
+
+    // Immediate save for structural change
+    saveToHistory(newText, true);
+
+    const scrollTop = textarea.scrollTop;
+    const scrollLeft = textarea.scrollLeft;
+
+    onChange(newText);
+
+    setTimeout(() => {
+      const newCursorPos = start + insertion.length - 1;
+      textarea.focus();
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+      textarea.scrollTop = scrollTop;
+      textarea.scrollLeft = scrollLeft;
+    }, 0);
+  };
+
+  const insertText = (insertion) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+
+    const newText = value.substring(0, start) + insertion + value.substring(end);
+
+    saveToHistory(newText, true);
+
+    const scrollTop = textarea.scrollTop;
+    const scrollLeft = textarea.scrollLeft;
+
+    onChange(newText);
+
+    setTimeout(() => {
+      const newCursorPos = start + insertion.length;
+      textarea.focus();
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+      textarea.scrollTop = scrollTop;
+      textarea.scrollLeft = scrollLeft;
+    }, 0);
+  };
+
+  const handleInput = (e) => {
+    // Normal typing will trigger useEffect[value] -> saveToHistory(text, false)
+    // We don't need explicit save here unless we want tighter control.
+
+    const textarea = textareaRef.current;
+    let cursor = textarea.selectionStart;
+    let text = e.target.value;
+
+    // Auto-Correct Half-Width Chars to Full-Width in Vertical Mode
+    // This prevents "sideways space" and "sideways/stacked brackets".
+    // Auto-Correct Half-Width Chars to Full-Width in Vertical Mode
+    // Update: ONLY Space. Brackets should remain half-width to allow rotation (Mixed mode).
+    if (settings.isVertical && cursor > 0) {
+      const char = text[cursor - 1];
+      let replacement = null;
+
+      if (char === ' ') replacement = '　';
+
+      if (replacement) {
+        const before = text.substring(0, cursor - 1);
+        const after = text.substring(cursor);
+        text = before + replacement + after;
+
+        // Update Parent State
+        onChange(text);
+        emitCursorStats(); // Update stats on content change
+        emitCursorStats(); // Update stats on content change
+        emitCursorStats(); // Update stats on content change
+
+        // Fix Cursor
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.setSelectionRange(cursor, cursor);
+          }
+        }, 0);
+      }
+    } // Continue with 'text'
+
+    // Check for [[ trigger... (keep existing)
+    const textBefore = text.substring(0, cursor);
+    const lastOpen = textBefore.lastIndexOf('[[');
+
+    if (lastOpen !== -1) {
+      const textBetween = textBefore.substring(lastOpen + 2);
+      if (!textBetween.includes(']]') && !textBetween.includes('\n')) {
+        setFilterText(textBetween);
+        setShowAutocomplete(true);
+        setSelectedIndex(0);
+
+        const rect = textarea.getBoundingClientRect();
+        setAutocompletePosition({
+          top: rect.top + 100,
+          left: rect.left + 100
+        });
+        return;
+      }
+    }
+
+    setShowAutocomplete(false);
+
+    // Trigger Smart Reference Check
+    if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+    hoverTimeout.current = setTimeout(() => {
+      checkSmartReference(textarea, textarea.selectionStart);
+    }, 500);
+  };
+
+  const checkSmartReference = (textarea, cursorIndex) => {
+    if (!allFiles || allFiles.length === 0) return;
+
+    const text = textarea.value;
+    // Check window around cursor to avoid scanning huge text for performance
+    const range = 30; // 30 chars radius
+    const startScan = Math.max(0, cursorIndex - range);
+    const endScan = Math.min(text.length, cursorIndex + range);
+    const snippet = text.substring(startScan, endScan);
+
+    // Normalize Helper: Full SP -> Half SP (for robust matching)
+    const normalize = (s) => s.replace(/　/g, ' ');
+    const normSnippet = normalize(snippet);
+
+    // Relative cursor position in snippet
+    const relCursor = cursorIndex - startScan;
+
+    // Find all files that appear in the snippet AND overlap the cursor
+    const matches = allFiles.filter(f => {
+      const fname = f.name.replace(/\.[^/.]+$/, "");
+      if (!fname) return false;
+      const normName = normalize(fname);
+      if (normName.length < 2) return false; // Ignore single chars to avoid noise
+
+      // Check if name exists in snippet
+      // Note: A name might appear multiple times. We need to check if ANY instance overlaps cursor.
+      // Simple heuristic: indexOf might return first instance. If cursor is on second, it fails.
+      // Better: regex match? Or simple loop.
+      let idx = normSnippet.indexOf(normName);
+      while (idx !== -1) {
+        if (relCursor >= idx && relCursor <= idx + normName.length) {
+          return true;
+        }
+        idx = normSnippet.indexOf(normName, idx + 1);
+      }
+      return false;
+    });
+
+    if (matches.length > 0) {
+      // Pick longest match (e.g. "Full Name" over "Full" or "Name")
+      matches.sort((a, b) => {
+        const wa = a.name.replace(/\.[^/.]+$/, "").length;
+        const wb = b.name.replace(/\.[^/.]+$/, "").length;
+        return wb - wa;
+      });
+      const best = matches[0];
+      const fname = best.name.replace(/\.[^/.]+$/, "");
+
+      setActiveReference({
+        name: fname,
+        file: best,
+        content: best.body || best.content || "(No content)"
+      });
+    } else {
+      setActiveReference(null);
+    }
+  };
+
+  // --- Helpers for Status Bar & Utilities ---
+  const calculateLineCol = (text, position) => {
+    const textBefore = text.substring(0, position);
+    const lines = textBefore.split('\n');
+    const row = lines.length;
+    const col = lines[lines.length - 1].length + 1;
+    return { row, col };
+  };
+
+  // Emit stats whenever text or cursor changes
+  const emitCursorStats = () => {
+    if (!onCursorChange) return;
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const { selectionStart } = textarea;
+    const { row, col } = calculateLineCol(value, selectionStart);
+
+    // Character Code logic
+    const charCode = value.charCodeAt(selectionStart);
+    const charCodeHex = isNaN(charCode) ? '-' : `U+${charCode.toString(16).toUpperCase().padStart(4, '0')}`;
+
+    onCursorChange({ row, col, charCodeHex });
+  };
+
+  // --- Sakura Utilities ---
+  const insertDateCheck = () => {
+    const now = new Date();
+    const str = `${now.getFullYear()}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getDate().toString().padStart(2, '0')}`;
+    insertText(str);
+  };
+
+  const insertTimeCheck = () => {
+    const now = new Date();
+    const str = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+    insertText(str);
+  };
+
+  const sortLines = (asc) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    if (start === end) return;
+    const text = textarea.value;
+    const selectedText = text.substring(start, end);
+    const lines = selectedText.split('\n');
+    lines.sort((a, b) => {
+      if (asc) return a.localeCompare(b, 'ja');
+      else return b.localeCompare(a, 'ja');
+    });
+    const newText = lines.join('\n');
+    document.execCommand('insertText', false, newText);
+  };
+
+  const trimLines = (isLeft) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    let targetStart = start;
+    let targetEnd = end;
+    let isSingleLine = start === end;
+    let text = textarea.value;
+    if (isSingleLine) {
+      let lineStart = text.lastIndexOf('\n', start - 1) + 1;
+      let lineEnd = text.indexOf('\n', start);
+      if (lineEnd === -1) lineEnd = text.length;
+      targetStart = lineStart;
+      targetEnd = lineEnd;
+    }
+    const selectedText = text.substring(targetStart, targetEnd);
+    const lines = selectedText.split('\n');
+    const processed = lines.map(line => {
+      if (isLeft) return line.trimStart();
+      else return line.trimEnd();
+    });
+    const newText = processed.join('\n');
+    if (isSingleLine) {
+      textarea.setSelectionRange(targetStart, targetEnd);
+    }
+    document.execCommand('insertText', false, newText);
+  };
+
+  // Line Operations Logic
+  const deleteCurrentLine = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const text = textarea.value;
+
+    const before = text.substring(0, start);
+    const after = text.substring(start);
+
+    const lineStart = before.lastIndexOf('\n') + 1;
+    let lineEnd = text.indexOf('\n', start);
+    if (lineEnd === -1) lineEnd = text.length;
+    else lineEnd += 1; // Include newline
+
+    const newText = text.substring(0, lineStart) + text.substring(lineEnd);
+    saveToHistory(newText, true);
+    onChange(newText);
+
+    setTimeout(() => {
+      textarea.setSelectionRange(lineStart, lineStart);
+    }, 0);
+  };
+
+  const moveCurrentLine = (direction) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const text = textarea.value;
+    const lines = text.split('\n');
+
+    const before = text.substring(0, start);
+    const currentLineIndex = before.split('\n').length - 1;
+
+    if (direction === -1 && currentLineIndex === 0) return;
+    if (direction === 1 && currentLineIndex === lines.length - 1) return;
+
+    const lineToMove = lines[currentLineIndex];
+    const targetIndex = currentLineIndex + direction;
+
+    // Swap
+    lines.splice(currentLineIndex, 1);
+    lines.splice(targetIndex, 0, lineToMove);
+
+    const newText = lines.join('\n');
+    saveToHistory(newText, true);
+    onChange(newText);
+
+    // Restore cursor: Need to calculate new position
+    // Simple heuristic: Move cursor by length of swapped line?
+    // Actually, if we just count chars up to targetIndex...
+    setTimeout(() => {
+      let newPos = 0;
+      for (let i = 0; i < targetIndex; i++) newPos += lines[i].length + 1;
+      // Keep relative offset within line?
+      const offsetInLine = start - (before.lastIndexOf('\n') + 1);
+      newPos += Math.min(offsetInLine, lines[targetIndex].length);
+
+      textarea.setSelectionRange(newPos, newPos);
+    }, 0);
+  };
+
+  const duplicateCurrentLine = (direction) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const text = textarea.value;
+    const lines = text.split('\n');
+
+    const before = text.substring(0, start);
+    const currentLineIndex = before.split('\n').length - 1;
+
+    const lineToCopy = lines[currentLineIndex];
+    // Insert duplicate below (standard) or above? 
+    // VSCode Shift+Alt+Up -> Duplicate Up, Down -> Duplicate Down
+    const insertIndex = direction === -1 ? currentLineIndex : currentLineIndex + 1;
+
+    lines.splice(insertIndex, 0, lineToCopy);
+
+    const newText = lines.join('\n');
+    saveToHistory(newText, true);
+    onChange(newText);
+
+    setTimeout(() => {
+      // If duplicated down, cursor stays. If up, cursor moves down?
+      // VSCode: 
+      // Down: duplicate appears below, cursor stays on original (now top).
+      // Up: duplicate appears above, cursor stays on original (now bottom)? Or moves to new?
+      // Actually VSCode duplicates and KEEPS CURSOR on the resulting line in the direction.
+      // Let's keep it simple: we just add the line. Cursor stays?
+      // If we insert at currentLineIndex (Up), everything shifts down. Cursor should shift.
+      if (direction === -1) {
+        const shift = lineToCopy.length + 1;
+        textarea.setSelectionRange(start + shift, start + shift);
+      } else {
+        textarea.setSelectionRange(start, start);
+      }
+    }, 0);
+  };
+
+  // Trigger on click/select too
+  const handleSelect = (e) => {
+    handleInput(e);
+    emitCursorStats();
+  };
+
+
+  const handleKeyDown = (e) => {
+    // Box Selection Intercept
+    if (boxSelection.active) {
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault();
+        deleteBoxSelection();
+        return;
+      }
+      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        insertBoxText(e.key);
+        return;
+      }
+    }
+
+    // Undo/Redo Shortcuts
+    if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        redo();
+      } else {
+        undo();
+      }
+      return;
+    }
+    // Line Operations (Sakura/VSCode Style)
+    // 1. Delete Line: Cmd+Shift+K (Mac VSCode), Ctrl+Shift+K (Win/Sakura), Ctrl+L (Sublime)
+    if ((e.metaKey && e.shiftKey && e.key === 'k') ||
+      (e.ctrlKey && e.shiftKey && e.key === 'k') ||
+      (e.ctrlKey && !e.shiftKey && !e.altKey && e.key === 'l')) {
+      e.preventDefault();
+      deleteCurrentLine();
+      return;
+    }
+
+    // 2. Move Line: Alt+Up/Down
+    if (e.altKey && !e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      e.preventDefault();
+      moveCurrentLine(e.key === 'ArrowUp' ? -1 : 1);
+      return;
+    }
+
+    // 3. Duplicate Line: Alt+Shift+Up/Down (VSCode) OR Ctrl+Down (Sakura)
+    if ((e.altKey && e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) ||
+      (e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey && e.key === 'ArrowDown')) {
+      e.preventDefault();
+      const dir = (e.key === 'ArrowUp') ? -1 : 1;
+      duplicateCurrentLine(dir);
+      return;
+    }
+
+    // Redo alternative (Ctrl+Y)
+    if ((e.metaKey || e.ctrlKey) && e.key === 'y') {
+      e.preventDefault();
+      redo();
+      return;
+    }
+
+    if (showAutocomplete) {
+      if (e.nativeEvent.isComposing) return; // Skip if using IME
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedIndex(prev => (prev + 1) % filteredFiles.length);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedIndex(prev => (prev - 1 + filteredFiles.length) % filteredFiles.length);
+      } else if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        if (filteredFiles.length > 0) {
+          selectSuggestion(filteredFiles[selectedIndex]);
+        }
+      } else if (e.key === 'Escape') {
+        setShowAutocomplete(false);
+      }
+    }
+    // --- Sakura Editor Like Utilities ---
+    // Date/Time
+    if (e.altKey && e.key === ';') { e.preventDefault(); insertDateCheck(); } // Alt+; Date
+    if (e.altKey && e.key === ':') { e.preventDefault(); insertTimeCheck(); } // Alt+: Time
+
+    // Sort
+    if (e.altKey && (e.key === 'a' || e.key === 'A')) { e.preventDefault(); sortLines(true); } // Alt+A Asc
+    if (e.altKey && (e.key === 'd' || e.key === 'D')) { e.preventDefault(); sortLines(false); } // Alt+D Desc
+
+    // Trim
+    if (e.altKey && (e.key === 'l' || e.key === 'L')) { e.preventDefault(); trimLines(true); } // Alt+L Left Trim
+    if (e.altKey && (e.key === 'r' || e.key === 'R')) { e.preventDefault(); trimLines(false); } // Alt+R Right Trim
+
+    // Update stats on navigation
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)) {
+      setTimeout(emitCursorStats, 0);
+    }
+  };
+
+  const selectSuggestion = (file) => {
+    const textarea = textareaRef.current;
+    const cursor = textarea.selectionStart;
+    const textBefore = value.substring(0, cursor);
+    const lastOpen = textBefore.lastIndexOf('[[');
+
+    if (lastOpen !== -1) {
+      // Check for closing ]] after cursor to avoid duplication
+      const textAfter = value.substring(cursor);
+      const nextClose = textAfter.indexOf(']]');
+
+      let endReplace = cursor;
+      let suffix = textAfter;
+
+      // If we find a closing bracket on the same line, consume it
+      if (nextClose !== -1 && !textAfter.substring(0, nextClose).includes('\n')) {
+        endReplace = cursor + nextClose + 2;
+        suffix = value.substring(endReplace);
+      }
+
+      const prefix = value.substring(0, lastOpen);
+      const linkText = `[[${file.name.replace(/\.[^/.]+$/, "")}]]`;
+
+      const newText = prefix + linkText + suffix;
+      onChange(newText);
+
+      setShowAutocomplete(false);
+
+      setTimeout(() => {
+        const newCursor = lastOpen + linkText.length;
+        textarea.focus();
+        textarea.setSelectionRange(newCursor, newCursor);
+      }, 0);
+    }
+
+    // --- Sakura Editor Like Utilities ---
+    // Date/Time
+    // Use Code to handle Mac Option key (prevents char masking 'semicolon' -> '…')
+    if (e.altKey && (e.code === 'Semicolon' || e.key === ';')) { e.preventDefault(); insertDateCheck(); } // Alt+;
+    if (e.altKey && (e.code === 'Quote' || e.key === ':' || e.key === '*')) { e.preventDefault(); insertTimeCheck(); } // Alt+: (US Quote is Shift+;, JP : is dedicated)
+
+    // Sort
+    if (e.altKey && (e.code === 'KeyA' || e.key === 'a' || e.key === 'A')) { e.preventDefault(); sortLines(true); } // Alt+A Asc
+    if (e.altKey && (e.code === 'KeyD' || e.key === 'd' || e.key === 'D')) { e.preventDefault(); sortLines(false); } // Alt+D Desc
+
+    // Trim
+    if (e.altKey && (e.code === 'KeyL' || e.key === 'l' || e.key === 'L')) { e.preventDefault(); trimLines(true); } // Alt+L Left Trim
+    if (e.altKey && (e.code === 'KeyR' || e.key === 'r' || e.key === 'R')) { e.preventDefault(); trimLines(false); } // Alt+R Right Trim
+
+    // Update stats on navigation
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)) {
+      setTimeout(emitCursorStats, 0);
+    }
+  };
+
+
+
+  const handleContextMenu = (e) => {
+    e.preventDefault();
+    const textarea = textareaRef.current;
+    const { selectionStart, selectionEnd, value } = textarea;
+
+    // Check for Wiki Link [[...]] under cursor
+    const cursor = selectionStart;
+    const text = value;
+    let linkTarget = null;
+
+    // Use regex to find all links, check if cursor is inside one
+    const linkRegex = /\[\[(.*?)\]\]|［［(.*?)］］/g;
+    let match;
+    while ((match = linkRegex.exec(text)) !== null) {
+      if (cursor >= match.index && cursor <= match.index + match[0].length) {
+        // inside
+        linkTarget = match[1] || match[2];
+        break;
+      }
+    }
+
+    // Create custom context menu
+    const menu = document.createElement('div');
+    menu.className = 'context-menu';
+
+    let menuX = e.clientX;
+    let menuY = e.clientY;
+    const estWidth = 220;
+    const estHeight = 350;
+
+    // Adjust if clipping bottom/right
+    if (menuY + estHeight > window.innerHeight) {
+      menuY = window.innerHeight - estHeight - 10;
+    }
+    if (menuX + estWidth > window.innerWidth) {
+      menuX = Math.max(0, menuX - estWidth);
+    }
+
+    menu.style.left = `${menuX}px`;
+    menu.style.top = `${menuY}px`;
+
+    // 1. Link Navigation
+    if (linkTarget) {
+      const linkItem = document.createElement('div');
+      linkItem.className = 'context-menu-item';
+      linkItem.innerText = `🔗 ${linkTarget} を開く`;
+      linkItem.onclick = () => {
+        if (onOpenLink) onOpenLink(linkTarget);
+        document.body.removeChild(menu);
+      };
+      menu.appendChild(linkItem);
+
+      const separator = document.createElement('div');
+      separator.className = 'context-menu-separator';
+      menu.appendChild(separator);
+    }
+
+    // 2. Tag Insertion (Removed per user request)
+    // if (availableTags && availableTags.size > 0) { ... }
+
+    // 3. Link Creation (Wrap selected text)
+    if (selectionStart !== selectionEnd) {
+      const linkCreateItem = document.createElement('div');
+      linkCreateItem.className = 'context-menu-item';
+      linkCreateItem.innerText = '🔗 リンク化';
+      linkCreateItem.onclick = () => {
+        const selectedText = value.substring(selectionStart, selectionEnd);
+        insertText(`[[${selectedText}]]`);
+        document.body.removeChild(menu);
+      };
+      menu.appendChild(linkCreateItem);
+    }
+
+    // Standard items
+    const copyItem = document.createElement('div');
+    copyItem.className = 'context-menu-item';
+    copyItem.innerText = 'コピー';
+    copyItem.onclick = () => {
+      const selectedText = value.substring(selectionStart, selectionEnd);
+      navigator.clipboard.writeText(selectedText);
+      document.body.removeChild(menu);
+    };
+    menu.appendChild(copyItem);
+
+    const pasteItem = document.createElement('div');
+    pasteItem.className = 'context-menu-item';
+    pasteItem.innerText = '貼り付け';
+    pasteItem.onclick = async () => {
+      const text = await navigator.clipboard.readText();
+      insertText(text);
+      document.body.removeChild(menu);
+    };
+    menu.appendChild(pasteItem);
+
+    // Append to body
+    document.body.appendChild(menu);
+
+    // Better overlay approach
+    const closeMenu = () => {
+      if (document.body.contains(menu)) {
+        document.body.removeChild(menu);
+      }
+      document.removeEventListener('click', closeMenu);
+    };
+
+    // We need to delay adding the listener so it doesn't trigger immediately
+    setTimeout(() => {
+      document.addEventListener('click', closeMenu);
+    }, 0);
+  };
+
+
+
+  useImperativeHandle(ref, () => ({
+    insertRuby,
+    insertText,
+    textareaRef,
+    setCursorPosition: (position) => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+
+      // Use jumpToPosition to move cursor and scroll to position
+      // Set cursor at position (no selection)
+      textarea.focus();
+      textarea.setSelectionRange(position, position);
+
+      // Calculate scroll position
+      const lineHeight = parseInt(getComputedStyle(textarea).lineHeight) || 20;
+      const textBeforePosition = value.substring(0, position);
+      const lineNumber = textBeforePosition.split('\n').length - 1;
+
+      if (settings.isVertical) {
+        const textareaWidth = textarea.clientWidth;
+        const targetScrollLeft = -(lineNumber * lineHeight) + (textareaWidth / 2);
+        textarea.scrollLeft = targetScrollLeft;
+      } else {
+        const targetScrollTop = (lineNumber * lineHeight) - (textarea.clientHeight / 2);
+        textarea.scrollTop = Math.max(0, targetScrollTop);
+      }
+    },
+    jumpToPosition: (start, end) => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+
+      // First, set selection
+      textarea.setSelectionRange(start, end);
+
+      // Force native Scroll-into-view
+      // Manual calculation (lineIndex * lineHeight) fails when text wraps (Logical lines != Visual lines).
+      // Browsers naturally scroll to the caret when focus is regained.
+      textarea.blur();
+      textarea.focus();
+    },
+    jumpToLine: (lineIndex) => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+
+      const lines = value.split('\n');
+      if (lineIndex < 0 || lineIndex >= lines.length) return;
+
+      let charIndex = 0;
+      for (let i = 0; i < lineIndex; i++) {
+        charIndex += lines[i].length + 1; // +1 for \n
+      }
+
+      textarea.setSelectionRange(charIndex, charIndex);
+      // Native Scroll-to-Caret
+      textarea.blur();
+      textarea.focus();
+    }
+  }));
+
+  // Determine effective charsPerLine for wrapping
+  const charsPerLine = settings.charsPerLine || 20;
+
+  // Unified Line Height: If Vertical or specific styles, enforce grid-like stride
+  // User complained Lined/Plain wraps differently (early).
+  // This is because default lineHeight=2.0 (Plain) > 1.6 (Grid).
+  // If we want consistency, we should use 1.6 for Vertical mode generally unless overridden?
+  // Let's force 1.6 if vertical, to match the "Manuscript" feel usually desired.
+  const effectiveLineHeight = (settings.isVertical || settings.paperStyle === 'grid')
+    ? 1.6
+    : (settings.lineHeight || 2.0);
+
+  // Calculate WYSIWYG Dimensions
+  // Calculate WYSIWYG Dimensions
+  // Vertical: Height = charsPerLine * fontSize. Width = 100% (scrollable).
+  // Horizontal: Width = charsPerLine * fontSize. Height = 100% (scrollable).
+  // Buffer: ~4em allows for padding and avoiding scrollbar clipping
+  const dimStyle = {};
+
+  // Common Typography Settings for Textarea and Overlay (Consistency)
+  // CRITICAL: Force Full-Width for all characters to match Grid
+  // 'fwid' 1 forces fixed width glyphs even for proportional fonts like Mincho
+  // forcing them to behave like Monospace, which aligns with the square grid.
+  dimStyle.fontKerning = 'none';
+  dimStyle.fontVariantLigatures = 'none';
+  dimStyle.fontVariantEastAsian = 'full-width';
+  dimStyle.fontFeatureSettings = '"fwid" 1';
+  dimStyle.letterSpacing = '0px'; // MUST be 0px to ensure strict 1em spacing
+  dimStyle.wordSpacing = '0px';
+
+  // Also force Text Transform to align Latin/Numbers to Grid (prevents vertical drift)
+  dimStyle.textTransform = 'full-width';
+
+  // Applied GLOBALLY to ensure Horizontal mode also respects newlines and wrapping.
+  dimStyle.whiteSpace = 'pre-wrap';
+  dimStyle.wordBreak = 'break-all'; // Reverted for parity
+  dimStyle.lineBreak = 'strict'; // Strict Japanese line breaking
+  dimStyle.overflowWrap = 'break-word';
+  dimStyle.scrollbarGutter = 'stable'; // Ensure parity between Textarea(auto) and Overlay(hidden)
+
+  // CALCULATE EXACT PIXEL METRICS (Rounded)
+  // Parse fontSize (handle '1.2rem', '18px', or number)
+  let fs = 16;
+  if (typeof settings.fontSize === 'number') {
+    fs = settings.fontSize;
+  } else if (typeof settings.fontSize === 'string') {
+    if (settings.fontSize.includes('rem')) fs = parseFloat(settings.fontSize) * 16;
+    else fs = parseFloat(settings.fontSize) || 16;
+  }
+
+  // CRITICAL: Force INTEGER PIXELS for Layout Stability
+  // Sub-pixel rendering (e.g. 16.5px) causes fatal divergence between Textarea and Overlay
+  // We strictly enforce Integer CSS Pixels for consistent cross-browser rendering.
+  const roundedFontSize = Math.round(fs);
+
+  // Calculate Line Height (Row Height) - Force Integer
+  const rawLineHeight = roundedFontSize * effectiveLineHeight;
+  const roundedLineHeight = Math.round(rawLineHeight);
+  const pxLineHeightStr = `${roundedLineHeight}px`;
+
+  // Determine Grid Color based on theme
+  const lineColor = settings.colorTheme === 'dark' ? 'rgba(255,255,255,0.1)' : '#e5e5e5';
+  const headingColor = settings.colorTheme === 'dark' ? '#aaa' : '#555'; // Example usage if needed
+
+  // Apply to Styles
+  dimStyle.fontSize = `${roundedFontSize}px`;
+  dimStyle.lineHeight = pxLineHeightStr;
+  dimStyle['--editor-font-size'] = `${roundedFontSize}px`;
+  dimStyle['--editor-row-height-px'] = pxLineHeightStr;
+  dimStyle['--editor-line-height'] = pxLineHeightStr; // Force exact PX value, no ratios
+
+  // FORCE PADDING TO MATCH GRID PITCH
+  dimStyle.padding = pxLineHeightStr;
+  dimStyle.margin = '0px';
+
+  // FORCE BACKGROUND SYNC
+  // Background Props are now handled exclusively in the JSX Render to avoid React conflicts
+  // and to ensure precise sync with "right top" / "content-box" logic.
+  // dimStyle.backgroundPosition = ... // REMOVED
+
+
+
+  if (settings.isVertical) {
+    // Vertical Mode:
+    // "Height" is the Inline Size (Column Height).
+    // We strictly set min-height to ensure lines have room.
+
+    // Layout Logic handled by Grid and Global Styles now.
+
+    dimStyle.height = '100%';
+    dimStyle.minHeight = '100%';
+    dimStyle.width = '100%';
+    dimStyle.flex = '1';
+
+    // Reset margins
+    dimStyle.margin = '0';
+
+    // FORCE VERTICAL WRITING MODE INLINE
+    dimStyle.writingMode = 'vertical-rl';
+    dimStyle.WebkitWritingMode = 'vertical-rl';
+    dimStyle.textOrientation = 'mixed'; // Standard behavior (Rotate Latin/half-width)
+    // dimStyle.fontFeatureSettings = '"vert" 1, "vrt2" 1'; // Attempt to use vertical glyphs
+
+    /* Layout Logic: Grid Overlap */
+    /* Handled by CSS .vertical-editor now, but keeping clean defaults */
+    dimStyle.gridArea = '1 / 1';
+    dimStyle.height = '100%';
+    dimStyle.overflow = 'auto'; // Ensure scroll
+
+    // Transparency for Syntax Highlighting (Vertical)
+    if (settings.editorSyntaxColors !== false) {
+      dimStyle.color = 'transparent'; // Overlay Visible
+    } else {
+      dimStyle.color = settings.colorTheme === 'dark' ? '#eee' : '#111'; // Native Text Visible
+    }
+    dimStyle.caretColor = settings.colorTheme === 'dark' ? '#eee' : '#333';
+    // dimStyle.background = 'transparent';
+  } else {
+    // Horizontal Mode:
+    // FORCE FULL WIDTH & ALIGN LEFT (User Complaint: "Centering is far from numbers")
+    dimStyle.maxWidth = '100%';
+    dimStyle.margin = '0'; // align left
+    // dimStyle.marginLeft = '0'; // REMOVED to avoid React warning (conflict with shorthand margin)
+    dimStyle.width = '100%';
+    dimStyle.flex = '1'; // Grow vertically
+
+    // Grid Overlap for Horizontal too
+    dimStyle.gridArea = '1 / 1';
+
+    // Transparency for Syntax Highlighting
+    if (settings.editorSyntaxColors !== false) {
+      dimStyle.color = 'transparent'; // Overlay Visible
+      dimStyle.background = 'transparent'; // Let Overlay Background Show
+    } else {
+      dimStyle.color = settings.colorTheme === 'dark' ? '#eee' : '#111'; // Native Text Visible
+      // dimStyle.background = undefined; // Let CSS Background (Lines) Show
+      delete dimStyle.background;
+    }
+    dimStyle.caretColor = settings.colorTheme === 'dark' ? '#eee' : '#333';
+  }
+
+  // Create style for Overlay that EXCLUDES transparency (so text remains visible)
+  const overlayDimStyle = { ...dimStyle };
+  delete overlayDimStyle.color;
+  delete overlayDimStyle.caretColor;
+  delete overlayDimStyle.background;
+
+  // Overlay Config
+  overlayDimStyle.overflow = 'hidden'; // Force hidden for overlay (Sync via JS)
+  overlayDimStyle.zIndex = 0; // Behind
+
+  // DYNAMIC SCROLLBAR COMPENSATION (Horizontal Mode Only)
+  // If Textarea has a scrollbar (e.g. 15px), it consumes inner width.
+  // Overlay (overflow:hidden) has 0px scrollbar.
+  // We must add PADDING RIGHT to Overlay to match the Textarea's "Available Width".
+  if (!settings.isVertical && scrollbarWidth > 0) {
+    const basePadding = roundedLineHeight;
+    overlayDimStyle.paddingRight = `${basePadding + scrollbarWidth}px`;
+  }
+
+  // Ensure Overlay has correct text color for Theme
+  overlayDimStyle.color = settings.colorTheme === 'dark' ? '#eee' : '#111';
+  // Overlay needs pointerEvents: none (already in component but safe to add)
+  overlayDimStyle.pointerEvents = 'none';
+
+
+  // --- Box Selection Logic ---
+  const getGridCoordinates = (e) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return { lineIndex: 0, charIndex: 0 };
+
+    const fSize = typeof settings.fontSize === 'number' ? settings.fontSize : 16;
+    // Effective line height and char width helpers
+    const lHeightRatio = settings.lineHeight || 1.6;
+    const lHeightPx = fSize * lHeightRatio;
+    const charWidthPx = fSize; // Assuming 1em char width (Monospace/Grid)
+
+    const rect = textarea.getBoundingClientRect();
+    const x = e.clientX - rect.left + textarea.scrollLeft;
+    const y = e.clientY - rect.top + textarea.scrollTop;
+
+    // Adjust for padding (2rem = 32px usually)
+    const padding = 32;
+
+    // We'll use relative coordinates inside the "Content Area" (minus padding)
+    const relX = Math.max(0, x - padding);
+    const relY = Math.max(0, y - padding);
+
+    if (settings.isVertical) {
+      // Vertical Mode: Lines are X (TotalWidth - X?), Chars are Y.
+      // Vertical RL: Lines start from Right.
+      // Line 0 is at Right Edge.
+      // Since mapping visual X to Logical Line Index in RL is complex with scrolling,
+      // We will define "Visual Line 0" as Leftmost for simpler selection logic for now,
+      // OR try to reverse it: LineIndex = (MaxW - X) / lHeight.
+      // Let's use Left-to-Right for now to match the visual box overlay 1:1.
+      // The logic will select "Visual Columns" which corresponds to "Logical Lines" in loose sense.
+      // Wait, deleting "Line 10" because I dragged "Visual Line 10" (which is Logical Line N-10) is confusing.
+      // BUT for "Rectangular Edit", we target specific lines.
+      // If I drag visually, I expect visual match.
+
+      const lineIndex = Math.floor(relX / lHeightPx); // Visual X-based Line
+      const charIndex = Math.floor(relY / charWidthPx);
+
+      return { lineIndex, charIndex, visualX: relX, visualY: relY };
+    } else {
+      // Horizontal Mode
+      const lineIndex = Math.floor(relY / lHeightPx);
+      const charIndex = Math.floor(relX / charWidthPx); // Char width
+      return { lineIndex, charIndex, visualX: relX, visualY: relY };
+    }
+  };
+
+  const handleMouseDown = (e) => {
+    // Alt + Click starts Box Selection
+    if (e.altKey) {
+      // Prevent native text selection to avoid visual conflict
+      if (textareaRef.current) textareaRef.current.focus();
+      e.preventDefault();
+
+      const coords = getGridCoordinates(e);
+      setBoxSelection({
+        active: true,
+        isDragging: true,
+        start: coords,
+        end: coords
+      });
+    } else {
+      if (boxSelection.active) {
+        setBoxSelection({ active: false, start: null, end: null, isDragging: false });
+      }
+    }
+  };
+
+  const handleMouseMove = (e) => {
+    if (boxSelection.active && boxSelection.isDragging) {
+      const coords = getGridCoordinates(e);
+      setBoxSelection(prev => ({ ...prev, end: coords }));
+    }
+  };
+
+  const handleMouseUpBox = (e) => {
+    if (boxSelection.active && boxSelection.isDragging) {
+      setBoxSelection(prev => ({ ...prev, isDragging: false }));
+    }
+  };
+
+  // Execute Deletion on Active Box
+  const deleteBoxSelection = () => {
+    if (!boxSelection.active || !boxSelection.start || !boxSelection.end) return;
+
+    // Bounds
+    const { start, end } = boxSelection;
+    const minLine = Math.min(start.lineIndex, end.lineIndex);
+    const maxLine = Math.max(start.lineIndex, end.lineIndex);
+    const minChar = Math.min(start.charIndex, end.charIndex);
+    const maxChar = Math.max(start.charIndex, end.charIndex);
+
+    const textVal = value;
+    const lines = textVal.split('\n');
+    let modified = false;
+
+    const newLines = lines.map((line, idx) => {
+      // Vertical Mapping Issue: 
+      // If Vertical, 'minLine' is 'Visual X Grid Index'.
+      // Does 'Visual X Line 0' correspond to 'Logical Line 0'?
+      // In Vertical RL, Standard: Line 0 is Rightmost.
+      // Our Logic: LineIndex is from Left. 
+      // If lines.length = 10. Visual Left is Line 9. Right is Line 0.
+      // So TargetLogicalLine = (TotalLines - 1) - VisualLineIndex?
+      // This dependency on line count is tricky if scrolling...
+      // Let's assume Horizontal for robust Edit first. 
+      // If Vertical, we might need more math.
+      // User request "Rectangular Edit" -> usually implies text columns.
+
+      // Let's check `settings.isVertical`.
+      const logicalLineIdx = settings.isVertical ? idx : idx; // Assuming simplistic map
+
+      // Apply filtering:
+      // If Horizontal: Line Index matches Logical Line.
+      // If Vertical: We are cutting across lines? 
+      // Vertical "Box" = Range of Lines, Range of Chars.
+      // So minLine..maxLine is Range of Logical Lines?
+      // Yes.
+
+      // Horizontal Mode Logic:
+      if (!settings.isVertical) {
+        if (idx >= minLine && idx <= maxLine) {
+          if (line.length > minChar) {
+            const pre = line.substring(0, minChar);
+            const suf = line.substring(maxChar + 1); // Delete Inclusive?
+            // Visual Box is inclusive of End pixel? usually exclusive of End Char if drag past?
+            // Standard: Char at minChar is included. Char at maxChar is... included?
+            // Ranges are usually start-inclusive, end-exclusive.
+            // `max` from floor implies including that char index?
+            // Let's do `maxChar + 1` for slice.
+
+            // Check bounds
+            const validPrefix = pre;
+            const validSuffix = line.length > maxChar ? line.substring(maxChar + 1) : '';
+            modified = true;
+            return validPrefix + validSuffix;
+          }
+        }
+      }
+      return line;
+    });
+
+    if (modified) {
+      const newText = newLines.join('\n');
+      saveToHistory(newText, true);
+      onChange(newText);
+      // Keep selection active? Maybe clear it.
+      setBoxSelection({ active: false, start: null, end: null });
+    }
+  };
+
+  const insertBoxText = (char) => {
+    // Similar logic, inject `char` at `minChar` for `minLine..maxLine`
+    if (!boxSelection.active || !boxSelection.start || !boxSelection.end) return;
+    const { start, end } = boxSelection;
+    const minLine = Math.min(start.lineIndex, end.lineIndex);
+    const maxLine = Math.max(start.lineIndex, end.lineIndex);
+    const charPos = Math.min(start.charIndex, end.charIndex); // Insert at Left Edge
+
+    const lines = value.split('\n');
+    const newLines = lines.map((line, idx) => {
+      if (!settings.isVertical && idx >= minLine && idx <= maxLine) {
+        let padded = line;
+        while (padded.length < charPos) padded += '\u3000'; // Pad if short
+        return padded.substring(0, charPos) + char + padded.substring(charPos);
+      }
+      return line;
+    });
+    const newText = newLines.join('\n');
+    saveToHistory(newText, true);
+    onChange(newText);
+  };
+
+  // Ruler Sync Logic
+  const handleScroll = (e) => {
+    if (rulerRef.current) {
+      if (settings.isVertical) {
+        rulerRef.current.scrollLeft = e.target.scrollLeft;
+      } else {
+        rulerRef.current.scrollTop = e.target.scrollTop;
+      }
+    }
+
+    // Sync HighlightOverlay scroll
+    if (overlayRef.current) {
+      overlayRef.current.scrollTop = e.target.scrollTop;
+      overlayRef.current.scrollLeft = e.target.scrollLeft;
+    }
+
+    // Force update overlay if active to match scroll
+    if (boxSelection.active) {
+      setBoxSelection(prev => ({ ...prev }));
+    }
+  };
+
+  // Generate Line Numbers
+  // We estimate lines based on content or just provide a long enough list?
+  // Since textarea wraps, we can't easily map 1:1 to visual lines unless we do complex math.
+  // BUT the user likely wants "Logical Lines" (Paragraphs) + "Visual Line Check" combined?
+  // Re-reading: "I want numbers next to manuscript paper to check if it's 40 lines".
+  // The Editor is WYSIWYG constrained by charsPerLine. So visual lines = logical wrapping.
+  // We can just render a Ruler with numbers 1...N.
+  // How many N? We can estimate from scrollHeight or just large number.
+
+  // Let's use a dynamic list based on content length or fixed check?
+  // Ideally, if it's "Editor", we want to see the numbers.
+  // Let's render enough numbers to cover typical length. 
+  // Max lines = text.length / charsPerLine? No.
+  // Let's render 1..200 (page limit usually) or dynamic.
+  // A safe bet is a dumb list 1..1000. 
+  const rulerNumbers = Array.from({ length: 200 }, (_, i) => i + 1);
+
+
+
+  // Debug: Log settings to console to verify isVertical
+  console.log('Editor Settings Render:', settings, 'isVertical:', settings.isVertical);
+
+  return (
+    <div
+      ref={wrapperRef}
+      className={`editor-wrapper ${settings.isVertical ? 'vertical' : 'horizontal'} ${settings.paperStyle === 'grid' ? 'grid-mode' : ''} ${settings.paperStyle === 'lined' ? 'lined-mode' : ''}`}
+      style={{
+        '--editor-font-size': `${settings.fontSize}pt`,
+        '--editor-line-height': effectiveLineHeight,
+        display: 'grid', // Use Grid for Overlap
+        // Explicitly define Grid Structure to prevent layout shifts when Overlay is toggled
+        // minmax(0, 1fr) is CRITICAL to prevent grid from expanding beyond container and killing scrollbars
+        gridTemplateRows: settings.isVertical ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) auto',
+        gridTemplateColumns: '100%',
+        /* CRITICAL: Ensure Wrapper fills the parent container */
+        flex: 1,
+        // Height/Width controlled by Snap Logic in Manuscript mode via ref manipulation.
+        // We set defaults here, but allow them to be overridden by the ResizeObserver.
+        // Ideally we shouldn't force 100% if we are managing it.
+        // But we need 100% for non-manuscript.
+        // Conflict Fix: We use !important in the JS logic? No, React style prop is inline style. JS is inline style. Last write wins. UseLayoutEffect runs after render.
+        // BUT if React re-renders, it re-writes inline style.
+        // So we must NOT include height:100% in the prop if we are managing it.
+        // FORCE SIZE 100% to ensure Background Grid is visible (Fix 0px height issue)
+        height: '100%',
+        width: '100%',
+
+        // Font Shaping Parity
+        fontKerning: 'none',
+        fontVariantLigatures: 'none',
+
+        minHeight: 0,
+        overflow: 'hidden' /* Ensure exact box match */
+      }}
+    >
+      {/* Ruler Component */}
+
+      {/* Ruler - Hide in Vertical Mode */}
+      {!settings.isVertical && (
+        <div className="editor-ruler" ref={rulerRef} style={{
+          gridRow: '2', // Explicitly place in bottom row
+          gridColumn: '1',
+          height: '24px',
+          background: '#fcfcfc',
+          borderBottom: '1px solid #e0e0e0',
+          display: 'flex',
+          alignItems: 'flex-end',
+          paddingLeft: '10px',
+          overflow: 'hidden',
+          userSelect: 'none'
+        }}>
+          <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+            {Array.from({ length: 100 }).map((_, i) => {
+              const n = (i + 1) * 10;
+              return (
+                <div key={n} style={{
+                  position: 'absolute',
+                  left: `${n * (settings.fontSize || 16) * 0.6}px`, // Approx char width
+                  bottom: '0',
+                  height: '50%',
+                  borderLeft: '1px solid #ccc',
+                  fontSize: '10px',
+                  color: '#999',
+                  paddingLeft: '2px'
+                }}>
+                  {n % 50 === 0 && n}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Box Selection Overlay */}
+      {/* Box Selection Overlay - Safe Render */
+        boxSelection.active && boxSelection.start && boxSelection.end && textareaRef.current && (
+          <div style={{
+            position: 'absolute',
+            zIndex: 20,
+            pointerEvents: 'none',
+            background: 'rgba(0, 120, 215, 0.3)',
+            border: '1px solid rgba(0, 120, 215, 0.8)',
+            left: (Math.min(boxSelection.start.visualX, boxSelection.end.visualX) - (textareaRef.current?.scrollLeft || 0) + 32) + 'px',
+            top: (Math.min(boxSelection.start.visualY, boxSelection.end.visualY) - (textareaRef.current?.scrollTop || 0) + 32) + 'px',
+            width: Math.abs(boxSelection.end.visualX - boxSelection.start.visualX) + 'px',
+            height: Math.abs(boxSelection.end.visualY - boxSelection.start.visualY) + 'px'
+          }} />
+        )}
+
+      {/* RESTORED HIGHLIGHT OVERLAY - Conditional Rendering */}
+      {/*
+          CRITICAL FIX: Only render Overlay if Syntax Highlighting is ENABLED.
+          For Monochrome mode, we use NATIVE textarea rendering.
+          This guarantees 0% drift, perfect scrolling, and max performance.
+      */}
+      {settings.editorSyntaxColors !== false && (
+        <HighlightOverlay
+          ref={overlayRef}
+          text={value}
+          settings={settings}
+          // Use identical classes to ensure CSS inheritance (padding, borders, etc) matches Textarea
+          className={`${settings.isVertical ? "vertical-editor" : "horizontal-editor"} ${settings.showGrid !== false ? 'grid-mode' : ''} highlight-overlay`}
+          style={{
+            ...style,
+            ...dimStyle,
+            // CRITICAL: Clear inline background props to allow CSS Grid/Lines to render
+            background: undefined,
+            backgroundImage: undefined,
+            backgroundColor: undefined,
+
+            // Force Visible Text (Override dimStyle.color='transparent')
+            color: settings.colorTheme === 'dark' ? '#eee' : '#111',
+
+            // --- CRITICAL: FORCE EXACT SYNC WITH TEXTAREA ---
+            // Use Exact Pixel Values derived from rounding logic
+            fontSize: 'var(--editor-font-size)',
+            lineHeight: 'var(--editor-line-height)',
+
+            // Strict Typography
+            letterSpacing: '0px',
+            wordSpacing: '0px',
+
+            // Directions
+            writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb',
+            direction: 'ltr',
+
+            // CSS Variables (Single Source of Truth - Method A)
+            fontFamily: 'var(--editor-font-family)',
+
+            // Layout
+            boxSizing: 'border-box',
+            border: 'none',
+            margin: '0',
+            // Padding Parity: Match Textarea exactly (No manual sbSize comp)
+            paddingTop: 'var(--editor-line-height)',
+            paddingLeft: 'var(--editor-line-height)',
+            paddingBottom: 'var(--editor-line-height)',
+            paddingRight: 'var(--editor-line-height)',
+            overflow: 'scroll', // Ensure scrollbar reservation matches Textarea
+          }}
+          disableColors={settings.editorSyntaxColors === false}
+        />
+      )}
+
+      <textarea
+        ref={textareaRef}
+        // ONLY use transparent-force if Overlay is active
+        className={`${settings.isVertical ? "vertical-editor" : "horizontal-editor"} ${settings.showGrid !== false ? 'grid-mode' : ''} ${settings.editorSyntaxColors !== false ? 'transparent-force' : ''}`}
+        style={{
+          ...style,
+          ...dimStyle,
+          // Explicitly clear 'background' shorthand to prevent conflicts/react warnings
+          background: undefined,
+
+          zIndex: 1, // Ensure Textarea is ABOVE highlight overlay
+          position: 'relative', // Needed for zIndex
+
+          // --- Layout Overrides ---
+          // Enforce synced metrics to ensure Background (Pixel) matches Text (Pixel)
+          fontSize: 'var(--editor-font-size)',
+          lineHeight: 'var(--editor-line-height)',
+          fontFamily: 'var(--editor-font-family)', // CRITICAL: Sync with Overlay
+
+          letterSpacing: '0px',
+          wordSpacing: '0px',
+
+          boxSizing: 'border-box',
+          border: 'none',
+          margin: '0',
+          // Fix React Padding Warning
+          paddingTop: 'var(--editor-line-height)',
+          paddingBottom: 'var(--editor-line-height)',
+          paddingLeft: 'var(--editor-line-height)',
+          paddingRight: 'var(--editor-line-height)',
+          overflow: 'scroll', // CHANGED from 'auto' to 'scroll' for strict width parity
+
+          // Force Directions
+          writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb',
+          direction: 'ltr',
+
+          // --- Background System (Consolidated) ---
+          // For Manuscript: Delegate to CSS (Complex Gap/Rail/Rung system)
+          // For Others: Use Simple Inline Grid if showGrid is true
+          ...(settings.paperStyle !== 'manuscript' ? {
+            backgroundImage: settings.showGrid
+              ? `linear-gradient(to right, ${lineColor} 1px, transparent 1px), linear-gradient(to bottom, ${lineColor} 1px, transparent 1px)`
+              : 'none',
+            backgroundPosition: settings.isVertical ? 'right top' : 'left top',
+            backgroundAttachment: 'local',
+            backgroundOrigin: 'content-box',
+            backgroundRepeat: 'repeat',
+            backgroundSize: settings.showGrid
+              ? (settings.isVertical
+                // Back to PIXELS. 1lh support is spotty in some environments.
+                ? `${pxLineHeightStr} ${roundedFontSize}px`
+                : `${roundedFontSize}px ${pxLineHeightStr}`)
+              : 'auto',
+          } : {}),
+        }}
+        value={value}
+        onChange={(e) => {
+          // Normalize Tabs immediately to prevent layout drift
+          const cleanVal = sanitizeInput(e.target.value);
+          onChange(cleanVal);
+          handleInput(e);
+        }}
+        onScroll={handleScroll}
+        onWheel={(e) => {
+          if (settings.isVertical && textareaRef.current) {
+            // Force Horizontal Scroll from Vertical Wheel
+            if (e.deltaY !== 0) {
+              // e.preventDefault() might break inertia, but ensures we capture the event for X-axis.
+              // We rely on scrollBy for native-like feel.
+              textareaRef.current.scrollBy({ left: -e.deltaY, behavior: 'auto' });
+            }
+          }
+        }}
+        // onScroll handled above
+        onSelect={handleSelect}
+        onClick={handleSelect}
+        onKeyUp={handleSelect}
+
+        placeholder="ここから物語を紡ぎましょう..."
+        spellCheck={false}
+        onContextMenu={handleContextMenu}
+        onMouseUp={handleMouseUpBox}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+      />
+
+      {/* Ghost Measurement Div for Auto-Calibration */}
+      <div
+        ref={measureRef}
+        aria-hidden="true"
+        className={`${settings.isVertical ? "vertical-editor" : "horizontal-editor"} ${settings.showGrid !== false ? 'grid-mode' : ''} ${settings.editorSyntaxColors !== false ? 'transparent-force' : ''}`}
+        style={{
+          ...dimStyle,
+          position: 'absolute',
+          top: -9999,
+          left: -9999,
+          visibility: 'hidden',
+          pointerEvents: 'none',
+          whiteSpace: 'pre', // No wrapping
+          width: 'auto',
+          height: 'auto',
+          // Override line-height to ensure single line measurement isn't affected by block stacking?
+          // Actually we measure the flow dimension.
+        }}
+      >
+        ああああああああああ
+      </div>
+
+      {showAutocomplete && (
+        <div
+          className="autocomplete-popup"
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: 'white',
+            border: '1px solid #ccc',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            borderRadius: '4px',
+            zIndex: 1000,
+            maxHeight: '200px',
+            overflowY: 'auto',
+            width: '250px'
+          }}
+        >
+          <div style={{ padding: '4px 8px', background: '#f5f5f5', borderBottom: '1px solid #eee', fontSize: '0.75rem', color: '#666' }}>
+            リンク先を選択 (Enterで決定)
+          </div>
+          {filteredFiles.length > 0 ? (
+            filteredFiles.map((file, index) => (
+              <div
+                key={file.path}
+                className={`autocomplete-item ${index === selectedIndex ? 'selected' : ''}`}
+                onClick={() => selectSuggestion(file)}
+                style={{
+                  padding: '6px 10px',
+                  cursor: 'pointer',
+                  background: index === selectedIndex ? '#8e44ad' : 'transparent',
+                  color: index === selectedIndex ? 'white' : '#333',
+                  fontSize: '0.9rem'
+                }}
+              >
+                {file.name.replace(/\.[^/.]+$/, "")}
+              </div>
+            ))
+          ) : (
+            <div style={{ padding: '8px', color: '#999', fontSize: '0.8rem', textAlign: 'center' }}>
+              候補なし
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Smart Reference Popup */}
+      {activeReference && (
+        <div
+          className="smart-reference-popup"
+          style={{
+            position: 'absolute',
+            bottom: '20px',
+            right: '20px',
+            width: '300px',
+            maxHeight: '200px',
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(5px)',
+            border: '1px solid #ddd',
+            boxShadow: '0 -4px 16px rgba(0,0,0,0.1)',
+            borderRadius: '8px',
+            padding: '12px',
+            zIndex: 900,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            transition: 'opacity 0.2s'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '4px' }}>
+            <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>📖 {activeReference.name}</span>
+            <span style={{ fontSize: '0.7rem', color: '#888' }}>Auto-Ref</span>
+          </div>
+          <div style={{
+            fontSize: '0.8rem',
+            color: '#555',
+            whiteSpace: 'pre-wrap',
+            overflowY: 'auto',
+            flex: 1,
+            lineHeight: '1.4',
+            maxHeight: '120px'
+          }}>
+            {activeReference.content.length > 200
+              ? activeReference.content.substring(0, 200) + '...'
+              : activeReference.content}
+          </div>
+          <button
+            onClick={() => onOpenLink && onOpenLink(activeReference.name)}
+            style={{
+              padding: '6px',
+              background: '#e3f2fd',
+              color: '#1565c0',
+              border: 'none',
+              borderRadius: '44px',
+              cursor: 'pointer',
+              fontSize: '0.8rem',
+              fontWeight: 'bold'
+            }}
+          >
+            全体を開く
+          </button>
+        </div>
+      )}
+
+      {/* DEBUG METRICS */}
+      <div style={{
+        position: 'fixed', bottom: '10px', right: '10px',
+        background: 'rgba(0,0,0,0.9)', color: '#0f0',
+        padding: '10px', fontSize: '12px', fontFamily: 'monospace',
+        zIndex: 10000, pointerEvents: 'none', border: '1px solid #0f0'
+      }}>
+        <div>FS: {dimStyle.fontSize}</div>
+        <div>LH: {dimStyle.lineHeight}</div>
+        <div>Pad: {dimStyle.padding}</div>
+        <div>DPR: {typeof window !== 'undefined' ? window.devicePixelRatio : '?'}</div>
+      </div>
+    </div>
+  );
+});
+
+Editor.displayName = 'Editor';
+
+export default Editor;

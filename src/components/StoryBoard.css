@@ -1,0 +1,42 @@
+/* StoryBoard.css */
+.story-board-container {
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.story-board-main::-webkit-scrollbar {
+    height: 8px;
+}
+
+.story-board-main::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.story-board-main::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 4px;
+}
+
+.story-board-main::-webkit-scrollbar-thumb:hover {
+    background: #bbb;
+}
+
+/* Animations for cards */
+.story-card-enter {
+    opacity: 0;
+    transform: scale(0.9);
+}
+
+.story-card-enter-active {
+    opacity: 1;
+    transform: scale(1);
+    transition: opacity 200ms, transform 200ms;
+}
+
+/* Connection lines animation */
+@keyframes dash {
+    to {
+        stroke-dashoffset: 0;
+    }
+}

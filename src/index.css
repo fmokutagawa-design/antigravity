@@ -1,0 +1,870 @@
+@import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap');
+
+:root {
+  /* --- カラーパレット定義 (ライトモード) --- */
+  --bg-paper: #fdfbf7;
+  /* 紙の背景色 */
+  --text-main: #2c3e50;
+  /* 文字色 */
+  --caret-color: #8e44ad;
+  /* カーソル色 */
+
+  /* 罫線の色 */
+  --grid-line: rgba(0, 0, 0, 0.15);
+  /* 薄い線（ノート用） */
+  --grid-line-strong: rgba(160, 140, 110, 0.5);
+  /* 濃い線（原稿用紙用） */
+
+  /* アンダーレイ（背景ハイライト）の色 */
+  --highlight-tag: rgba(33, 150, 243, 0.2);
+  /* [[タグ]]の背景 */
+  --highlight-speak: rgba(255, 165, 0, 0.2);
+  /* 「会話文」の背景 */
+  --highlight-ruby: rgba(230, 126, 34, 0.2);
+  /* 《ルビ》の背景 */
+
+  /* UI Variables */
+  --border-color: #ddd;
+  /* Mac標準のヒラギノ明朝を最優先にする（縦書き約物の信頼性が高いため） */
+  --font-mincho: "Hiragino Mincho ProN", "Yu Mincho", "Shippori Mincho", serif;
+  --font-gothic: "Hiragino Kaku Gothic ProN", "Zen Kaku Gothic New", sans-serif;
+  --font-hand: cursive;
+  --accent-color: #3498db;
+}
+
+/* --- ダークモード定義 --- */
+body.dark-mode {
+  --bg-paper: #1a1a1a;
+  /* 暗い背景 */
+  --text-main: #e0e0e0;
+  /* 明るい文字 */
+  --caret-color: #d19a66;
+  /* 明るいカーソル */
+
+  --grid-line: rgba(255, 255, 255, 0.1);
+  /* 白っぽい薄い線 */
+  --grid-line-strong: rgba(200, 180, 150, 0.3);
+  /* 白っぽい濃い線 */
+
+  --highlight-tag: rgba(33, 150, 243, 0.4);
+  --highlight-speak: rgba(255, 165, 0, 0.3);
+  --highlight-ruby: rgba(230, 126, 34, 0.3);
+
+  --border-color: #444;
+  --accent-color: #5dade2;
+}
+
+/* ベース設定 */
+* {
+  box-sizing: border-box;
+}
+
+/* スクロールバーの常時表示とスタイリング (Macでも表示させる) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+  background-color: transparent;
+}
+
+::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.4);
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background-color: var(--bg-paper);
+  transition: background 0.3s;
+}
+
+/* =========================================================
+   NEXUS Editor Core - "Underlay Architecture" (Final)
+   ========================================================= */
+
+/* エディタの親コンテナ (キャンバス) */
+.editor-container {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  /* 画面いっぱい */
+  overflow: auto;
+  /* ここでスクロール */
+  background-color: var(--bg-paper);
+
+  /* フレックス解除（ブロック配置にする） */
+  display: block;
+}
+
+/* =========================================
+   1. テキストエリア本体 (入力・グリッド担当)
+   ========================================= */
+.native-grid-editor {
+  /* 必須：ブロック要素として配置 */
+  display: block;
+  position: relative;
+  z-index: 2;
+  /* 下敷きより上 */
+
+  /* サイズ設定 (Editor.jsx 側で厳密に制御するため、ここは最小限に) */
+  box-sizing: border-box;
+
+  /* 余白 (ここが座標の基準点になる) */
+  padding: 10px;
+  box-sizing: border-box;
+
+  /* 文字グリッドを強制するための重要設定 */
+  text-transform: full-width;
+  /* font-feature-settings と font-variant-east-asian は
+     Editor.jsx のインラインスタイルで制御する（ここに書くと競合する） */
+  line-break: strict;
+  /* パディングを含めたサイズ計算 */
+
+  /* ブラウザの標準スタイルをリセット */
+  resize: none;
+  border: none;
+  outline: none;
+  background-color: transparent;
+  /* 背景透明（下敷きを見せるため） */
+
+  /* ★最重要：グリッドのスクロール同期 */
+  background-attachment: local;
+  background-repeat: repeat;
+
+  /* CSS変数で制御 */
+  font-size: var(--font-size);
+  line-height: var(--cell);
+  color: var(--text-main);
+  caret-color: var(--caret-color);
+}
+
+/* =========================================
+   Electron Title Bar (ドラッグ対応)
+   ※ .app-container 直下に配置されるためトップレベルに定義
+   ========================================= */
+.electron-title-bar {
+  /* position: fixed を使わず、通常のフロー要素として配置。
+     flex column の先頭に28px分のスペースを確保し、
+     エディタは自然にその下に配置される。
+     → ドラッグ可能 & エディタの1マス目クリックも可能 */
+  width: 100%;
+  height: 28px;
+  background: transparent;
+  z-index: 10;
+  -webkit-app-region: drag;
+  flex-shrink: 0;
+}
+
+.electron-title-bar * {
+  -webkit-app-region: no-drag;
+}
+
+/* =========================================
+   2. 下敷きレイヤー (色塗り担当)
+   ========================================= */
+.editor-underlay {
+  position: absolute;
+  z-index: 1;
+  /* テキストエリアの下 */
+  pointer-events: none;
+  /* クリックを透過 */
+
+  /* テキストエリアの padding と「完全に」一致させる */
+  top: 10px;
+  left: 10px;
+
+  /* 念のためサイズ制限 */
+  max-width: 100%;
+}
+
+/* =========================================
+   A. 縦書きモード (Vertical)
+   ========================================= */
+.editor-container.vertical {
+  /* 縦書き用スクロール設定 */
+  writing-mode: vertical-rl;
+  overflow-x: scroll;
+  overflow-y: hidden;
+  width: 100%;
+  height: 100vh;
+}
+
+/* 全モード共通：スクロールバー常時表示 (macOS overlay scrollbar 対策) */
+.editor-container.vertical::-webkit-scrollbar {
+  height: 10px;
+}
+
+.editor-container.vertical::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.editor-container.vertical::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 5px;
+}
+
+.editor-container.vertical::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.editor-container.vertical .native-grid-editor {
+  writing-mode: vertical-rl;
+
+  /* 縦書きの「高さ」は画面いっぱい */
+  height: 100%;
+  /* 縦書きの「幅」は文字数に応じて伸びる (JSから gridW を受け取る) */
+  min-width: var(--grid-w, 100vw);
+
+  letter-spacing: var(--letter-spacing);
+
+  /* グリッド開始位置の微調整 (padding: 10pxに合わせる) */
+  background-position: right 10px top 10px;
+
+  /* 明示的に開始位置寄せ (縦書きならTop) */
+  text-align: start;
+
+  /* text-orientation は Editor.jsx のインラインスタイルで制御 */
+}
+
+.editor-container.vertical .editor-underlay {
+  /* 縦書きの原点は「右上」 */
+  left: auto;
+  right: 10px;
+  top: 10px;
+
+  /* アンダーレイ側も縦書きモードを強制 */
+  writing-mode: vertical-rl;
+  /* font-feature-settings は Editor.jsx のインラインスタイルで制御 */
+}
+
+/* 縦書き：原稿用紙グリッド */
+.editor-container.vertical.paper-manuscript .native-grid-editor {
+  background-image:
+    linear-gradient(to bottom, var(--grid-line-strong) 1px, transparent 1px),
+    linear-gradient(to left, var(--grid-line-strong) 1px, transparent 1px);
+  /* 正方形マス（縦横ともにcellサイズ） */
+  background-size: var(--cell) var(--cell);
+  /* letter-spacingの半分だけグリッドを下にずらして文字を中央に合わせる */
+  background-position: right 10px top calc(10px - var(--ls-half, 0px));
+}
+
+/* 縦書き：大学ノート (縦線 = 行の区切り線) */
+.editor-container.vertical.paper-lined .native-grid-editor {
+  background-image:
+    linear-gradient(to left, var(--grid-line) 1px, transparent 1px);
+  /* 縦線なので、幅はcellサイズ、高さは100% */
+  background-size: var(--cell) 100%;
+  background-position: right 10px top 0;
+  /* top 0 で上端まで線を伸ばす */
+}
+
+/* ... */
+
+/* 横書き：大学ノート (横線 = 行の区切り線) */
+.editor-container.horizontal.paper-lined .native-grid-editor {
+  background-image:
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  /* 横線なので、幅は100%、高さはcellサイズ */
+  background-size: 100% var(--cell);
+  background-position: left 0 top 10px;
+  /* left 0 で左端まで線を伸ばす */
+}
+
+/* =========================================
+   B. 横書きモード (Horizontal)
+   ========================================= */
+.editor-container.horizontal {
+  overflow-y: auto;
+  overflow-x: hidden;
+  direction: ltr;
+}
+
+.editor-container.horizontal .native-grid-editor {
+  writing-mode: horizontal-tb;
+
+  width: 100%;
+  /* 横書きの「幅」はJS側の width スタイルで厳密に制御するため、ここは制限を外す */
+  /* max-width: var(--grid-w, 800px); <- これがPadding分を考慮せずクランプしていた原因 */
+  margin: 0;
+  /* 左寄せに変更 */
+
+  letter-spacing: var(--letter-spacing);
+
+  /* paddingと合わせる */
+  background-position: left 10px top 10px;
+  text-align: start;
+}
+
+/* 横書きの下敷き位置 */
+.editor-container.horizontal .editor-underlay {
+  /* 中央寄せされたエディタの位置に合わせる必要があるため、JSで制御するか、
+     あるいは editor-container の padding で中央寄せする構成にするのが安全 */
+  left: 50%;
+  transform: translateX(-50%);
+  width: var(--grid-w);
+  margin-left: 0;
+  /* リセット */
+  padding-left: 10px;
+  /* 内部オフセット */
+}
+
+/* 横書き：原稿用紙グリッド */
+.editor-container.horizontal.paper-manuscript .native-grid-editor {
+  background-image:
+    linear-gradient(to right, var(--grid-line-strong) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line-strong) 1px, transparent 1px);
+  /* 正方形マス */
+  background-size: var(--cell) var(--cell);
+  /* letter-spacingの半分だけグリッドを左にずらして文字を中央に合わせる */
+  background-position: left calc(10px - var(--ls-half, 0px)) top 10px;
+}
+
+/* 横書き：大学ノート */
+.editor-container.horizontal.paper-lined .native-grid-editor {
+  background-image:
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: 100% var(--cell);
+}
+
+/* =========================================================
+   クリーンモード：プロポーショナルフォント、グリッドなし
+   サイズは Editor.jsx のインラインスタイルで制御
+   ========================================================= */
+
+/* テキストエリア: グリッド無し・背景透明 */
+.editor-container.paper-clean .native-grid-editor {
+  background-image: none !important;
+  background-color: transparent !important;
+  caret-color: var(--text-main);
+  color: var(--text-main);
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+/* アンダーレイ非表示 */
+.editor-container.paper-clean .editor-underlay {
+  display: none !important;
+}
+
+/* =========================================================
+   App Layout (Restored)
+   ========================================================= */
+
+#root,
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  /* App container handles scroll */
+}
+
+.app-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  background-color: var(--bg-paper);
+  color: var(--text-main);
+  overflow: hidden;
+}
+
+/* --- Sidebar --- */
+/* --- Sidebar Container (Nav + Body) --- */
+.sidebar {
+  width: 320px;
+  /* Highly optimized width */
+  min-width: 300px;
+  max-width: 500px;
+  background-color: rgba(248, 249, 250, 0.95);
+  /* Slight Translucency */
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  /* Glassmorphism */
+  border-right: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  z-index: 10;
+  transition: width 0.2s ease, transform 0.3s ease;
+  flex-shrink: 0;
+}
+
+/* --- Sidebar Nav Strip (Left) --- */
+.sidebar-nav {
+  width: 48px;
+  background-color: #f0f0f0;
+  border-right: 1px solid var(--grid-line);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 36px;
+  /* Electronのウィンドウ操作ボタンを避けるためのマージン */
+  flex-shrink: 0;
+}
+
+body.dark-mode .sidebar-nav {
+  background-color: #252525;
+}
+
+.sidebar-nav-item {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 20px;
+  margin-bottom: 4px;
+  border-radius: 6px;
+  transition: background 0.2s, color 0.2s;
+  color: #888;
+  position: relative;
+}
+
+.sidebar-nav-item:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--text-main);
+}
+
+.sidebar-nav-item.active {
+  background-color: var(--bg-paper);
+  color: var(--accent-color, #3498db);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+body.dark-mode .sidebar-nav-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .sidebar-nav-item.active {
+  background-color: #333;
+  color: #5dade2;
+}
+
+/* --- Sidebar Body (Right) --- */
+/* --- Sidebar Body (Right) --- */
+.sidebar-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  /* Prevent flex blowout */
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-paper);
+}
+
+/* Logo Area */
+.sidebar-header {
+  flex-shrink: 0;
+  background-color: var(--bg-paper);
+  border-bottom: 1px solid var(--grid-line);
+  padding: 12px 10px;
+}
+
+.nexus-logo-wide {
+  max-width: 80%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+/* Toolbar / Settings Styles */
+.toolbar-section {
+  padding: 12px;
+  border-bottom: 1px solid var(--grid-line);
+}
+
+.section-title {
+  font-size: 11px;
+  font-weight: bold;
+  opacity: 0.7;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.control-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px 12px;
+  /* Row Gap, Col Gap */
+}
+
+/* Make toggles and full-width items span 2 columns */
+.control-grid .span-full {
+  grid-column: 1 / -1;
+}
+
+.control-item {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  /* Fix flex/grid overflow */
+}
+
+.control-item label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-main);
+  opacity: 0.6;
+  margin-bottom: 4px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  /* Prevent squashing */
+}
+
+.control-item input,
+.control-item select {
+  font-size: 12px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 6px;
+  color: var(--text-main);
+  transition: all 0.2s;
+  width: 100%;
+}
+
+.control-item input:hover,
+.control-item select:hover {
+  background: rgba(0, 0, 0, 0.07);
+}
+
+.control-item input:focus,
+.control-item select:focus {
+  outline: none;
+  background: #fff;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
+}
+
+.span-full {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+/* Color Grid - Horizontal Override */
+.control-grid.color-grid {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.control-item.color-item {
+  align-items: center;
+}
+
+.color-item input[type="color"] {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+/* Buttons */
+.btn-open-project {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  border: none;
+  background: var(--accent-color, #3498db);
+  color: white;
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+}
+
+.btn-open-project:hover {
+  opacity: 0.9;
+}
+
+
+/* Sidebar Internal Styles */
+.sidebar-footer {
+  padding: 12px;
+  border-top: 1px solid #ddd;
+  background-color: #f8f9fa;
+}
+
+body.dark-mode .sidebar-footer {
+  background-color: #1e1e1e;
+  border-top: 1px solid #333;
+}
+
+.file-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.action-btn-compact {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 6px 2px;
+  cursor: pointer;
+  color: var(--text-main);
+  transition: background 0.2s;
+}
+
+.action-btn-compact:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+body.dark-mode .action-btn-compact:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.action-btn-compact .icon {
+  font-size: 18px;
+  margin-bottom: 2px;
+}
+
+.action-btn-compact .label {
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+
+body.dark-mode .sidebar {
+  background-color: #1e1e1e;
+  border-right: 1px solid #333;
+}
+
+.sidebar.collapsed {
+  width: 0 !important;
+  min-width: 0;
+  overflow: hidden;
+  border-right: none;
+}
+
+/* --- Main Content Area --- */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  /* Important for flex child truncation */
+}
+
+/* Settings Panel (formerly Toolbar) */
+.settings-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  background-color: var(--bg-paper);
+  padding-bottom: 20px;
+  /* Safe space */
+}
+
+/* Ensure sections stack naturally */
+.toolbar-section {
+  padding: 12px;
+  border-bottom: 1px solid var(--grid-line);
+  flex-shrink: 0;
+  /* Prevent section compression */
+}
+
+/* Editor Wrapper within Main */
+/* editor-container is already defined above, but needs to fit into flex */
+.main .editor-container {
+  flex: 1;
+  height: auto;
+  /* Let flex handle height */
+  overflow: auto;
+}
+
+
+/* --- Footer --- */
+.footer {
+  height: 32px;
+  background-color: #f0f0f0;
+  border-top: 1px solid #ddd;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 12px;
+  flex-shrink: 0;
+  z-index: 20;
+  writing-mode: horizontal-tb;
+  text-orientation: mixed;
+}
+
+body.dark-mode .footer {
+  background-color: #252525;
+  border-top: 1px solid #333;
+  color: #aaa;
+}
+
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  align-items: center;
+}
+
+.tool-group {
+  display: flex;
+  align-items: center;
+}
+
+.footer-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: inherit;
+}
+
+.footer-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+
+body.dark-mode .footer-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Dropdown Menu */
+.dropdown-menu {
+  background-color: var(--bg-paper);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.dropdown-menu button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Toggle Switch Base Styles */
+.toggle-switch {
+  box-sizing: border-box;
+}
+
+.toggle-switch.active {
+  background-color: var(--caret-color) !important;
+}
+
+/* ===== Context Menu (Right-click menu) ===== */
+.context-menu {
+  background: #ffffff;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18), 0 1px 4px rgba(0, 0, 0, 0.08);
+  padding: 4px 0;
+  min-width: 200px;
+  font-size: 0.85rem;
+  z-index: 99999;
+  overflow: hidden;
+}
+
+.context-menu-item {
+  padding: 7px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s;
+}
+
+.context-menu-item:hover {
+  background: #f0f4ff;
+}
+
+/* Dark mode */
+[data-color-theme="dark"] .context-menu,
+.dark-mode .context-menu {
+  background: #2c2c2c;
+  border-color: #444;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+[data-color-theme="dark"] .context-menu-item:hover,
+.dark-mode .context-menu-item:hover {
+  background: #3a3a4a;
+}
+
+/* Blackboard theme */
+[data-color-theme="blackboard"] .context-menu {
+  background: #2a3a2a;
+  border-color: #4a5a4a;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+[data-color-theme="blackboard"] .context-menu-item:hover {
+  background: #3a4a3a;
+}
+
+/* =========================================
+   爆速モード (Rapid Writing Mode)
+   ========================================= */
+.rapid-mode .footer {
+  background: linear-gradient(90deg, #1b5e20, #2e7d32);
+  color: #fff;
+  border-top: 2px solid #66bb6a;
+}
+
+.rapid-mode .footer .status-left span {
+  opacity: 1 !important;
+  color: #e8f5e9;
+}
+
+.rapid-mode .footer-btn {
+  color: #e8f5e9;
+}
+
+.rapid-mode .footer-btn:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.rapid-mode .main .editor-container {
+  border-top: 3px solid #4caf50;
+}
+
+/* Rapid mode: gentle green tint on editor background */
+.rapid-mode .editor-container {
+  background-color: #f5fdf5;
+}
+
+body.dark-mode .rapid-mode .editor-container,
+.rapid-mode.dark-mode .editor-container {
+  background-color: #1a2a1a;
+}
+
+body.dark-mode .rapid-mode .footer,
+.rapid-mode.dark-mode .footer {
+  background: linear-gradient(90deg, #1b3a1b, #2e4d2e);
+  border-top: 2px solid #4caf50;
+}

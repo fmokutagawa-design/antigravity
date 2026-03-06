@@ -1,0 +1,308 @@
+/* Main Tracker Layout */
+.progress-tracker {
+    padding: 1rem;
+    color: var(--text-color);
+    overflow-y: auto;
+    height: 100%;
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.work-selector {
+    padding: 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-paper);
+    color: var(--text-color);
+}
+
+.goal-card {
+    background: rgba(0, 0, 0, 0.03);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.set-goal-btn.big {
+    width: 100%;
+    padding: 12px;
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.progress-bar-container {
+    width: 100%;
+    height: 10px;
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background-color: var(--accent-color);
+    transition: width 0.5s ease;
+}
+
+.progress-stats-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.stat-box {
+    text-align: center;
+}
+
+.stat-box .label {
+    font-size: 0.75rem;
+    color: #888;
+}
+
+.stat-box .value {
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+.stat-box .value.urgent {
+    color: #e74c3c;
+}
+
+.edit-goal-btn {
+    width: 100%;
+    padding: 4px;
+    font-size: 0.8rem;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: #888;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.divider {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 1.5rem 0;
+}
+
+/* Writing Session & Timer */
+.writing-session h4 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+    border-bottom: 2px solid var(--accent-color);
+    display: inline-block;
+    padding-bottom: 2px;
+}
+
+.mode-toggle {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 1rem;
+    background: rgba(0, 0, 0, 0.05);
+    padding: 4px;
+    border-radius: 6px;
+}
+
+.mode-toggle button {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.mode-toggle button.active {
+    background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    font-weight: bold;
+    color: var(--accent-color);
+}
+
+.timer-display {
+    font-size: 3rem;
+    font-family: monospace;
+    text-align: center;
+    margin: 1rem 0;
+    font-weight: bold;
+    color: var(--text-color);
+}
+
+.session-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+}
+
+.quick-set,
+.target-set {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    width: 100%;
+}
+
+.quick-set button,
+.target-set button {
+    padding: 6px 12px;
+    border: 1px solid var(--border-color);
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.target-set input {
+    padding: 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+}
+
+.toggle-btn {
+    width: 80%;
+    padding: 12px;
+    border-radius: 30px;
+    border: none;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.1s;
+}
+
+.toggle-btn.start {
+    background: var(--accent-color);
+    color: white;
+}
+
+.toggle-btn.stop {
+    background: #e74c3c;
+    color: white;
+}
+
+.toggle-btn:active {
+    transform: scale(0.98);
+}
+
+.reset-btn {
+    background: none;
+    border: none;
+    color: #888;
+    cursor: pointer;
+    font-size: 0.8rem;
+    text-decoration: underline;
+}
+
+.session-stats {
+    text-align: center;
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.03);
+    border-radius: 8px;
+    width: 100%;
+}
+
+/* Settings Modal */
+.progress-settings-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.modal-content h3 {
+    margin: 0 0 1.5rem 0;
+    color: var(--text-primary);
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.form-group input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+}
+
+.modal-actions button {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: opacity 0.2s;
+}
+
+.modal-actions button:first-child {
+    background: #4CAF50;
+    color: white;
+}
+
+.modal-actions button:last-child {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.modal-actions button:hover {
+    opacity: 0.8;
+}
+
+/* Dark mode */
+body.dark-mode .progress-bar-container {
+    background: #2a2a2a;
+}
+
+body.dark-mode .modal-content {
+    background: #1e1e1e;
+    border: 1px solid #333;
+}
+
+body.dark-mode .form-group input {
+    background: #2a2a2a;
+    border-color: #444;
+}
