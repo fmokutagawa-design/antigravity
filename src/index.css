@@ -30,6 +30,31 @@
   --font-gothic: "Hiragino Kaku Gothic ProN", "Zen Kaku Gothic New", sans-serif;
   --font-hand: cursive;
   --accent-color: #3498db;
+  --ui-scale: 1;
+}
+
+/* --- Windows フォントレンダリング補正 --- */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  /* Windows判定: navigatorで行うためJS側で body.os-windows クラスを付与 */
+}
+body.os-windows {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: auto;
+  --font-mincho: "Yu Mincho", "Shippori Mincho", "Noto Serif JP", serif;
+  --font-gothic: "Yu Gothic Medium", "Zen Kaku Gothic New", "Noto Sans JP", sans-serif;
+}
+/* Windows: 文字を1段階太くして読みやすくする */
+body.os-windows .native-grid-editor,
+body.os-windows .preview-container,
+body.os-windows .sidebar-body {
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+/* Windows: UIテキストも少し太く */
+body.os-windows button,
+body.os-windows label,
+body.os-windows .sidebar-nav-item {
+  font-weight: 500;
 }
 
 /* --- ダークモード定義 --- */

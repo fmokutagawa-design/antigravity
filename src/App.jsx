@@ -237,6 +237,7 @@ function App() {
 
   const handleInputModalSubmit = async (value) => {
     setShowInputModal(false);
+    try {
 
     if (inputModalMode === 'rename' && pendingRenameTarget) {
       if (!value || value === pendingRenameTarget.name) return;
@@ -373,6 +374,11 @@ function App() {
     setPendingCreateParent(null);
     setPendingAIContent(null);
     setPendingTag(null);
+
+    } catch (error) {
+      console.error('Modal action failed:', error);
+      showToast('操作に失敗しました: ' + error.message);
+    }
   };
 
   const [showSemanticGraph, setShowSemanticGraph] = useState(false);
@@ -752,6 +758,27 @@ function App() {
       document.documentElement.classList.remove('dark-mode');
     }
   }, [isDarkMode]);
+
+  // OS判定: Windows向けフォント補正クラスを付与
+  useEffect(() => {
+    const isWindows = navigator.userAgent.includes('Windows');
+    if (isWindows) {
+      document.body.classList.add('os-windows');
+    }
+  }, []);
+
+  // UIスケール反映
+  useEffect(() => {
+    const scale = (settings.uiScale || 100) / 100;
+    document.documentElement.style.setProperty('--ui-scale', scale);
+    // Electronの場合はwebContentsのズームで反映
+    if (isElectron && window.api && window.api.setZoomFactor) {
+      window.api.setZoomFactor(scale);
+    } else {
+      // CSSズームで対応（Electron以外またはAPI未対応の場合）
+      document.body.style.zoom = scale;
+    }
+  }, [settings.uiScale]);
 
   // Custom CSS injection
   useEffect(() => {
@@ -1627,6 +1654,24 @@ function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // ウィンドウを閉じる前に未保存チェック
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (isProjectMode && text !== lastSavedTextRef.current) {
+        // 最後の変更を即座に保存試行
+        if (activeFileHandle) {
+          try {
+            fileSystem.writeFile(activeFileHandle, text);
+          } catch { /* best effort */ }
+        }
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  });
 
   const handleContextMenu = (event) => {
     // Prevent default context menu
@@ -2564,6 +2609,7 @@ function App() {
       showToast('プロジェクトの移動はデスクトップ版のみ対応しています。');
       return;
     }
+    if (!projectHandle) return;
 
     const currentPath = typeof projectHandle === 'string' ? projectHandle : projectHandle.handle;
     const currentName = typeof projectHandle === 'string' ? projectHandle.split(/[/\\]/).pop() : projectHandle.name;

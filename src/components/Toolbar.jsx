@@ -45,6 +45,22 @@ const Toolbar = ({
                     <Toggle active={showMetadata} onClick={() => setShowMetadata(!showMetadata)} label="メタ表示" />
                     <Toggle active={settings.showLogo !== false} onClick={() => handleChange('showLogo', settings.showLogo === false)} label="ロゴ表示" />
                     <div className="control-item">
+                        <label>UIスケール</label>
+                        <select
+                            value={settings.uiScale || 100}
+                            onChange={(e) => handleChange('uiScale', Number(e.target.value))}
+                            style={{ width: '70px' }}
+                        >
+                            <option value={80}>80%</option>
+                            <option value={85}>85%</option>
+                            <option value={90}>90%</option>
+                            <option value={95}>95%</option>
+                            <option value={100}>100%</option>
+                            <option value={110}>110%</option>
+                            <option value={120}>120%</option>
+                        </select>
+                    </div>
+                    <div className="control-item">
                         <label>テーマ</label>
                         <select
                             value={settings.colorTheme || (isDarkMode ? 'dark' : 'light')}
