@@ -295,7 +295,7 @@ const ProgressTracker = ({ allMaterialFiles, currentWork, sessionCharDiff, onRes
         delete newGoals[workName];
         saveGoals(newGoals);
         // Select first available work
-        const remaining = [...allWorks.filter(w => w !== workName), ...updatedCustom];
+        const remaining = [...fileWorks.filter(w => w !== workName), ...updatedCustom];
         setSelectedWork(remaining[0] || '');
     };
 
