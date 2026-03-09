@@ -4,8 +4,8 @@
   /* --- カラーパレット定義 (ライトモード) --- */
   --bg-paper: #fdfbf7;
   /* 紙の背景色 */
-  --text-main: #2c3e50;
-  /* 文字色 */
+  --text-main: #1e2d3d;
+  /* 文字色（コントラスト強化） */
   --caret-color: #8e44ad;
   /* カーソル色 */
 
@@ -37,12 +37,14 @@
 @media screen and (-webkit-min-device-pixel-ratio: 0) {
   /* Windows判定: navigatorで行うためJS側で body.os-windows クラスを付与 */
 }
+
 body.os-windows {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: auto;
   --font-mincho: "Yu Mincho", "Shippori Mincho", "Noto Serif JP", serif;
   --font-gothic: "Yu Gothic Medium", "Zen Kaku Gothic New", "Noto Sans JP", sans-serif;
 }
+
 /* Windows: 文字を1段階太くして読みやすくする */
 body.os-windows .native-grid-editor,
 body.os-windows .preview-container,
@@ -50,6 +52,7 @@ body.os-windows .sidebar-body {
   font-weight: 500;
   letter-spacing: 0.01em;
 }
+
 /* Windows: UIテキストも少し太く */
 body.os-windows button,
 body.os-windows label,
@@ -119,6 +122,10 @@ body {
   overflow: hidden;
   background-color: var(--bg-paper);
   transition: background 0.3s;
+  /* 全環境でフォントを滑らかに描画 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 /* =========================================================
@@ -179,6 +186,8 @@ body {
   line-height: var(--cell);
   color: var(--text-main);
   caret-color: var(--caret-color);
+  /* 読みやすさ向上: 明朝体の線を少し太くする（グリッド配置に影響なし） */
+  font-weight: 450;
 }
 
 /* =========================================

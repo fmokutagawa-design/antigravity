@@ -26,3 +26,6 @@ dist-ssr
 # Electron
 release/
 out/
+
+# macOS resource forks
+._*

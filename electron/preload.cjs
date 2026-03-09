@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
 contextBridge.exposeInMainWorld('api', {
     fs: {
@@ -13,5 +13,7 @@ contextBridge.exposeInMainWorld('api', {
         delete: (path) => ipcRenderer.invoke('fs:delete', path),
         showInExplorer: (path) => ipcRenderer.invoke('fs:showInExplorer', path),
     },
+    // UIスケール用: webFrame.setZoomFactor でビューポート全体を正しくズーム
+    setZoomFactor: (factor) => webFrame.setZoomFactor(factor),
     isElectron: true
 });
