@@ -3395,6 +3395,7 @@ function App() {
                       isLocalConnected={isLocalConnected}
                       checkLocalConnection={checkLocalConnection}
                       onBatchExport={handleBatchExport}
+                      onPrint={handlePrint}
                     />
                   </div>
                 ) : null}
