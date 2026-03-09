@@ -217,7 +217,7 @@ const SemanticGraph = ({ allFiles, linkGraph, onUpdateFile, onClose }) => {
         if (!relationModal || !onUpdateFile) return;
 
         const { source, target } = relationModal;
-        const linkText = relationLabel ? `[[${target.id}|${relationLabel}]]` : `[[${target.id}]]`;
+        const linkText = relationLabel ? `[[${target.label || target.id}|${relationLabel}]]` : `[[${target.label || target.id}]]`;
 
         // Update the source file
         const fullContent = source.file.content || "";
