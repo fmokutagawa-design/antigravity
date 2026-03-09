@@ -436,7 +436,69 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink }) => {
                 border: '1px solid #ddd'
             }}>
                 <button
-                    onClick={() => window.print()}
+                    onClick={() => {
+                        const wrapper = document.querySelector('.manuscript-wrapper');
+                        if (!wrapper) { window.print(); return; }
+
+                        const printWindow = window.open('', '_blank');
+                        if (!printWindow) { window.print(); return; }
+
+                        // 現在のスタイルシートを収集
+                        const styleSheets = Array.from(document.styleSheets)
+                            .map(sheet => {
+                                try { return Array.from(sheet.cssRules).map(r => r.cssText).join('\n'); }
+                                catch (e) { return ''; }
+                            }).join('\n');
+
+                        printWindow.document.write(`<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<style>
+${styleSheets}
+
+@page { margin: 0; size: auto; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 0; background: white; }
+
+.manuscript-wrapper {
+    display: block !important;
+    writing-mode: horizontal-tb !important;
+    direction: ltr !important;
+    padding: 0 !important;
+}
+
+.manuscript-page {
+    page-break-after: always;
+    break-after: page;
+    page-break-inside: avoid;
+    margin: 0;
+    padding: 15mm;
+    box-shadow: none;
+    border: none;
+    background: white;
+    width: 100vw !important;
+    height: 100vh !important;
+    box-sizing: border-box !important;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.manuscript-page:last-child {
+    page-break-after: auto;
+}
+
+.no-print, .line-number-indicator, .preview-toolbar { display: none !important; }
+</style>
+</head><body>${wrapper.outerHTML}</body></html>`);
+
+                        printWindow.document.close();
+                        printWindow.focus();
+                        setTimeout(() => {
+                            printWindow.print();
+                            printWindow.close();
+                        }, 500);
+                    }}
                     style={{
                         padding: '4px 12px',
                         fontSize: '0.85rem',
