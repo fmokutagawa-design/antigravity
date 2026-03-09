@@ -490,6 +490,38 @@ function App() {
     }
   };
 
+  const handleEpubExport = async (pName, materials) => {
+    if (!materials || materials.length === 0) {
+      alert('エクスポートするファイルがありません');
+      return;
+    }
+    try {
+      const title = pName || 'Untitled';
+      const author = '著者名'; // TODO: 設定から取得
+      const epubFiles = materials
+        .filter(f => f.name.endsWith('.txt') || f.name.endsWith('.md'))
+        .filter(f => !f.name.startsWith('.'))
+        .map(f => ({ name: f.name, content: f.body || f.content || '' }));
+
+      if (epubFiles.length === 0) {
+        alert('テキストファイルが見つかりません');
+        return;
+      }
+
+      const blob = await generateEpub({
+        title,
+        author,
+        files: epubFiles,
+        isVertical: settings.isVertical !== false
+      });
+      downloadBlob(blob, `${title}.epub`);
+      if (showToast) showToast('EPUBを書き出しました');
+    } catch (err) {
+      console.error('EPUB export failed:', err);
+      alert('EPUB書き出しに失敗しました: ' + err.message);
+    }
+  };
+
   // Handlers
   const [showMetadata, setShowMetadata] = useState(false); // Default to hiding metadata
   const [isSidebarVisible, setIsSidebarVisible] = useState(true); // Focus Mode Toggle
@@ -3335,7 +3367,7 @@ function App() {
                       setSettings={setSettings}
                       presets={presets}
                       onFormat={handleFormat}
-                      onEpubExport={handleEpubExport}
+                      onEpubExport={() => handleEpubExport(null, allMaterialFiles)}
                       onSavePreset={handleSavePreset}
                       onLoadPreset={handleLoadPreset}
                       onDeletePreset={handleDeletePreset}
