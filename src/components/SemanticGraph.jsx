@@ -368,7 +368,7 @@ const SemanticGraph = ({ allFiles, linkGraph, onUpdateFile, onClose }) => {
                                 node.type === 'world' ? '🌍' :
                                     node.type === 'plot' ? '📉' : '📄'
                         }</span>
-                        {node.id}
+                        {node.label || node.id}
                         {isConnectMode && draggingNode && draggingNode.id === node.id && (
                             <div style={{
                                 position: 'absolute', inset: -5, border: '2px solid #7b1fa2',
@@ -394,7 +394,7 @@ const SemanticGraph = ({ allFiles, linkGraph, onUpdateFile, onClose }) => {
                     }}>
                         <h3 style={{ margin: 0, fontSize: '16px' }}>関係性を定義</h3>
                         <div style={{ fontSize: '14px', color: '#666' }}>
-                            <strong>{relationModal.source.id}</strong> → <strong>{relationModal.target.id}</strong>
+                            <strong>{relationModal.source.label || relationModal.source.id}</strong> → <strong>{relationModal.target.label || relationModal.target.id}</strong>
                         </div>
                         <input
                             autoFocus
