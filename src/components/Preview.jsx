@@ -437,164 +437,136 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink }) => {
             }}>
                 <button
                     onClick={() => {
-                        const wrapper = document.querySelector('.manuscript-wrapper');
-                        if (!wrapper) { window.print(); return; }
-
-                        // 実際のページサイズと向きを検出
                         const firstPage = document.querySelector('.manuscript-page');
                         if (!firstPage) { window.print(); return; }
                         const rect = firstPage.getBoundingClientRect();
                         const isLandscape = rect.width > rect.height;
-                        const pageOrientation = isLandscape ? 'landscape' : 'portrait';
 
-                        const printWindow = window.open('', '_blank');
-                        if (!printWindow) { window.print(); return; }
+                        // 各ページのインラインスタイルを退避・除去
+                        const pages = document.querySelectorAll('.manuscript-page');
+                        const saved = [];
+                        pages.forEach(page => {
+                            saved.push({
+                                el: page,
+                                width: page.style.width,
+                                height: page.style.height,
+                                padding: page.style.padding,
+                                minHeight: page.style.minHeight,
+                                gap: page.style.gap,
+                            });
+                            page.style.width = '';
+                            page.style.height = '';
+                            page.style.padding = '';
+                            page.style.minHeight = '';
+                            page.style.gap = '';
+                        });
 
-                        printWindow.document.write(`<!DOCTYPE html>
-<html><head>
-<meta charset="utf-8">
-<style>
-@page {
-    margin: 0;
-    size: ${pageOrientation};
-}
+                        // 動的印刷スタイル注入
+                        const styleEl = document.createElement('style');
+                        styleEl.id = 'dynamic-print-style';
+                        styleEl.textContent = `
+                            @media print {
+                                @page {
+                                    margin: 0;
+                                    size: ${isLandscape ? 'landscape' : 'portrait'};
+                                }
+                                body, html, #root {
+                                    margin: 0 !important;
+                                    padding: 0 !important;
+                                    background: white !important;
+                                    overflow: visible !important;
+                                }
+                                .app-container,
+                                .content-wrapper,
+                                .main-content,
+                                .editor-container,
+                                .split-pane,
+                                .pane.preview-pane {
+                                    display: block !important;
+                                    width: 100% !important;
+                                    height: auto !important;
+                                    margin: 0 !important;
+                                    padding: 0 !important;
+                                    overflow: visible !important;
+                                }
+                                .sidebar,
+                                .editor-pane,
+                                .tab-nav-bottom,
+                                .toolbar,
+                                .editor-toolbar-overlay,
+                                .no-print,
+                                .line-number-indicator,
+                                .preview-toolbar {
+                                    display: none !important;
+                                }
+                                .preview-container {
+                                    display: block !important;
+                                    padding: 0 !important;
+                                    background: white !important;
+                                    overflow: visible !important;
+                                    width: auto !important;
+                                    height: auto !important;
+                                    direction: ltr !important;
+                                }
+                                .manuscript-wrapper {
+                                    display: block !important;
+                                    writing-mode: horizontal-tb !important;
+                                    direction: ltr !important;
+                                    padding: 0 !important;
+                                    gap: 0 !important;
+                                    width: auto !important;
+                                }
+                                .manuscript-page {
+                                    writing-mode: vertical-rl !important;
+                                    text-orientation: upright !important;
+                                    width: 100vw !important;
+                                    height: 100vh !important;
+                                    padding: 8mm !important;
+                                    margin: 0 !important;
+                                    box-shadow: none !important;
+                                    border: none !important;
+                                    background: white !important;
+                                    overflow: hidden !important;
+                                    page-break-after: always !important;
+                                    break-after: page !important;
+                                    page-break-inside: avoid !important;
+                                    break-inside: avoid !important;
+                                    min-height: unset !important;
+                                    max-height: none !important;
+                                    box-sizing: border-box !important;
+                                    position: relative !important;
+                                }
+                                .manuscript-page:last-child {
+                                    page-break-after: auto !important;
+                                    break-after: auto !important;
+                                }
+                                .manuscript-line {
+                                    flex-shrink: 1 !important;
+                                }
+                                .manuscript-cell,
+                                .ruby-base-char {
+                                    border-color: rgba(184, 134, 11, 0.3) !important;
+                                }
+                                .page-number {
+                                    color: #000 !important;
+                                    bottom: 5mm !important;
+                                }
+                            }
+                        `;
+                        document.head.appendChild(styleEl);
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+                        window.print();
 
-body {
-    margin: 0;
-    padding: 0;
-    background: white;
-}
-
-.manuscript-wrapper {
-    display: block;
-    writing-mode: horizontal-tb;
-    direction: ltr;
-    padding: 0;
-}
-
-.manuscript-page {
-    writing-mode: vertical-rl;
-    text-orientation: upright;
-    page-break-after: always;
-    break-after: page;
-    page-break-inside: avoid;
-    break-inside: avoid;
-    margin: 0;
-    padding: 0;
-    box-shadow: none;
-    border: none;
-    background: white;
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;
-}
-
-.manuscript-page:last-child {
-    page-break-after: auto;
-    break-after: auto;
-}
-
-.no-print,
-.line-number-indicator,
-.preview-toolbar,
-.page-number { 
-    display: none !important; 
-}
-
-.manuscript-line {
-    display: flex;
-    flex-direction: row;
-    gap: 0;
-    flex-shrink: 0;
-}
-
-.manuscript-cell {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    line-height: 1;
-    position: relative;
-    overflow: visible;
-    border: none !important;
-}
-
-.manuscript-cell + .manuscript-cell {
-    margin-top: -1px;
-}
-
-.ruby-base-char {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    line-height: 1;
-    position: relative;
-    border: none !important;
-}
-
-.manuscript-cell.has-ruby {
-    border: none !important;
-    padding: 0;
-    display: flex;
-    flex-direction: row;
-    align-items: stretch;
-    justify-content: flex-start;
-    position: relative;
-}
-
-.ruby-text {
-    font-size: 0.5em;
-    color: #555;
-    position: absolute;
-    left: 100%;
-    margin-left: 1px;
-    top: 0;
-    height: 100%;
-    width: max-content;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-around;
-    line-height: 1;
-    pointer-events: none;
-}
-
-.tcy-digits {
-    text-combine-upright: all;
-    text-align: center;
-}
-
-.wiki-link {
-    color: inherit;
-    cursor: default;
-}
-
-.is-hanging {
-    border: none !important;
-}
-
-.is-spacer {
-    pointer-events: none;
-}
-</style>
-</head>
-<body>${wrapper.outerHTML}</body>
-</html>`);
-
-                        printWindow.document.close();
-                        printWindow.focus();
-                        setTimeout(() => {
-                            printWindow.print();
-                            // ユーザーが印刷ダイアログを閉じた後にウィンドウを閉じる
-                            printWindow.close();
-                        }, 800);
+                        // 印刷後: スタイル除去 & インライン復元
+                        const injected = document.getElementById('dynamic-print-style');
+                        if (injected) injected.remove();
+                        saved.forEach(({ el, width, height, padding, minHeight, gap }) => {
+                            el.style.width = width;
+                            el.style.height = height;
+                            el.style.padding = padding;
+                            el.style.minHeight = minHeight;
+                            el.style.gap = gap;
+                        });
                     }}
                     style={{
                         padding: '4px 12px',
