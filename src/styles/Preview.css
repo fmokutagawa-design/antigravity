@@ -373,15 +373,13 @@
     border: none !important;
 }
 
-/* ===== Print Styles (統合) ===== */
+/* ===== Print Styles ===== */
 @media print {
     @page {
         margin: 0;
-        size: A4 portrait;
-        /* デフォルト。JSで動的変更は難しいのでA4固定 */
+        size: auto;
     }
 
-    /* 非表示要素 */
     .no-print,
     .line-number-indicator,
     .sidebar,
@@ -393,7 +391,6 @@
         display: none !important;
     }
 
-    /* ルート要素リセット */
     body,
     html,
     #root {
@@ -441,7 +438,6 @@
         border: none;
     }
 
-    /* プレビューコンテナ */
     .preview-container {
         padding: 0;
         background: white;
@@ -452,47 +448,44 @@
         direction: ltr;
     }
 
-    /* 原稿用紙ラッパー: 縦書きページを縦に並べる */
     .manuscript-wrapper {
-        display: flex;
-        flex-direction: column;
-        /* ページを上から下に並べる */
+        display: block;
         padding: 0;
-        gap: 0;
         width: auto;
         direction: ltr;
+        writing-mode: horizontal-tb;
     }
 
-    /* 原稿用紙ページ: 用紙サイズを維持 */
     .manuscript-page {
+        writing-mode: vertical-rl;
+        text-orientation: upright;
         page-break-after: always;
         break-after: page;
         page-break-inside: avoid;
         break-inside: avoid;
         margin: 0;
+        padding: 10mm;
         box-shadow: none;
         background-color: white;
         border: none;
-        /* 画面上のサイズをそのまま使う（width/height は JS のインラインで設定済み） */
-        /* !important で上書きしない */
-        min-height: unset;
         overflow: hidden;
+        width: 100vw !important;
+        height: 100vh !important;
+        box-sizing: border-box;
+        min-height: unset;
     }
 
-    /* 最後のページの後に改ページしない */
     .manuscript-page:last-child {
         page-break-after: auto;
         break-after: auto;
     }
 
-    /* ページ番号 */
     .page-number {
         bottom: 10mm;
         color: #000;
         padding-right: 20mm;
     }
 
-    /* Plain Mode */
     .mode-plain .plain-content {
         box-shadow: none;
         padding: 15mm;
