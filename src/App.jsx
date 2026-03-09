@@ -2599,6 +2599,8 @@ function App() {
       return;
     }
 
+
+
     const newName = window.prompt('プロジェクト名（フォルダ名）を変更しますか？', currentName);
     if (!newName || newName === currentName) return;
 
@@ -3333,6 +3335,7 @@ function App() {
                       setSettings={setSettings}
                       presets={presets}
                       onFormat={handleFormat}
+                      onEpubExport={handleEpubExport}
                       onSavePreset={handleSavePreset}
                       onLoadPreset={handleLoadPreset}
                       onDeletePreset={handleDeletePreset}
