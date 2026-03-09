@@ -188,7 +188,7 @@ const SearchReplace = ({ text, onReplace, isOpen, onClose, editorRef, allFiles =
         }
 
         if (matches.length === 0) return;
-        const confirmed = await requestConfirm("確認", `${matches.length}件すべて置換しますか？`);
+        const confirmed = await requestConfirm("一括置換の確認", `${matches.length}件を置換しますか？`);
         if (!confirmed) return;
 
         try {
@@ -205,8 +205,8 @@ const SearchReplace = ({ text, onReplace, isOpen, onClose, editorRef, allFiles =
             setMatches([]);
             setCurrentMatchIndex(-1);
         } catch (error) {
-            console.error('Replace error:', error);
-            showToast('置換にエラーが発生しました。');
+            console.error("Search error:", e);
+            showToast('検索でエラーが発生しました');
         }
     };
 
