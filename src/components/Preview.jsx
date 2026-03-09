@@ -440,64 +440,161 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink }) => {
                         const wrapper = document.querySelector('.manuscript-wrapper');
                         if (!wrapper) { window.print(); return; }
 
+                        // 実際のページサイズと向きを検出
+                        const firstPage = document.querySelector('.manuscript-page');
+                        if (!firstPage) { window.print(); return; }
+                        const rect = firstPage.getBoundingClientRect();
+                        const isLandscape = rect.width > rect.height;
+                        const pageOrientation = isLandscape ? 'landscape' : 'portrait';
+
                         const printWindow = window.open('', '_blank');
                         if (!printWindow) { window.print(); return; }
-
-                        // 現在のスタイルシートを収集
-                        const styleSheets = Array.from(document.styleSheets)
-                            .map(sheet => {
-                                try { return Array.from(sheet.cssRules).map(r => r.cssText).join('\n'); }
-                                catch (e) { return ''; }
-                            }).join('\n');
 
                         printWindow.document.write(`<!DOCTYPE html>
 <html><head>
 <meta charset="utf-8">
 <style>
-${styleSheets}
+@page {
+    margin: 0;
+    size: ${pageOrientation};
+}
 
-@page { margin: 0; size: auto; }
-* { box-sizing: border-box; }
-body { margin: 0; padding: 0; background: white; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    margin: 0;
+    padding: 0;
+    background: white;
+}
 
 .manuscript-wrapper {
-    display: block !important;
-    writing-mode: horizontal-tb !important;
-    direction: ltr !important;
-    padding: 0 !important;
+    display: block;
+    writing-mode: horizontal-tb;
+    direction: ltr;
+    padding: 0;
 }
 
 .manuscript-page {
+    writing-mode: vertical-rl;
+    text-orientation: upright;
     page-break-after: always;
     break-after: page;
     page-break-inside: avoid;
+    break-inside: avoid;
     margin: 0;
-    padding: 15mm;
+    padding: 0;
     box-shadow: none;
     border: none;
     background: white;
-    width: 100vw !important;
-    height: 100vh !important;
-    box-sizing: border-box !important;
+    width: 100vw;
+    height: 100vh;
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
 }
 
 .manuscript-page:last-child {
     page-break-after: auto;
+    break-after: auto;
 }
 
-.no-print, .line-number-indicator, .preview-toolbar { display: none !important; }
+.no-print,
+.line-number-indicator,
+.preview-toolbar,
+.page-number { 
+    display: none !important; 
+}
+
+.manuscript-line {
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+    flex-shrink: 0;
+}
+
+.manuscript-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    line-height: 1;
+    position: relative;
+    overflow: visible;
+    border: none !important;
+}
+
+.manuscript-cell + .manuscript-cell {
+    margin-top: -1px;
+}
+
+.ruby-base-char {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    line-height: 1;
+    position: relative;
+    border: none !important;
+}
+
+.manuscript-cell.has-ruby {
+    border: none !important;
+    padding: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: flex-start;
+    position: relative;
+}
+
+.ruby-text {
+    font-size: 0.5em;
+    color: #555;
+    position: absolute;
+    left: 100%;
+    margin-left: 1px;
+    top: 0;
+    height: 100%;
+    width: max-content;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    line-height: 1;
+    pointer-events: none;
+}
+
+.tcy-digits {
+    text-combine-upright: all;
+    text-align: center;
+}
+
+.wiki-link {
+    color: inherit;
+    cursor: default;
+}
+
+.is-hanging {
+    border: none !important;
+}
+
+.is-spacer {
+    pointer-events: none;
+}
 </style>
-</head><body>${wrapper.outerHTML}</body></html>`);
+</head>
+<body>${wrapper.outerHTML}</body>
+</html>`);
 
                         printWindow.document.close();
                         printWindow.focus();
                         setTimeout(() => {
                             printWindow.print();
+                            // ユーザーが印刷ダイアログを閉じた後にウィンドウを閉じる
                             printWindow.close();
-                        }, 500);
+                        }, 800);
                     }}
                     style={{
                         padding: '4px 12px',
