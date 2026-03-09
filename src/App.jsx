@@ -522,6 +522,19 @@ function App() {
     }
   };
 
+  const handlePrint = () => {
+    if (activeTab !== 'preview') {
+      const confirmPrint = window.confirm("原稿全体を印刷（PDF化）するにはプレビュー画面を使用します。\nプレビュー画面に切り替えて印刷しますか？");
+      if (confirmPrint) {
+        setActiveTab('preview');
+        // 描画が完了するのを待ってから印刷ダイアログを出す
+        setTimeout(() => window.print(), 500);
+      }
+    } else {
+      window.print();
+    }
+  };
+
   // Handlers
   const [showMetadata, setShowMetadata] = useState(false); // Default to hiding metadata
   const [isSidebarVisible, setIsSidebarVisible] = useState(true); // Focus Mode Toggle
@@ -1741,9 +1754,6 @@ function App() {
     handleTextChange(newText);
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
 
   const autoOrganizeFile = async (handle, metadata) => {
     if (!handle || !projectHandle) return handle;
