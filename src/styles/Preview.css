@@ -133,58 +133,6 @@
 }
 
 
-@media print {
-
-    /* Enforce Print Size */
-    @page {
-        margin: 0;
-    }
-
-    @page :first {
-        margin: 0;
-    }
-
-    /* We can't easily dynamically change @page size via CSS variables in all browsers.
-       But setting the content size usually triggers the correct sheet request. */
-
-    body {
-        margin: 0;
-        background: white;
-    }
-
-    .preview-container {
-        padding: 0;
-        background: white;
-        width: auto;
-        height: auto;
-        overflow: visible;
-        display: block;
-        /* Ensure flow */
-    }
-
-    .manuscript-wrapper {
-        display: block;
-        /* Reset flex for print flow */
-        padding: 0;
-        gap: 0;
-    }
-
-    .manuscript-page {
-        margin: 0;
-        page-break-after: always;
-        break-after: page;
-        box-shadow: none;
-        /* Ensure it fits exactly */
-        overflow: hidden;
-    }
-
-    .page-number {
-        bottom: 10mm;
-        color: #000;
-        padding-right: 20mm;
-        /* Standard print margin */
-    }
-}
 
 /* Manuscript Line */
 .manuscript-line {
@@ -418,28 +366,34 @@
     pointer-events: none;
 }
 
-/* No Print Utility */
-@media print {
 
-    .no-print,
-    .line-number-indicator {
-        display: none !important;
-    }
-}
 
 /* No Grid Mode */
 .manuscript-wrapper.no-grid .manuscript-cell {
     border: none !important;
 }
 
-/* Print Styles */
+/* ===== Print Styles (統合) ===== */
 @media print {
     @page {
         margin: 0;
-        size: auto;
+        size: A4 portrait;
+        /* デフォルト。JSで動的変更は難しいのでA4固定 */
     }
 
-    /* ... existing body styles ... */
+    /* 非表示要素 */
+    .no-print,
+    .line-number-indicator,
+    .sidebar,
+    .editor-pane,
+    .tab-nav-bottom,
+    .toolbar,
+    .editor-toolbar-overlay,
+    .preview-toolbar {
+        display: none !important;
+    }
+
+    /* ルート要素リセット */
     body,
     html,
     #root {
@@ -460,14 +414,6 @@
         width: 100%;
         height: auto !important;
         overflow: visible !important;
-    }
-
-    .sidebar,
-    .editor-pane,
-    .tab-nav-bottom,
-    .toolbar,
-    .editor-toolbar-overlay {
-        display: none !important;
     }
 
     .content-wrapper,
@@ -495,49 +441,63 @@
         border: none;
     }
 
+    /* プレビューコンテナ */
     .preview-container {
         padding: 0;
         background: white;
-        overflow: visible;
+        overflow: visible !important;
         display: block;
-        width: 100%;
+        width: auto;
         height: auto;
-
-        /* Reset direction for print to avoid browser bugs */
         direction: ltr;
     }
 
-    /* Manuscript Print Styles */
+    /* 原稿用紙ラッパー: 縦書きページを縦に並べる */
     .manuscript-wrapper {
-        display: block;
+        display: flex;
+        flex-direction: column;
+        /* ページを上から下に並べる */
         padding: 0;
         gap: 0;
-        width: 100%;
+        width: auto;
+        direction: ltr;
     }
 
+    /* 原稿用紙ページ: 用紙サイズを維持 */
     .manuscript-page {
         page-break-after: always;
         break-after: page;
+        page-break-inside: avoid;
+        break-inside: avoid;
         margin: 0;
         box-shadow: none;
-        width: 100%;
-        height: auto !important;
-        min-height: 100vh;
-        /* Force full page height */
-        padding: 10mm;
-        /* Add physical margin for print */
-
-        /* Ensure background is printed if user wants, but usually white is better */
         background-color: white;
         border: none;
+        /* 画面上のサイズをそのまま使う（width/height は JS のインラインで設定済み） */
+        /* !important で上書きしない */
+        min-height: unset;
+        overflow: hidden;
     }
 
-    /* Plain Mode Print Styles */
+    /* 最後のページの後に改ページしない */
+    .manuscript-page:last-child {
+        page-break-after: auto;
+        break-after: auto;
+    }
+
+    /* ページ番号 */
+    .page-number {
+        bottom: 10mm;
+        color: #000;
+        padding-right: 20mm;
+    }
+
+    /* Plain Mode */
     .mode-plain .plain-content {
         box-shadow: none;
         padding: 15mm;
         width: 100%;
-        min-height: 100vh;
+        min-height: auto;
         height: auto;
     }
 }
