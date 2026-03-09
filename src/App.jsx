@@ -40,6 +40,7 @@ import './components/LinkPanel.css';
 
 import { saveTextFile, loadTextFile } from './utils/fileUtils';
 import { fileSystem, isElectron } from './utils/fileSystem';
+import { generateEpub, downloadBlob } from './utils/epubExporter'; // EPUB Exporter
 // import {
 //   openDirectory,
 //   readDirectoryTree,

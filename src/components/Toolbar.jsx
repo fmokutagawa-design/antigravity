@@ -26,7 +26,7 @@ const Toolbar = ({
     // AI Props
     aiModel, setAiModel, localModels = [], selectedLocalModel, setSelectedLocalModel, isLocalConnected, checkLocalConnection,
     // Export
-    onBatchExport
+    onBatchExport, onEpubExport
 }) => {
 
     const handleChange = (key, value) => {
@@ -364,6 +364,9 @@ const Toolbar = ({
                         )}
                     </div>
                     <button onClick={() => window.print()} className="span-full" style={{ padding: '4px', fontSize: '11px' }}>🖨️ PDF/印刷</button>
+                    {onEpubExport && (
+                        <button onClick={onEpubExport} className="span-full" style={{ padding: '4px', fontSize: '11px', marginTop: '4px' }}>📚 EPUB書き出し</button>
+                    )}
 
                     <div className="span-full" style={{ display: 'flex', gap: '2px', marginTop: '4px' }}>
                         <select id="preset-load-select" onChange={(e) => e.target.value && onLoadPreset(e.target.value)} style={{ flex: 1, height: '22px', fontSize: '10px' }}>
