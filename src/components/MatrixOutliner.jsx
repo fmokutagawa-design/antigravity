@@ -6,7 +6,7 @@ const MatrixOutliner = ({ allFiles, onClose, onOpenFile }) => {
         // Extract files that are scenes or story parts
         // Usually these are in a specific folder or have specific metadata
         return allFiles.filter(f =>
-            f.metadata && (f.metadata.種別 === 'シーン' || f.metadata.種別 === 'プロット' || !f.metadata.種別)
+            f.metadata && (f.metadata.種別 === 'シーン' || f.metadata.種別 === 'プロット')
             && !f.name.startsWith('.')
         ).map(f => ({
             id: f.name,
