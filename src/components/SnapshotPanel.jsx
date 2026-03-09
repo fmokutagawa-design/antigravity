@@ -220,14 +220,14 @@ const SnapshotPanel = ({ filePath, currentText, onRestore, showToast, onSaveNow 
                                                 {diffView.diffs.slice(0, 20).map((d, i) => (
                                                     <div key={i} style={{ marginBottom: '4px' }}>
                                                         <div style={{ color: '#999' }}>L{d.line}:</div>
-                                                        {d.current && (
+                                                        {d.snapshot && (
                                                             <div style={{ color: '#c0392b', paddingLeft: '8px' }}>
-                                                                - {d.current.substring(0, 60)}{d.current.length > 60 ? '...' : ''}
+                                                                - {d.snapshot.substring(0, 60)}{d.snapshot.length > 60 ? '...' : ''}
                                                             </div>
                                                         )}
-                                                        {d.snapshot && (
+                                                        {d.current && (
                                                             <div style={{ color: '#27ae60', paddingLeft: '8px' }}>
-                                                                + {d.snapshot.substring(0, 60)}{d.snapshot.length > 60 ? '...' : ''}
+                                                                + {d.current.substring(0, 60)}{d.current.length > 60 ? '...' : ''}
                                                             </div>
                                                         )}
                                                     </div>
