@@ -442,26 +442,41 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink }) => {
                         const rect = firstPage.getBoundingClientRect();
                         const isLandscape = rect.width > rect.height;
 
-                        // 各ページのインラインスタイルを退避・除去
-                        const pages = document.querySelectorAll('.manuscript-page');
-                        const saved = [];
-                        pages.forEach(page => {
-                            saved.push({
-                                el: page,
-                                width: page.style.width,
-                                height: page.style.height,
-                                padding: page.style.padding,
-                                minHeight: page.style.minHeight,
-                                gap: page.style.gap,
-                            });
-                            page.style.width = '';
-                            page.style.height = '';
-                            page.style.padding = '';
-                            page.style.minHeight = '';
-                            page.style.gap = '';
+                        // ページ数と行数・字数を取得
+                        const pagesEl = document.querySelectorAll('.manuscript-page');
+                        const linesPerPage = Number(settings.linesPerPage) || 20;
+                        const charsPerLine = Number(settings.charsPerLine) || 20;
+
+                        // 全要素のインラインスタイルを退避・除去
+                        const savedPages = [];
+                        const savedLines = [];
+                        const savedCells = [];
+
+                        pagesEl.forEach(page => {
+                            savedPages.push({ el: page, style: page.getAttribute('style') });
+                            page.removeAttribute('style');
                         });
 
-                        // 動的印刷スタイル注入
+                        document.querySelectorAll('.manuscript-line').forEach(line => {
+                            savedLines.push({ el: line, style: line.getAttribute('style') });
+                            line.removeAttribute('style');
+                        });
+
+                        document.querySelectorAll('.manuscript-cell, .ruby-base-char').forEach(cell => {
+                            savedCells.push({ el: cell, style: cell.getAttribute('style') });
+                            cell.removeAttribute('style');
+                        });
+
+                        // 印刷用の余白(mm)
+                        const printPadding = 15;
+                        // 行間をルビ欄として確保（セル幅の50%）
+                        const lineGapRatio = 0.5;
+                        // セル幅 = (100vw - padding*2) / (行数 + 行間数*ratio)
+                        // セル高 = (100vh - padding*2) / 字数
+                        const cellWidthCalc = `(100vw - ${printPadding * 2}mm) / (${linesPerPage} + ${(linesPerPage - 1) * lineGapRatio})`;
+                        const cellHeightCalc = `(100vh - ${printPadding * 2}mm) / ${charsPerLine}`;
+                        const lineGapCalc = `calc(${cellWidthCalc} * ${lineGapRatio})`;
+
                         const styleEl = document.createElement('style');
                         styleEl.id = 'dynamic-print-style';
                         styleEl.textContent = `
@@ -513,15 +528,13 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink }) => {
                                     writing-mode: horizontal-tb !important;
                                     direction: ltr !important;
                                     padding: 0 !important;
-                                    gap: 0 !important;
-                                    width: auto !important;
                                 }
                                 .manuscript-page {
                                     writing-mode: vertical-rl !important;
                                     text-orientation: upright !important;
                                     width: 100vw !important;
                                     height: 100vh !important;
-                                    padding: 8mm !important;
+                                    padding: ${printPadding}mm !important;
                                     margin: 0 !important;
                                     box-shadow: none !important;
                                     border: none !important;
@@ -532,24 +545,67 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink }) => {
                                     page-break-inside: avoid !important;
                                     break-inside: avoid !important;
                                     min-height: unset !important;
-                                    max-height: none !important;
                                     box-sizing: border-box !important;
-                                    position: relative !important;
+                                    display: flex !important;
+                                    flex-direction: column !important;
+                                    align-items: flex-start !important;
+                                    gap: ${lineGapCalc} !important;
                                 }
                                 .manuscript-page:last-child {
                                     page-break-after: auto !important;
                                     break-after: auto !important;
                                 }
                                 .manuscript-line {
-                                    flex-shrink: 1 !important;
+                                    display: flex !important;
+                                    flex-direction: row !important;
+                                    gap: 0 !important;
+                                    width: calc(${cellWidthCalc}) !important;
+                                    flex-shrink: 0 !important;
                                 }
-                                .manuscript-cell,
+                                .manuscript-cell {
+                                    width: calc(${cellWidthCalc}) !important;
+                                    height: calc(${cellHeightCalc}) !important;
+                                    flex-shrink: 0 !important;
+                                    font-size: calc(min(${cellWidthCalc}, ${cellHeightCalc}) * 0.7) !important;
+                                    display: flex !important;
+                                    align-items: center !important;
+                                    justify-content: center !important;
+                                    border: 1px solid rgba(184, 134, 11, 0.3) !important;
+                                    box-sizing: border-box !important;
+                                    line-height: 1 !important;
+                                    position: relative !important;
+                                    overflow: visible !important;
+                                }
+                                .manuscript-cell + .manuscript-cell {
+                                    margin-top: -1px !important;
+                                }
+                                .manuscript-cell.has-ruby {
+                                    border: none !important;
+                                }
+                                .manuscript-cell.is-hanging {
+                                    border: none !important;
+                                }
                                 .ruby-base-char {
-                                    border-color: rgba(184, 134, 11, 0.3) !important;
+                                    width: calc(${cellWidthCalc}) !important;
+                                    height: calc(${cellHeightCalc}) !important;
+                                    flex-shrink: 0 !important;
+                                    display: flex !important;
+                                    align-items: center !important;
+                                    justify-content: center !important;
+                                    border: 1px solid rgba(184, 134, 11, 0.3) !important;
+                                    box-sizing: border-box !important;
+                                    font-size: inherit !important;
+                                    line-height: 1 !important;
+                                }
+                                .ruby-text {
+                                    font-size: 0.5em !important;
                                 }
                                 .page-number {
                                     color: #000 !important;
                                     bottom: 5mm !important;
+                                }
+                                .tcy-digits {
+                                    text-combine-upright: all !important;
                                 }
                             }
                         `;
@@ -560,12 +616,15 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink }) => {
                         // 印刷後: スタイル除去 & インライン復元
                         const injected = document.getElementById('dynamic-print-style');
                         if (injected) injected.remove();
-                        saved.forEach(({ el, width, height, padding, minHeight, gap }) => {
-                            el.style.width = width;
-                            el.style.height = height;
-                            el.style.padding = padding;
-                            el.style.minHeight = minHeight;
-                            el.style.gap = gap;
+
+                        savedPages.forEach(({ el, style }) => {
+                            if (style) el.setAttribute('style', style);
+                        });
+                        savedLines.forEach(({ el, style }) => {
+                            if (style) el.setAttribute('style', style);
+                        });
+                        savedCells.forEach(({ el, style }) => {
+                            if (style) el.setAttribute('style', style);
                         });
                     }}
                     style={{
