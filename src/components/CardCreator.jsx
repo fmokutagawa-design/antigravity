@@ -31,7 +31,7 @@ const CardCreator = ({ isOpen, onClose, onSave, initialType = '登場人物', in
 
     const handleSave = () => {
         if (!name.trim()) {
-            alert('名刺の名前を入力してください');
+            alert('カードの名前を入力してください');
             return;
         }
 
