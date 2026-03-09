@@ -133,7 +133,7 @@ export const fileSystem = {
             const name = newPath.split('/').pop().split('\\').pop();
             return { handle: newPath, name: name, kind: handle.kind };
         } else {
-            alert("ブラウザ版では名前の変更はサポートされていません（セキュリティ制約のため）。");
+            alert("ブラウザ版ではリネームに対応していません");
             throw new Error("Rename not supported in browser");
         }
     },
@@ -147,7 +147,7 @@ export const fileSystem = {
             // Since our handle object doesn't know its parent, this is hard.
             // Abstraction Leak: Browser version requires parent. Electron takes path.
             // Solution: Pass parent handle if available.
-            alert("ブラウザ版では親フォルダのコンテキストが必要です（実装上の制約）。");
+            alert("ブラウザ版では直接削除に対応していません");
             throw new Error("Delete requires parent in browser");
         }
     },
@@ -313,9 +313,8 @@ export const fileSystem = {
             await window.api.fs.showInExplorer(handle.handle || handle);
         } else {
             alert(
-                'Finderでフォルダを開くには:\n\n' +
-                '1. プロジェクトフォルダの場所を確認\n' +
-                '2. Finderで該当フォルダを開いてください'
+                'ブラウザ版ではFinder/エクスプローラーで表示できません。\n' +
+                'Electron版をお使いください。'
             );
         }
     }
