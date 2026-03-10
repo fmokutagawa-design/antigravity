@@ -445,8 +445,6 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink }) => {
                         const linesPerPage = Number(settings.linesPerPage) || 20;
                         const charsPerLine = Number(settings.charsPerLine) || 20;
 
-                        // 印刷用紙サイズ (px at 96dpi)
-                        // A4: 210mm x 297mm = 794px x 1123px
                         const mmToPx = 96 / 25.4;
                         const pageDims = {
                             'A4': { w: 210, h: 297 },
@@ -455,176 +453,132 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink }) => {
                         }[settings.pageSize || 'A4'];
                         const paperW = (isLandscape ? pageDims.h : pageDims.w) * mmToPx;
                         const paperH = (isLandscape ? pageDims.w : pageDims.h) * mmToPx;
-
-                        // 余白 15mm
-                        const margin = 15 * mmToPx;
-                        const contentW = paperW - margin * 2;
-                        const contentH = paperH - margin * 2;
-
-                        // セルサイズ計算 (縦書き: 幅方向=行, 高さ方向=文字)
+                        const marginPx = 15 * mmToPx;
+                        const contentW = paperW - marginPx * 2;
+                        const contentH = paperH - marginPx * 2;
                         const lineGapRatio = 0.5;
                         const cellW = contentW / (linesPerPage + lineGapRatio * (linesPerPage - 1));
                         const lineGap = cellW * lineGapRatio;
                         const cellH = contentH / charsPerLine;
                         const fontSize = Math.min(cellW, cellH) * 0.7;
 
-                        // 全要素のインラインスタイルを退避・除去
+                        // 全要素のインラインスタイルを退避
                         const savedAll = [];
-                        document.querySelectorAll('.manuscript-wrapper, .manuscript-page, .manuscript-line, .manuscript-cell, .ruby-base-char').forEach(el => {
+                        document.querySelectorAll(
+                            '.manuscript-wrapper, .manuscript-page, .manuscript-line, .manuscript-cell, .ruby-base-char'
+                        ).forEach(el => {
                             savedAll.push({ el, style: el.getAttribute('style') });
-                            el.removeAttribute('style');
                         });
 
+                        // --- 直接DOMスタイルを書き換え（@media printに頼らない） ---
+                        const wrapper = document.querySelector('.manuscript-wrapper');
+                        wrapper.style.cssText = 'display:block!important;writing-mode:horizontal-tb!important;direction:ltr!important;padding:0!important;margin:0!important;width:auto!important;min-width:unset!important;';
+
+                        document.querySelectorAll('.manuscript-page').forEach(page => {
+                            page.style.cssText = `
+                                writing-mode:vertical-rl!important;
+                                text-orientation:upright!important;
+                                width:${paperW}px!important;
+                                height:${paperH}px!important;
+                                padding:${marginPx}px!important;
+                                margin:0!important;
+                                box-shadow:none!important;
+                                border:none!important;
+                                background:white!important;
+                                overflow:hidden!important;
+                                page-break-after:always!important;
+                                break-after:page!important;
+                                page-break-inside:avoid!important;
+                                break-inside:avoid!important;
+                                min-height:unset!important;
+                                max-height:unset!important;
+                                box-sizing:border-box!important;
+                                display:flex!important;
+                                flex-direction:column!important;
+                                align-items:flex-start!important;
+                                gap:${lineGap}px!important;
+                                flex-shrink:0!important;
+                            `;
+                        });
+
+                        document.querySelectorAll('.manuscript-line').forEach(line => {
+                            line.style.cssText = `display:flex!important;flex-direction:row!important;gap:0!important;width:${cellW}px!important;flex-shrink:0!important;position:relative!important;`;
+                        });
+
+                        document.querySelectorAll('.manuscript-cell').forEach(cell => {
+                            // has-ruby と is-hanging はボーダーなし
+                            const noB = cell.classList.contains('has-ruby') || cell.classList.contains('is-hanging');
+                            cell.style.cssText = `
+                                width:${cellW}px!important;
+                                height:${cellH}px!important;
+                                flex-shrink:0!important;
+                                font-size:${fontSize}px!important;
+                                display:flex!important;
+                                align-items:center!important;
+                                justify-content:center!important;
+                                border:${noB ? 'none' : '1px solid rgba(184,134,11,0.3)'}!important;
+                                box-sizing:border-box!important;
+                                line-height:1!important;
+                                position:relative!important;
+                                overflow:visible!important;
+                            `;
+                        });
+
+                        document.querySelectorAll('.ruby-base-char').forEach(rb => {
+                            rb.style.cssText = `
+                                width:${cellW}px!important;
+                                height:${cellH}px!important;
+                                flex-shrink:0!important;
+                                display:flex!important;
+                                align-items:center!important;
+                                justify-content:center!important;
+                                border:1px solid rgba(184,134,11,0.3)!important;
+                                box-sizing:border-box!important;
+                                line-height:1!important;
+                            `;
+                        });
+
+                        // @page と非表示要素用のスタイルシートだけ注入
                         const styleEl = document.createElement('style');
                         styleEl.id = 'dynamic-print-style';
                         styleEl.textContent = `
+                            @page { margin: 0; size: ${isLandscape ? 'landscape' : 'portrait'}; }
                             @media print {
-                                @page {
-                                    margin: 0;
-                                    size: ${isLandscape ? 'landscape' : 'portrait'};
-                                }
+                                .sidebar, .editor-pane, .tab-nav-bottom, .toolbar,
+                                .editor-toolbar-overlay, .no-print, .line-number-indicator,
+                                .preview-toolbar { display: none !important; }
                                 body, html, #root {
-                                    margin: 0 !important;
-                                    padding: 0 !important;
-                                    background: white !important;
-                                    overflow: visible !important;
-                                    width: auto !important;
-                                    height: auto !important;
+                                    margin:0!important; padding:0!important;
+                                    background:white!important; overflow:visible!important;
                                 }
-                                .app-container,
-                                .content-wrapper,
-                                .main-content,
-                                .editor-container,
-                                .split-pane,
-                                .pane.preview-pane {
-                                    display: block !important;
-                                    width: auto !important;
-                                    height: auto !important;
-                                    margin: 0 !important;
-                                    padding: 0 !important;
-                                    overflow: visible !important;
-                                }
-                                .sidebar,
-                                .editor-pane,
-                                .tab-nav-bottom,
-                                .toolbar,
-                                .editor-toolbar-overlay,
-                                .no-print,
-                                .line-number-indicator,
-                                .preview-toolbar {
-                                    display: none !important;
+                                .app-container, .content-wrapper, .main-content,
+                                .editor-container, .split-pane, .pane.preview-pane {
+                                    display:block!important; width:auto!important;
+                                    height:auto!important; margin:0!important;
+                                    padding:0!important; overflow:visible!important;
                                 }
                                 .preview-container {
-                                    display: block !important;
-                                    padding: 0 !important;
-                                    background: white !important;
-                                    overflow: visible !important;
-                                    width: auto !important;
-                                    height: auto !important;
-                                    direction: ltr !important;
-                                }
-                                .manuscript-wrapper {
-                                    display: block !important;
-                                    writing-mode: horizontal-tb !important;
-                                    direction: ltr !important;
-                                    padding: 0 !important;
-                                    margin: 0 !important;
-                                    width: auto !important;
-                                    min-width: unset !important;
-                                }
-                                .manuscript-page {
-                                    writing-mode: vertical-rl !important;
-                                    text-orientation: upright !important;
-                                    width: ${paperW}px !important;
-                                    height: ${paperH}px !important;
-                                    padding: ${margin}px !important;
-                                    margin: 0 !important;
-                                    box-shadow: none !important;
-                                    border: none !important;
-                                    background: white !important;
-                                    overflow: hidden !important;
-                                    page-break-after: always !important;
-                                    break-after: page !important;
-                                    page-break-inside: avoid !important;
-                                    break-inside: avoid !important;
-                                    min-height: unset !important;
-                                    max-height: unset !important;
-                                    box-sizing: border-box !important;
-                                    display: flex !important;
-                                    flex-direction: column !important;
-                                    align-items: flex-start !important;
-                                    gap: ${lineGap}px !important;
-                                    flex-shrink: 0 !important;
-                                }
-                                .manuscript-page:last-child {
-                                    page-break-after: auto !important;
-                                    break-after: auto !important;
-                                }
-                                .manuscript-line {
-                                    display: flex !important;
-                                    flex-direction: row !important;
-                                    gap: 0 !important;
-                                    width: ${cellW}px !important;
-                                    flex-shrink: 0 !important;
-                                    position: relative !important;
-                                }
-                                .manuscript-cell {
-                                    width: ${cellW}px !important;
-                                    height: ${cellH}px !important;
-                                    flex-shrink: 0 !important;
-                                    font-size: ${fontSize}px !important;
-                                    display: flex !important;
-                                    align-items: center !important;
-                                    justify-content: center !important;
-                                    border: 1px solid rgba(184, 134, 11, 0.3) !important;
-                                    box-sizing: border-box !important;
-                                    line-height: 1 !important;
-                                    position: relative !important;
-                                    overflow: visible !important;
-                                }
-                                .manuscript-cell + .manuscript-cell {
-                                    margin-top: -1px !important;
-                                }
-                                .manuscript-cell.has-ruby {
-                                    border: none !important;
-                                }
-                                .manuscript-cell.is-hanging {
-                                    border: none !important;
-                                }
-                                .ruby-base-char {
-                                    width: ${cellW}px !important;
-                                    height: ${cellH}px !important;
-                                    flex-shrink: 0 !important;
-                                    display: flex !important;
-                                    align-items: center !important;
-                                    justify-content: center !important;
-                                    border: 1px solid rgba(184, 134, 11, 0.3) !important;
-                                    box-sizing: border-box !important;
-                                    line-height: 1 !important;
-                                }
-                                .ruby-text {
-                                    font-size: 0.5em !important;
-                                }
-                                .page-number {
-                                    color: #000 !important;
-                                    bottom: ${margin * 0.3}px !important;
-                                    writing-mode: horizontal-tb !important;
-                                }
-                                .tcy-digits {
-                                    text-combine-upright: all !important;
+                                    display:block!important; padding:0!important;
+                                    background:white!important; overflow:visible!important;
+                                    width:auto!important; height:auto!important;
+                                    direction:ltr!important;
                                 }
                             }
                         `;
                         document.head.appendChild(styleEl);
 
-                        window.print();
+                        // レイアウト再計算を強制してから印刷
+                        document.body.offsetHeight; // force reflow
+                        requestAnimationFrame(() => {
+                            window.print();
 
-                        // 印刷後: 復元
-                        const injected = document.getElementById('dynamic-print-style');
-                        if (injected) injected.remove();
-                        savedAll.forEach(({ el, style }) => {
-                            if (style) el.setAttribute('style', style);
-                            else el.removeAttribute('style');
+                            // 印刷後: 復元
+                            const injected = document.getElementById('dynamic-print-style');
+                            if (injected) injected.remove();
+                            savedAll.forEach(({ el, style }) => {
+                                if (style) el.setAttribute('style', style);
+                                else el.removeAttribute('style');
+                            });
                         });
                     }}
                     style={{
