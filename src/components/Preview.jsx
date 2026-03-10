@@ -442,40 +442,38 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink }) => {
                         const rect = firstPage.getBoundingClientRect();
                         const isLandscape = rect.width > rect.height;
 
-                        // ページ数と行数・字数を取得
-                        const pagesEl = document.querySelectorAll('.manuscript-page');
                         const linesPerPage = Number(settings.linesPerPage) || 20;
                         const charsPerLine = Number(settings.charsPerLine) || 20;
 
-                        // 全要素のインラインスタイルを退避・除去
-                        const savedPages = [];
-                        const savedLines = [];
-                        const savedCells = [];
+                        // 印刷用紙サイズ (px at 96dpi)
+                        // A4: 210mm x 297mm = 794px x 1123px
+                        const mmToPx = 96 / 25.4;
+                        const pageDims = {
+                            'A4': { w: 210, h: 297 },
+                            'B5': { w: 176, h: 250 },
+                            'A5': { w: 148, h: 210 }
+                        }[settings.pageSize || 'A4'];
+                        const paperW = (isLandscape ? pageDims.h : pageDims.w) * mmToPx;
+                        const paperH = (isLandscape ? pageDims.w : pageDims.h) * mmToPx;
 
-                        pagesEl.forEach(page => {
-                            savedPages.push({ el: page, style: page.getAttribute('style') });
-                            page.removeAttribute('style');
-                        });
+                        // 余白 15mm
+                        const margin = 15 * mmToPx;
+                        const contentW = paperW - margin * 2;
+                        const contentH = paperH - margin * 2;
 
-                        document.querySelectorAll('.manuscript-line').forEach(line => {
-                            savedLines.push({ el: line, style: line.getAttribute('style') });
-                            line.removeAttribute('style');
-                        });
-
-                        document.querySelectorAll('.manuscript-cell, .ruby-base-char').forEach(cell => {
-                            savedCells.push({ el: cell, style: cell.getAttribute('style') });
-                            cell.removeAttribute('style');
-                        });
-
-                        // 印刷用の余白(mm)
-                        const printPadding = 15;
-                        // 行間をルビ欄として確保（セル幅の50%）
+                        // セルサイズ計算 (縦書き: 幅方向=行, 高さ方向=文字)
                         const lineGapRatio = 0.5;
-                        // セル幅 = (100vw - padding*2) / (行数 + 行間数*ratio)
-                        // セル高 = (100vh - padding*2) / 字数
-                        const cellWidthCalc = `(100vw - ${printPadding * 2}mm) / (${linesPerPage} + ${(linesPerPage - 1) * lineGapRatio})`;
-                        const cellHeightCalc = `(100vh - ${printPadding * 2}mm) / ${charsPerLine}`;
-                        const lineGapCalc = `calc(${cellWidthCalc} * ${lineGapRatio})`;
+                        const cellW = contentW / (linesPerPage + lineGapRatio * (linesPerPage - 1));
+                        const lineGap = cellW * lineGapRatio;
+                        const cellH = contentH / charsPerLine;
+                        const fontSize = Math.min(cellW, cellH) * 0.7;
+
+                        // 全要素のインラインスタイルを退避・除去
+                        const savedAll = [];
+                        document.querySelectorAll('.manuscript-wrapper, .manuscript-page, .manuscript-line, .manuscript-cell, .ruby-base-char').forEach(el => {
+                            savedAll.push({ el, style: el.getAttribute('style') });
+                            el.removeAttribute('style');
+                        });
 
                         const styleEl = document.createElement('style');
                         styleEl.id = 'dynamic-print-style';
@@ -490,6 +488,8 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink }) => {
                                     padding: 0 !important;
                                     background: white !important;
                                     overflow: visible !important;
+                                    width: auto !important;
+                                    height: auto !important;
                                 }
                                 .app-container,
                                 .content-wrapper,
@@ -498,7 +498,7 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink }) => {
                                 .split-pane,
                                 .pane.preview-pane {
                                     display: block !important;
-                                    width: 100% !important;
+                                    width: auto !important;
                                     height: auto !important;
                                     margin: 0 !important;
                                     padding: 0 !important;
@@ -528,13 +528,16 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink }) => {
                                     writing-mode: horizontal-tb !important;
                                     direction: ltr !important;
                                     padding: 0 !important;
+                                    margin: 0 !important;
+                                    width: auto !important;
+                                    min-width: unset !important;
                                 }
                                 .manuscript-page {
                                     writing-mode: vertical-rl !important;
                                     text-orientation: upright !important;
-                                    width: 100vw !important;
-                                    height: 100vh !important;
-                                    padding: ${printPadding}mm !important;
+                                    width: ${paperW}px !important;
+                                    height: ${paperH}px !important;
+                                    padding: ${margin}px !important;
                                     margin: 0 !important;
                                     box-shadow: none !important;
                                     border: none !important;
@@ -545,11 +548,13 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink }) => {
                                     page-break-inside: avoid !important;
                                     break-inside: avoid !important;
                                     min-height: unset !important;
+                                    max-height: unset !important;
                                     box-sizing: border-box !important;
                                     display: flex !important;
                                     flex-direction: column !important;
                                     align-items: flex-start !important;
-                                    gap: ${lineGapCalc} !important;
+                                    gap: ${lineGap}px !important;
+                                    flex-shrink: 0 !important;
                                 }
                                 .manuscript-page:last-child {
                                     page-break-after: auto !important;
@@ -559,14 +564,15 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink }) => {
                                     display: flex !important;
                                     flex-direction: row !important;
                                     gap: 0 !important;
-                                    width: calc(${cellWidthCalc}) !important;
+                                    width: ${cellW}px !important;
                                     flex-shrink: 0 !important;
+                                    position: relative !important;
                                 }
                                 .manuscript-cell {
-                                    width: calc(${cellWidthCalc}) !important;
-                                    height: calc(${cellHeightCalc}) !important;
+                                    width: ${cellW}px !important;
+                                    height: ${cellH}px !important;
                                     flex-shrink: 0 !important;
-                                    font-size: calc(min(${cellWidthCalc}, ${cellHeightCalc}) * 0.7) !important;
+                                    font-size: ${fontSize}px !important;
                                     display: flex !important;
                                     align-items: center !important;
                                     justify-content: center !important;
@@ -586,15 +592,14 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink }) => {
                                     border: none !important;
                                 }
                                 .ruby-base-char {
-                                    width: calc(${cellWidthCalc}) !important;
-                                    height: calc(${cellHeightCalc}) !important;
+                                    width: ${cellW}px !important;
+                                    height: ${cellH}px !important;
                                     flex-shrink: 0 !important;
                                     display: flex !important;
                                     align-items: center !important;
                                     justify-content: center !important;
                                     border: 1px solid rgba(184, 134, 11, 0.3) !important;
                                     box-sizing: border-box !important;
-                                    font-size: inherit !important;
                                     line-height: 1 !important;
                                 }
                                 .ruby-text {
@@ -602,7 +607,8 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink }) => {
                                 }
                                 .page-number {
                                     color: #000 !important;
-                                    bottom: 5mm !important;
+                                    bottom: ${margin * 0.3}px !important;
+                                    writing-mode: horizontal-tb !important;
                                 }
                                 .tcy-digits {
                                     text-combine-upright: all !important;
@@ -613,18 +619,12 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink }) => {
 
                         window.print();
 
-                        // 印刷後: スタイル除去 & インライン復元
+                        // 印刷後: 復元
                         const injected = document.getElementById('dynamic-print-style');
                         if (injected) injected.remove();
-
-                        savedPages.forEach(({ el, style }) => {
+                        savedAll.forEach(({ el, style }) => {
                             if (style) el.setAttribute('style', style);
-                        });
-                        savedLines.forEach(({ el, style }) => {
-                            if (style) el.setAttribute('style', style);
-                        });
-                        savedCells.forEach(({ el, style }) => {
-                            if (style) el.setAttribute('style', style);
+                            else el.removeAttribute('style');
                         });
                     }}
                     style={{
