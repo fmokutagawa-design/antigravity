@@ -3421,7 +3421,7 @@ function App() {
               </div>
 
               {/* Editor: Always mounted, usually hidden */}
-              <div style={{ flex: 1, display: activeTab === 'editor' ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden' }}>
+              <div style={{ flex: 1, display: activeTab === 'editor' ? 'flex' : 'none', flexDirection: 'column', minHeight: 0 }}>
                 <Editor
                   ref={editorRef}
                   value={showMetadata ? text : parseNote(text).body}
