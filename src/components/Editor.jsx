@@ -429,8 +429,21 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       // クリップボード履歴に追加
       addToClipboard(original);
       if (settings.isVertical) {
-        e.clipboardData.setData('text/plain', original);
-        e.preventDefault();
+        // clipboardData が使える場合は同期APIで書き込む
+        if (e.clipboardData) {
+          try {
+            e.clipboardData.setData('text/plain', original);
+            e.preventDefault();
+          } catch (err) {
+            // 別ウィンドウ等で clipboardData が無効な場合、非同期APIにフォールバック
+            e.preventDefault();
+            navigator.clipboard.writeText(original).catch(() => {});
+          }
+        } else {
+          // clipboardData 自体がない場合
+          e.preventDefault();
+          navigator.clipboard.writeText(original).catch(() => {});
+        }
       }
     }
   }, [settings.isVertical, addToClipboard]);
@@ -489,19 +502,21 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     }
   }, [settings.isVertical]);
 
-  // ★ 縦書き時：コンテナにスクロールバーを強制表示（CSS依存を回避）
+  // ★ コンテナにスクロールバーを強制表示（縦書き・横書き両対応）
   useEffect(() => {
     const container = textareaRef.current?.closest('.editor-container');
-    if (!container || !settings.isVertical) return;
+    if (!container) return;
 
-    // コンテナの overflow を直接設定
-    container.style.overflowX = 'scroll';
-    container.style.overflowY = 'hidden';
+    // 親フレックスコンテナに合わせる
+    container.style.height = '100%';
 
-    // フッター(32px)の分だけコンテナ高さを縮めてスクロールバーを見せる
-    const footer = document.querySelector('.footer');
-    const footerH = footer ? footer.offsetHeight : 32;
-    container.style.height = `calc(100vh - ${footerH}px)`;
+    if (settings.isVertical) {
+      container.style.overflowX = 'scroll';
+      container.style.overflowY = 'hidden';
+    } else {
+      container.style.overflowX = 'hidden';
+      container.style.overflowY = 'scroll';
+    }
 
     // -webkit-scrollbar 用の動的スタイルを注入
     const styleId = 'nexus-scrollbar-style';
@@ -511,15 +526,33 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       styleEl.id = styleId;
       document.head.appendChild(styleEl);
     }
+    const darkMode = document.body.classList.contains('dark-mode');
+    const thumbColor = darkMode ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)';
+    const thumbHover = darkMode ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.55)';
+    const trackColor = darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+    const scrollbarCSS = `
+      background: ${thumbColor} !important;
+      border-radius: 7px !important;
+      border: 2px solid transparent !important;
+      background-clip: padding-box !important;
+    `;
     styleEl.textContent = `
+      .editor-container.vertical,
+      .editor-container.horizontal {
+        height: 100% !important;
+      }
       .editor-container.vertical {
         overflow-x: scroll !important;
-        height: calc(100vh - ${footerH}px) !important;
+        overflow-y: hidden !important;
       }
-      .editor-container.vertical::-webkit-scrollbar { height: 14px !important; }
-      .editor-container.vertical::-webkit-scrollbar-track { background: rgba(0,0,0,0.08) !important; }
-      .editor-container.vertical::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.35) !important; border-radius: 7px !important; border: 2px solid transparent !important; background-clip: padding-box !important; }
-      .editor-container.vertical::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.55) !important; }
+      .editor-container.horizontal {
+        overflow-y: scroll !important;
+        overflow-x: hidden !important;
+      }
+      .editor-container::-webkit-scrollbar { width: 14px !important; height: 14px !important; }
+      .editor-container::-webkit-scrollbar-track { background: ${trackColor} !important; }
+      .editor-container::-webkit-scrollbar-thumb { ${scrollbarCSS} }
+      .editor-container::-webkit-scrollbar-thumb:hover { background: ${thumbHover} !important; }
     `;
 
     return () => {
@@ -568,15 +601,22 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       nextCursorPos.current = start + (selectedText ? selectedText.length + 1 : 1);
       onChange(newValue);
     },
-    jumpToPosition: (start, end) => {
+    setCursorPosition: (position) => {
       const ta = textareaRef.current;
       if (!ta) return;
       ta.focus();
+      ta.setSelectionRange(position, position);
+      // ブラウザネイティブのスクロールを利用してカーソル位置を表示
+      ta.blur();
+      ta.focus();
+    },
+    jumpToPosition: (start, end) => {
+      const ta = textareaRef.current;
+      if (!ta) return;
       ta.setSelectionRange(start, end != null ? end : start);
-      // スクロールして選択位置を見えるようにする
-      const lineHeight = parseInt(getComputedStyle(ta).lineHeight) || 20;
-      const linesAbove = ta.value.substring(0, start).split('\n').length;
-      ta.scrollTop = Math.max(0, (linesAbove - 3) * lineHeight);
+      // ブラウザネイティブのスクロールを利用（縦書き・横書き両対応）
+      ta.blur();
+      ta.focus();
     }
   }));
 
@@ -763,7 +803,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
           writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb',
           textOrientation: settings.isVertical ? 'upright' : 'mixed',
           // 横書き: textarea自身がスクロール / 縦書き: コンテナがスクロール
-          overflowY: settings.isVertical ? 'hidden' : 'auto',
+          overflowY: settings.isVertical ? 'hidden' : 'scroll',
           overflowX: settings.isVertical ? 'hidden' : 'hidden',
           resize: 'none',
           background: 'transparent',
@@ -882,13 +922,34 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
               </div>
               <div style={{ height: '1px', background: 'var(--border-color, #eee)', margin: '4px 0' }}></div>
               <div className="context-menu-item" onClick={() => {
-                document.execCommand('cut');
+                const ta = textareaRef.current;
+                if (ta) {
+                  const selected = ta.value.substring(ta.selectionStart, ta.selectionEnd);
+                  const original = settings.isVertical ? fromVerticalDisplay(selected) : selected;
+                  addToClipboard(original);
+                  navigator.clipboard.writeText(original).catch(() => {});
+                  // テキストから選択部分を削除
+                  const cursorPos = ta.selectionStart;
+                  const before = ta.value.substring(0, cursorPos);
+                  const after = ta.value.substring(ta.selectionEnd);
+                  const newValue = settings.isVertical ? fromVerticalDisplay(before + after) : (before + after);
+                  pushHistory(value, newValue, cursorPos);
+                  onChange(newValue);
+                }
                 setEditorContextMenu(null);
               }}>
                 ✂️ 切り取り
               </div>
               <div className="context-menu-item" onClick={() => {
-                document.execCommand('copy');
+                const ta = textareaRef.current;
+                if (ta) {
+                  const selected = ta.value.substring(ta.selectionStart, ta.selectionEnd);
+                  const original = settings.isVertical ? fromVerticalDisplay(selected) : selected;
+                  addToClipboard(original);
+                  navigator.clipboard.writeText(original).catch(() => {
+                    document.execCommand('copy');
+                  });
+                }
                 setEditorContextMenu(null);
               }}>
                 📋 コピー
