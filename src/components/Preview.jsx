@@ -474,7 +474,9 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink }) => {
                         const wrapper = document.querySelector('.manuscript-wrapper');
                         wrapper.style.cssText = 'display:block!important;writing-mode:horizontal-tb!important;direction:ltr!important;padding:0!important;margin:0!important;width:auto!important;min-width:unset!important;';
 
-                        document.querySelectorAll('.manuscript-page').forEach(page => {
+                        const allPages = document.querySelectorAll('.manuscript-page');
+                        allPages.forEach((page, idx) => {
+                            const isLast = idx === allPages.length - 1;
                             page.style.cssText = `
                                 writing-mode:vertical-rl!important;
                                 text-orientation:upright!important;
@@ -486,8 +488,8 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink }) => {
                                 border:none!important;
                                 background:white!important;
                                 overflow:hidden!important;
-                                page-break-after:always!important;
-                                break-after:page!important;
+                                page-break-after:${isLast ? 'auto' : 'always'}!important;
+                                break-after:${isLast ? 'auto' : 'page'}!important;
                                 page-break-inside:avoid!important;
                                 break-inside:avoid!important;
                                 min-height:unset!important;

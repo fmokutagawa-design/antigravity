@@ -41,6 +41,7 @@ import './components/LinkPanel.css';
 import { saveTextFile, loadTextFile } from './utils/fileUtils';
 import { fileSystem, isElectron } from './utils/fileSystem';
 import { generateEpub, downloadBlob } from './utils/epubExporter'; // EPUB Exporter
+import { generateDocx, downloadBlob as downloadDocxBlob } from './utils/docxExporter'; // DOCX Exporter
 // import {
 //   openDirectory,
 //   readDirectoryTree,
@@ -519,6 +520,26 @@ function App() {
     } catch (err) {
       console.error('EPUB export failed:', err);
       alert('EPUB書き出しに失敗しました: ' + err.message);
+    }
+  };
+
+  const handleDocxExport = async () => {
+    try {
+      const fileName = activeFileHandle?.name?.replace(/\.[^/.]+$/, '') || '原稿';
+      const blob = await generateDocx({
+        title: fileName,
+        content: text,
+        isVertical: settings.isVertical,
+        fontName: '游明朝',
+        pageSize: settings.pageSize || 'A4',
+        orientation: settings.orientation || 'portrait',
+      });
+      downloadDocxBlob(blob, `${fileName}.docx`);
+      if (showToast) showToast('Word(.docx)を書き出しました');
+    } catch (err) {
+      console.error('DOCX export failed:', err);
+      if (showToast) showToast('DOCX書き出しに失敗しました: ' + err.message, 'error');
+      else alert('DOCX書き出しに失敗しました: ' + err.message);
     }
   };
 
@@ -3378,6 +3399,7 @@ function App() {
                       presets={presets}
                       onFormat={handleFormat}
                       onEpubExport={() => handleEpubExport(null, allMaterialFiles)}
+                      onDocxExport={handleDocxExport}
                       onSavePreset={handleSavePreset}
                       onLoadPreset={handleLoadPreset}
                       onDeletePreset={handleDeletePreset}

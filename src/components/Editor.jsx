@@ -1,4 +1,4 @@
-import React, { useRef, useImperativeHandle, forwardRef, useMemo, useEffect, useCallback, useLayoutEffect } from 'react';
+import React, { useRef, useImperativeHandle, forwardRef, useMemo, useEffect, useCallback, useLayoutEffect, useState } from 'react';
 import '../index.css';
 // ★ 約物フィルターを無効化したい場合、この import をコメントアウトしてください
 import { toVerticalDisplay, fromVerticalDisplay } from '../utils/verticalPunctuation';
@@ -111,6 +111,22 @@ function computeCharPositions(charArray, maxPerLine) {
   return { positions, totalLines: line + 1 };
 }
 
+/**
+ * 軽量版: 行数だけを計算（座標配列を生成しない）
+ * metrics の gridW/gridH 計算用。Array.from() による配列生成を回避。
+ */
+function computeTotalLines(text, maxPerLine) {
+  if (!text || maxPerLine <= 0) return 1;
+  let line = 0;
+  let pos = 0;
+  for (const char of text) {
+    if (char === '\n') { line++; pos = 0; continue; }
+    if (pos >= maxPerLine) { line++; pos = 0; }
+    pos++;
+  }
+  return line + 1;
+}
+
 
 import ReactDOM from 'react-dom';
 
@@ -201,65 +217,92 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
 
   const splitString = (str) => Array.from(str || "");
 
-  // --- 1. 寸法計算 (Metrics) ---
-  const metrics = useMemo(() => {
+  // --- パフォーマンス最適化: ハイライト用デバウンス ---
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  const debouncePrevLenRef = useRef(value.length);
+
+  useEffect(() => {
+    // 大きな変更（ファイル切替等）は即座に反映
+    if (Math.abs(value.length - debouncePrevLenRef.current) > 100) {
+      setDebouncedValue(value);
+      debouncePrevLenRef.current = value.length;
+      return;
+    }
+    debouncePrevLenRef.current = value.length;
+    const timer = setTimeout(() => setDebouncedValue(value), 150);
+    return () => clearTimeout(timer);
+  }, [value]);
+
+  // --- 1a. ベース寸法（設定のみ依存、valueに依存しない） ---
+  const baseMetrics = useMemo(() => {
     const fontSize = parseInt(settings.fontSize) || 18;
-    // 原稿用紙は従来の1.65を維持、ノート/無地は字間を詰めて読みやすく
     const isManuscript = settings.paperStyle === 'grid';
     const lineHeightRatio = isManuscript
       ? (settings.lineHeight || 1.65)
-      : (settings.charSpacing || 1.4);  // ノート/無地はユーザー調整可能な字間比率
+      : (settings.charSpacing || 1.4);
     const cell = Math.floor(fontSize * lineHeightRatio);
-
-    const winW = window.innerWidth;
-    const winH = window.innerHeight;
     const PADDING = 10;
 
-    const charArray = splitString(value);
-    let cols = 0, rows = 0, gridW = 0, gridH = 0;
-
+    let maxPerLine;
     if (settings.isVertical) {
+      const winH = window.innerHeight;
       const availableH = winH - (PADDING * 2) - 28 - 40;
-      rows = settings.charsPerLine || Math.floor(availableH / cell);
-      if (rows < 5) rows = 20;
+      maxPerLine = settings.charsPerLine || Math.floor(availableH / cell);
+      if (maxPerLine < 5) maxPerLine = 20;
+    } else {
+      const winW = window.innerWidth;
+      const availableW = winW - 320 - (PADDING * 2);
+      maxPerLine = settings.charsPerLine || Math.floor(availableW / cell);
+      if (maxPerLine < 5) maxPerLine = 20;
+    }
 
-      const { totalLines } = computeCharPositions(charArray, rows);
+    return { fontSize, cell, maxPerLine, padding: PADDING, letterSpacing: cell - fontSize };
+  }, [settings.fontSize, settings.lineHeight, settings.isVertical, settings.charsPerLine, settings.paperStyle, settings.charSpacing]);
+
+  // --- 1b. グリッド寸法（valueに依存、ただし軽量な computeTotalLines を使用） ---
+  const metrics = useMemo(() => {
+    const { fontSize, cell, maxPerLine, padding, letterSpacing } = baseMetrics;
+    const totalLines = computeTotalLines(value, maxPerLine);
+
+    let cols, rows, gridW, gridH;
+    if (settings.isVertical) {
+      rows = maxPerLine;
       cols = Math.max(totalLines, settings.linesPerPage || 10);
       gridH = rows * cell;
       gridW = cols * cell;
     } else {
-      const availableW = winW - 320 - (PADDING * 2);
-      cols = settings.charsPerLine || Math.floor(availableW / cell);
-      if (cols < 5) cols = 20;
-
-      const { totalLines } = computeCharPositions(charArray, cols);
+      cols = maxPerLine;
       rows = Math.max(totalLines, settings.linesPerPage || 10);
       gridW = cols * cell;
       gridH = rows * cell;
     }
 
-    return {
-      fontSize,
-      cell,
-      cols,
-      rows,
-      gridW,
-      gridH,
-      padding: PADDING,
-      letterSpacing: cell - fontSize
-    };
-  }, [settings.fontSize, settings.lineHeight, settings.isVertical, settings.charsPerLine, settings.linesPerPage, settings.paperStyle, settings.charSpacing, value]);
+    return { fontSize, cell, cols, rows, gridW, gridH, padding, letterSpacing };
+  }, [value, baseMetrics, settings.isVertical, settings.linesPerPage]);
 
-  // --- 2. アンダーレイ（座標マップ）の生成 ---
+  // --- 共有キャラクター座標キャッシュ（デバウンス値 + 安定した maxPerLine） ---
+  const charPositionsCache = useMemo(() => {
+    if (!debouncedValue) return { positions: [], charArray: [], utf16ToCharIdx: new Map() };
+    const charArray = splitString(debouncedValue);
+    const { positions } = computeCharPositions(charArray, baseMetrics.maxPerLine);
+
+    // UTF-16インデックス → 文字インデックスのマッピングを事前計算
+    const utf16ToCharIdx = new Map();
+    let codeUnitOffset = 0;
+    for (let i = 0; i < charArray.length; i++) {
+      utf16ToCharIdx.set(codeUnitOffset, i);
+      codeUnitOffset += charArray[i].length;
+    }
+
+    return { positions, charArray, utf16ToCharIdx };
+  }, [debouncedValue, baseMetrics.maxPerLine]);
+
+  // --- 2. アンダーレイ（座標マップ）の生成（デバウンス） ---
   const highlights = useMemo(() => {
     if (settings.editorSyntaxColors === false) return [];
-    if (!value) return [];
-    const { cell } = metrics;
-    const maxPerLine = settings.isVertical ? metrics.rows : metrics.cols;
-    const charArray = splitString(value);
-
-    // 禁則処理付き座標を計算
-    const { positions } = computeCharPositions(charArray, maxPerLine);
+    if (!debouncedValue) return [];
+    const { cell } = baseMetrics;
+    const { positions, utf16ToCharIdx } = charPositionsCache;
 
     // 座標マップ生成
     const charCoords = positions.map((p) => {
@@ -282,8 +325,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     const list = [];
     patterns.forEach(({ regex, color }) => {
       let match;
-      while ((match = regex.exec(value)) !== null) {
-        const visualStart = splitString(value.substring(0, match.index)).length;
+      while ((match = regex.exec(debouncedValue)) !== null) {
+        const visualStart = utf16ToCharIdx.get(match.index) ?? splitString(debouncedValue.substring(0, match.index)).length;
         const visualLen = splitString(match[0]).length;
         for (let i = 0; i < visualLen; i++) {
           const pos = charCoords[visualStart + i];
@@ -294,25 +337,21 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       }
     });
     return list;
-  }, [metrics, value, settings.isVertical, settings.syntaxColors, settings.editorSyntaxColors]);
+  }, [charPositionsCache, debouncedValue, baseMetrics.cell, settings.isVertical, settings.syntaxColors, settings.editorSyntaxColors]);
 
   // --- 3a. ゴーストテキスト座標計算 ---
   const ghostHighlights = useMemo(() => {
     if (!ghostText || !value) return [];
 
-    // 現在のテキスト＋ゴーストテキストでレイアウト計算
-    // これにより、禁則処理や行折り返しが正確にシミュレーションされる
     const fullText = value + ghostText;
     const charArray = splitString(fullText);
     const valueLen = splitString(value).length;
     const ghostLen = splitString(ghostText).length;
 
-    const maxPerLine = settings.isVertical ? metrics.rows : metrics.cols;
-    const { cell } = metrics;
+    const { cell, maxPerLine } = baseMetrics;
     const { positions } = computeCharPositions(charArray, maxPerLine);
 
     const list = [];
-    // ゴーストテキスト部分（valueLen 以降）の座標を抽出
     for (let i = 0; i < ghostLen; i++) {
       const idx = valueLen + i;
       const p = positions[idx];
@@ -323,27 +362,25 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       }
     }
     return list;
-  }, [value, ghostText, metrics, settings.isVertical]);
+  }, [value, ghostText, baseMetrics, settings.isVertical]);
 
-  // --- 3b. 校正ハイライト座標計算 ---
+  // --- 3b. 校正ハイライト座標計算（デバウンス + キャッシュ共有） ---
   const correctionHighlights = useMemo(() => {
-    if (!corrections || corrections.length === 0 || !value) return [];
+    if (!corrections || corrections.length === 0 || !debouncedValue) return [];
 
-    const charArray = splitString(value);
-    const maxPerLine = settings.isVertical ? metrics.rows : metrics.cols;
-    const { cell } = metrics;
-    const { positions } = computeCharPositions(charArray, maxPerLine);
+    const { charArray, positions } = charPositionsCache;
+    const { cell } = baseMetrics;
 
     const list = [];
 
     corrections.forEach(corr => {
       if (!corr.original) return;
       let searchIndex = 0;
-      let index = value.indexOf(corr.original, searchIndex);
+      let index = debouncedValue.indexOf(corr.original, searchIndex);
 
       while (index !== -1) {
         const len = splitString(corr.original).length;
-        const preStr = value.slice(0, index);
+        const preStr = debouncedValue.slice(0, index);
         const startCharIdx = splitString(preStr).length;
 
         for (let i = 0; i < len; i++) {
@@ -364,7 +401,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     });
 
     return list;
-  }, [value, corrections, metrics, settings.isVertical]);
+  }, [debouncedValue, corrections, charPositionsCache, baseMetrics, settings.isVertical]);
 
 
 
@@ -579,6 +616,26 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       : '"palt" 0, "halt" 0, "kern" 0, "vkrn" 0, "chws" 0, "liga" 0, "clig" 0, "calt" 0, "vert" 0, "vrt2" 0',
   };
 
+  // --- メモ化: シンタックスハイライト要素（数百〜数千のdivを毎キー入力で再生成しない） ---
+  const highlightElements = useMemo(() => {
+    if (settings.editorSyntaxColors === false || !highlights.length) return null;
+    const cell = baseMetrics.cell;
+    const isVert = settings.isVertical;
+    return highlights.map((h) => (
+      <div key={h.key} style={{
+        position: 'absolute',
+        right: isVert ? `${-h.x}px` : 'auto',
+        left: isVert ? 'auto' : `${h.x}px`,
+        top: `${h.y}px`,
+        width: `${cell}px`,
+        height: `${cell}px`,
+        backgroundColor: h.color,
+        opacity: 0.15,
+        borderRadius: '2px'
+      }} />
+    ));
+  }, [highlights, settings.isVertical, settings.editorSyntaxColors, baseMetrics.cell]);
+
   return (
     <div lang="ja" className={`editor-container ${settings.isVertical ? 'vertical' : 'horizontal'} ${paperClass}`}>
       {/* Underlay: skip in clean mode (proportional fonts can't align character-by-character) */}
@@ -591,19 +648,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
           ...fontStyle,
           fontSize: `${metrics.fontSize}px`,
         }}>
-          {settings.editorSyntaxColors !== false && highlights.map((h) => (
-            <div key={h.key} style={{
-              position: 'absolute',
-              right: settings.isVertical ? `${-h.x}px` : 'auto',
-              left: settings.isVertical ? 'auto' : `${h.x}px`,
-              top: `${h.y}px`,
-              width: `${metrics.cell}px`,
-              height: `${metrics.cell}px`,
-              backgroundColor: h.color,
-              opacity: 0.15,
-              borderRadius: '2px'
-            }} />
-          ))}
+          {highlightElements}
           {/* Ghost Text Overlay */}
           {ghostHighlights.map((gh) => (
             <div key={gh.key} style={{
@@ -611,13 +656,13 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
               right: settings.isVertical ? `${-gh.x}px` : 'auto',
               left: settings.isVertical ? 'auto' : `${gh.x}px`,
               top: `${gh.y}px`,
-              width: `${metrics.cell}px`,
-              height: `${metrics.cell}px`,
+              width: `${baseMetrics.cell}px`,
+              height: `${baseMetrics.cell}px`,
               color: '#aaa',
               opacity: 0.6,
               pointerEvents: 'none',
-              lineHeight: `${metrics.cell}px`,
-              fontSize: `${metrics.fontSize}px`,
+              lineHeight: `${baseMetrics.cell}px`,
+              fontSize: `${baseMetrics.fontSize}px`,
               fontFamily: fontStyle.fontFamily,
               writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb',
               ...fontStyle,
@@ -632,8 +677,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
               right: settings.isVertical ? `${-ch.x}px` : 'auto',
               left: settings.isVertical ? 'auto' : `${ch.x}px`,
               top: `${ch.y}px`,
-              width: `${metrics.cell}px`,
-              height: `${metrics.cell}px`,
+              width: `${baseMetrics.cell}px`,
+              height: `${baseMetrics.cell}px`,
               borderBottom: settings.isVertical ? 'none' : '2px wavy red',
               borderLeft: settings.isVertical ? '2px wavy red' : 'none',
               opacity: 0.7,

@@ -1,23 +1,28 @@
 /**
  * verticalPunctuation.js
- * 
+ *
  * 縦書きモード時に、Chromium の <textarea> が正しく回転できない約物を
  * Unicode 縦書き専用字形に置換する表示フィルター。
- * 
+ *
  * ■ 無効化したい場合:
  *   Editor.jsx の import をコメントアウトするだけで元に戻せます。
  *   または ENABLED を false にしてください。
+ *
+ * ■ 三点リーダー（…）とダッシュ（―/—）について:
+ *   これらはフォントの vert/vrt2 OpenType feature と
+ *   CSS text-orientation: upright により正しく縦書き表示されるため、
+ *   手動変換しない。変換すると ︙（縦三点）や ︱（縦線）という
+ *   別の文字になり、原稿として不正確になる。
  */
 
 // ★ この1行を false にするだけで機能を無効化できます
 const ENABLED = true;
 
 // 置換マッピング: 横書き用 → 縦書き専用字形
+// 矢印だけ変換（textarea の vert feature では対応できないため）
 const VERTICAL_MAP = {
-    '…': '︙',  // U+2026 → U+FE19 (PRESENTATION FORM FOR VERTICAL HORIZONTAL ELLIPSIS)
-    '―': '︱',  // U+2015 → U+FE31 (PRESENTATION FORM FOR VERTICAL EM DASH)
-    '—': '︱',  // U+2014 → U+FE31 (PRESENTATION FORM FOR VERTICAL EM DASH)
-    '→': '↑',  // U+2192 → U+2191 (vert機能が↑→↓に変換し、下向き表示になる)
+    '→': '↓',  // 縦書きでは「右」が「下」に対応
+    '←': '↑',  // 縦書きでは「左」が「上」に対応
 };
 
 // 逆変換マッピングを自動生成
