@@ -2938,7 +2938,7 @@ function App() {
             <div className="sidebar-body">
               {settings.showLogo !== false && (
                 <div className="sidebar-header" style={{ marginBottom: '0.1rem', display: 'flex', justifyContent: 'center', padding: '10px 10px 5px', borderBottom: 'none' }}>
-                  <img src="/nexus-logo-wide.png" alt="NEXUS" className="nexus-logo-wide" style={{ maxWidth: '90%', height: 'auto', display: 'block' }} />
+                  <img src="./nexus-logo-wide.png" alt="NEXUS" className="nexus-logo-wide" style={{ maxWidth: '90%', height: 'auto', display: 'block' }} />
                 </div>
               )}
 
