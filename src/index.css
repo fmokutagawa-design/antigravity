@@ -459,17 +459,13 @@ body {
   /* Highly optimized width */
   min-width: 300px;
   max-width: 500px;
-  background-color: rgba(248, 249, 250, 0.95);
-  /* Slight Translucency */
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  /* Glassmorphism */
+  background-color: #f8f9fa;
   border-right: 1px solid rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: row;
   height: 100%;
   z-index: 10;
-  transition: width 0.2s ease, transform 0.3s ease;
+  transition: transform 0.3s ease;
   flex-shrink: 0;
 }
 

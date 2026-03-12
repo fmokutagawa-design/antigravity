@@ -150,8 +150,8 @@ function App() {
 
   // Ghost Text Effect
   useEffect(() => {
-    // 1. Clear existing ghost text on ANY change
-    setGhostText('');
+    // 1. Clear existing ghost text on ANY change (skip if already empty to avoid extra re-render)
+    setGhostText(prev => prev === '' ? prev : '');
 
     // 2. Abort previous generation
     if (ghostTextAbortController.current) {
@@ -1300,16 +1300,17 @@ function App() {
 
 
 
-  const handleTextChange = (newContent) => {
+  const handleTextChange = useCallback((newContent) => {
     if (showMetadata) {
       setText(newContent);
     } else {
       // newContent is just the body, preserve metadata
-      const { metadata } = parseNote(text);
-      const newFullText = serializeNote(newContent, metadata);
-      setText(newFullText);
+      setText(prev => {
+        const { metadata } = parseNote(prev);
+        return serializeNote(newContent, metadata);
+      });
     }
-  };
+  }, [showMetadata]);
 
   const handleMetadataUpdate = async (newMetadata) => {
     if (!activeFileHandle) return;

@@ -1024,4 +1024,6 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
 });
 
 Editor.displayName = 'Editor';
-export default Editor;
+const MemoEditor = React.memo(Editor);
+MemoEditor.displayName = 'Editor';
+export default MemoEditor;
