@@ -163,7 +163,18 @@ const Toolbar = ({
                             <option value="'Hina Mincho', serif">ひな明朝</option>
                             <option value="'Kaisei Opti', serif">解星オプティ</option>
                             <option value="'Kaisei Tokumin', serif">解星特ミン</option>
-                            <option value="'YuMincho', 'Yu Mincho', serif">游明朝</option>
+                            <option value="'YuMincho', 'Yu Mincho', serif">游明朝 (標準)</option>
+                            <option value="'YuMincho-Demibold', 'YuMincho-Bold', 'Yu Mincho Demibold', '游明朝体', serif">游明朝 Demibold (太字)</option>
+                            <option value="'YuGothic-Bold', 'Yu Gothic Bold', 'Yu Gothic', sans-serif">游ゴシック Bold (太字)</option>
+                            <option value="'RyuminPr6N-Ultra', 'RyuminPr6N-Heavy', 'A-OTF Ryumin Pr6N', serif">リュウミン 極太</option>
+                            <option value="'GothicMB101Pr6N-Ultra', 'A-OTF Gothic MB101 Pr6N', sans-serif">ゴシックMB101 極太</option>
+                            <option value="'ToppanBunkyuMidashiMincho-ExtraBold', 'AP-OTF Bunkyu MdMin StdN', serif">凸版文久見出し明朝</option>
+                            <option value="'FOT-UDMinchoPr6N-B', 'FOT-UDMinchoPro-B', 'UD明朝', serif">UD明朝 Bold</option>
+                            <option value="'SoukouMincho', '装甲明朝', serif">装甲明朝 (極太)</option>
+                            <option value="'GenkaiMincho', '源界明朝', serif">源界明朝</option>
+                            <option value="'EVA-Matisse_Classic', 'EVA-Matisse Classic', 'EVA明朝', serif">エヴァ明朝 (EVA-Matisse Classic)</option>
+                            <option value="'FOT-MatissePro-EB', 'FOT-マティス Pro EB', 'Matisse Pro', serif">マティス Pro EB (極太)</option>
+                            <option value="'FOT-MatissePro-UB', 'FOT-マティス Pro UB', 'Matisse Pro', serif">マティス Pro UB (超特太)</option>
                             <option value="'Yuji Syuku', serif">Yuji Syuku (游築・手書き風)</option>
                         </select>
                     </div>
