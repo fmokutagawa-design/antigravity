@@ -142,15 +142,27 @@ const Toolbar = ({
                     </div>
                     <div className="control-item">
                         <label>書体</label>
-                        <select value={settings.fontFamily || 'var(--font-mincho)'} onChange={(e) => handleChange('fontFamily', e.target.value)} style={{ fontSize: '10px' }}>
+                        <input 
+                            type="text" 
+                            list="font-list" 
+                            value={settings.fontFamily || 'var(--font-mincho)'} 
+                            onChange={(e) => handleChange('fontFamily', e.target.value)} 
+                            style={{ fontSize: '10px', width: '100%', padding: '4px', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '4px', background: 'rgba(0,0,0,0.02)' }} 
+                            placeholder="リストから選ぶか入力..."
+                            title="PC内のフォント名を直接入力することも可能です"
+                        />
+                        <datalist id="font-list">
                             <option value="var(--font-mincho)">明朝 (標準)</option>
                             <option value="var(--font-gothic)">ゴシック (標準)</option>
                             <option value="'Hiragino Mincho ProN', 'Hiragino Mincho Pro', 'ヒラギノ明朝 ProN', 'ヒラギノ明朝 Pro', serif">ヒラギノ明朝</option>
+                            <option value="'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'ヒラギノ角ゴ ProN', sans-serif">ヒラギノ角ゴ (見やすいゴシック)</option>
                             <option value="'FOT-筑紫Aオールド明朝 Pr6N', 'FOT-筑紫Aオールド明朝 Pr6', 'Tsukushi A Old Mincho', '筑紫Aオールド明朝', '筑紫Aオールド明朝 Pr6N', serif">筑紫Aオールド明朝</option>
                             <option value="'FOT-筑紫Bオールド明朝 Pr6N', 'FOT-筑紫Bオールド明朝 Pr6', 'Tsukushi B Old Mincho', '筑紫Bオールド明朝', '筑紫Bオールド明朝 Pr6N', serif">筑紫Bオールド明朝</option>
                             <option value="'FOT-筑紫Cオールド明朝 Pr6N', 'FOT-筑紫Cオールド明朝 Pr6', 'Tsukushi C Old Mincho', '筑紫Cオールド明朝', '筑紫Cオールド明朝 Pr6N', serif">筑紫Cオールド明朝</option>
                             <option value="'Meiryo', sans-serif">メイリオ</option>
-                            <option value="var(--font-hand)">紅道</option>
+                            <option value="'BIZ UDGothic', 'BIZ UDゴシック', sans-serif">BIZ UDゴシック (見やすい・太字)</option>
+                            <option value="'A-OTF A1ゴシック Std', 'A-OTF A1ゴシック StdN', 'A1ゴシック', sans-serif">A1ゴシック (見やすい太字)</option>
+                            <option value="var(--font-hand)">紅道 (手書き風)</option>
                             <option value="'Klee One', cursive">クレー</option>
                             <option value="'A-OTF 黎ミン Pr6N', 'A-OTF 黎ミン Pro', '黎ミン', serif">モリサワ 黎ミン</option>
                             <option value="'A P-OTF 秀英にじみ明朝 StdN', 'A P-OTF 秀英にじみ明朝 Std', '秀英にじみ明朝', serif">秀英にじみ明朝</option>
@@ -176,7 +188,7 @@ const Toolbar = ({
                             <option value="'FOT-MatissePro-EB', 'FOT-マティス Pro EB', 'Matisse Pro', serif">マティス Pro EB (極太)</option>
                             <option value="'FOT-MatissePro-UB', 'FOT-マティス Pro UB', 'Matisse Pro', serif">マティス Pro UB (超特太)</option>
                             <option value="'Yuji Syuku', serif">Yuji Syuku (游築・手書き風)</option>
-                        </select>
+                        </datalist>
                     </div>
                 </div>
 
