@@ -180,7 +180,7 @@ function App() {
       ghostTextAbortController.current = new AbortController();
 
       try {
-        // Use last 500 chars for context, with Japanese continuation instruction
+        // Use last 1000 chars for context, with Japanese continuation instruction
         const rawContext = text.slice(-1000);
         const systemPrompt = "以下の日本語の文章の続きを自然に書いてください。説明や翻訳は不要です。続きの文章だけを出力してください。";
         const suggestion = await ollamaService.generateCompletion(rawContext, selectedLocalModel, ghostTextAbortController.current.signal, systemPrompt);
@@ -190,6 +190,8 @@ function App() {
         }
       } catch (e) {
         // Ignore aborts or failures
+      } finally {
+        ghostTextAbortController.current = null;
       }
     }, 1500);
 
@@ -1088,7 +1090,7 @@ function App() {
       window.removeEventListener('openSemanticGraph', handleOpenGraph);
       window.removeEventListener('openMatrixOutliner', handleOpenOutliner);
     };
-  }, [isWindowMode]);
+  }, [isWindowMode, handleOpenFile]);
 
   // CRITICAL: Sync attributes to Body for CSS Selectors
   useEffect(() => {

@@ -135,7 +135,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   const [editorContextMenu, setEditorContextMenu] = React.useState(null);
 
   // --- Undo/Redo スタック ---
-  const { initHistory, pushHistory, undo, redo, handleKeyDown: undoKeyDown, pendingCursor, currentCursor } = useUndoHistory(onChange);
+  const { initHistory, pushHistory, undo, redo, handleKeyDown: undoKeyDown, pendingCursor: pendingCursorRef, currentCursor: currentCursorRef } = useUndoHistory(onChange);
   // --- クリップボード履歴 ---
   const { clipboardHistory, addToClipboard } = useClipboardHistory();
 
@@ -155,9 +155,9 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   // React再レンダリング直後にカーソル位置を復元（useLayoutEffectでペイント前に実行）
   useLayoutEffect(() => {
     // undo/redo後のカーソル復元
-    if (pendingCursor && pendingCursor.current != null && textareaRef.current) {
-      const pos = pendingCursor.current;
-      pendingCursor.current = null;
+    if (pendingCursorRef && pendingCursorRef.current != null && textareaRef.current) {
+      const pos = pendingCursorRef.current;
+      pendingCursorRef.current = null;
       textareaRef.current.setSelectionRange(pos, pos);
       return;
     }
@@ -337,7 +337,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       }
     });
     return list;
-  }, [charPositionsCache, debouncedValue, baseMetrics.cell, settings.isVertical, settings.syntaxColors, settings.editorSyntaxColors]);
+  }, [charPositionsCache, debouncedValue, baseMetrics, settings.isVertical, settings.syntaxColors, settings.editorSyntaxColors]);
 
   // --- 3a. ゴーストテキスト座標計算 ---
   const ghostHighlights = useMemo(() => {
@@ -415,10 +415,10 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     // カーソル位置を保存（React再レンダリングでリセットされるため）
     const cursorPos = ta.selectionStart;
     pushHistory(value, restored, cursorPos);
-    if (currentCursor) currentCursor.current = cursorPos;
+    if (currentCursorRef) currentCursorRef.current = cursorPos;
     nextCursorPos.current = cursorPos;
     onChange(restored);
-  }, [onChange, settings.isVertical, value, pushHistory, currentCursor]);
+  }, [onChange, settings.isVertical, value, pushHistory, currentCursorRef]);
 
   const handleCopy = useCallback((e) => {
     const textarea = textareaRef.current;
@@ -481,7 +481,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     }
   };
 
-  const handleWheel = (e) => {
+  const handleWheel = useCallback((e) => {
     if (!settings.isVertical) return;
     // Only convert vertical wheel → horizontal scroll
     // Let deltaX pass through to native browser scrolling
@@ -492,7 +492,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         e.preventDefault();
       }
     }
-  };
+  }, [settings.isVertical]);
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -500,7 +500,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       el.addEventListener('wheel', handleWheel, { passive: false });
       return () => el.removeEventListener('wheel', handleWheel);
     }
-  }, [settings.isVertical]);
+  }, [settings.isVertical, handleWheel]);
 
   // ★ コンテナにスクロールバーを強制表示（縦書き・横書き両対応）
   useEffect(() => {
