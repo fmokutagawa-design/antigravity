@@ -35,14 +35,71 @@ const Toolbar = ({
 
     const [showTextMenu, setShowTextMenu] = useState(false);
     const [systemFonts, setSystemFonts] = useState([]);
+    const [isFontMenuOpen, setIsFontMenuOpen] = useState(false);
+    const [fontSearch, setFontSearch] = useState('');
+    const [isLoadingFonts, setIsLoadingFonts] = useState(false);
+    const [visibleCount, setVisibleCount] = useState(40);
+    const [lastScrollTop, setLastScrollTop] = useState(0); // スクロール位置の記憶
+
+    const PRESET_FONTS = [
+        { label: '明朝 (標準)', value: 'var(--font-mincho)' },
+        { label: 'ゴシック (標準)', value: 'var(--font-gothic)' },
+        { label: 'ヒラギノ明朝', value: "'Hiragino Mincho ProN', 'Hiragino Mincho Pro', 'ヒラギノ明朝 ProN', 'ヒラギノ明朝 Pro', serif" },
+        { label: 'ヒラギノ角ゴ (太め)', value: "'Hiragino Sans', sans-serif" },
+        { label: '游明朝 (標準)', value: "'YuMincho', 'Yu Mincho', serif" },
+        { label: 'メイリオ', value: "'Meiryo', sans-serif" },
+        { label: '筑紫Aオールド明朝', value: "'FOT-筑紫Aオールド明朝 Pr6N', serif" },
+        { label: 'A1明朝', value: "'A-OTF A1明朝 Std', serif" },
+        { label: 'マティス EB (極太)', value: "'FOT-MatissePro-EB', serif" },
+        { label: 'マティス Classic', value: "'EVA-Matisse_Classic', serif" },
+        { label: '紅道 (手書き)', value: 'var(--font-hand)' },
+        { label: 'クレー', value: "'Klee One', cursive" },
+    ];
 
     useEffect(() => {
         if (window.api?.system?.getFonts) {
-            window.api.system.getFonts().then(fonts => {
-                // Sort fonts alphabetically and filter duplicates
-                const uniqueFonts = Array.from(new Set(fonts)).sort();
-                setSystemFonts(uniqueFonts);
-            });
+            // ESLintエラー回避のため、フラグ管理と非同期呼び出しを分離
+            const loadFonts = async () => {
+                setIsLoadingFonts(true);
+                try {
+                    const data = await window.api.system.getFonts();
+                    if (!data || !Array.isArray(data)) {
+                        console.error("Invalid font data received:", data);
+                        setSystemFonts([]);
+                        return;
+                    }
+                    
+                    const jpKeywords = ['mincho', 'gothic', 'mplus', 'kaku', 'maru', 'hira', 'yu', 'biz', 'tsukushi', 'toppan', 'zen', 'kosugi', 'sawarabi', 'ipa', 'epson', 'ricoh', 'fujitsu', 'dyho', 'dyna', 'morisawa', 'matisse', 'klee', 'hg', 'ud'];
+                    const isJP = (name) => {
+                        if (/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/.test(name)) return true;
+                        const lower = name.toLowerCase();
+                        return jpKeywords.some(k => lower.includes(k));
+                    };
+
+                    const jp = [];
+                    const others = [];
+
+                    data.forEach(item => {
+                        if (!item || !item.family || !item.fonts) return;
+                        const entry = {
+                            family: item.family,
+                            isJp: isJP(item.family),
+                            fonts: item.fonts
+                        };
+                        if (entry.isJp) jp.push(entry);
+                        else others.push(entry);
+                    });
+
+                    // Sort each list alphabetically by family name
+                    const sortFn = (a, b) => a.family.localeCompare(b.family);
+                    const finalFonts = [...jp.sort(sortFn), ...others.sort(sortFn)];
+                    console.log(`Loaded ${data.length} font families (${finalFonts.length} entries total)`);
+                    setSystemFonts(finalFonts);
+                } finally {
+                    setIsLoadingFonts(false);
+                }
+            };
+            loadFonts();
         }
     }, []);
 
@@ -151,29 +208,193 @@ const Toolbar = ({
                             <option value="horizontal">横書</option>
                         </select>
                     </div>
-                    <div className="control-item">
+                    <div className="control-item" style={{ position: 'relative' }}>
                         <label>書体</label>
-                        <input 
-                            type="text" 
-                            list="font-list" 
-                            value={settings.fontFamily || 'var(--font-mincho)'} 
-                            onChange={(e) => handleChange('fontFamily', e.target.value)} 
-                            style={{ fontSize: '10px', width: '100%', padding: '4px', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '4px', background: 'rgba(0,0,0,0.02)' }} 
-                            placeholder="リストから選ぶか入力..."
-                            title="PC内のフォント名を直接入力することも可能です"
-                        />
-                        <datalist id="font-list">
-                            <option value="var(--font-mincho)">明朝 (標準)</option>
-                            <option value="var(--font-gothic)">ゴシック (標準)</option>
-                            <option value="'Hiragino Mincho ProN', 'Hiragino Mincho Pro', 'ヒラギノ明朝 ProN', 'ヒラギノ明朝 Pro', serif">ヒラギノ明朝</option>
-                            <option value="'Hiragino Sans', sans-serif">ヒラギノ角ゴ</option>
-                            <option value="'Meiryo', sans-serif">メイリオ</option>
-                            <option value="var(--font-hand)">紅道 (手書き風)</option>
-                            <option value="'Klee One', cursive">クレー</option>
-                            {systemFonts.map((font, idx) => (
-                                <option key={idx} value={font}>{font}</option>
-                            ))}
-                        </datalist>
+                        <div 
+                            onClick={() => setIsFontMenuOpen(!isFontMenuOpen)}
+                            style={{ 
+                                fontSize: '10px', width: '100%', padding: '4px 8px', 
+                                border: '1px solid rgba(0,0,0,0.1)', borderRadius: '4px', 
+                                background: 'rgba(0,0,0,0.02)', cursor: 'pointer',
+                                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                            }}
+                        >
+                            <span>{PRESET_FONTS.find(f => f.value === settings.fontFamily)?.label || settings.fontFamily || '選択...'}</span>
+                            <span style={{ fontSize: '8px', opacity: 0.5 }}>▼</span>
+                        </div>
+
+                        {isFontMenuOpen && (
+                            <div 
+                                style={{ 
+                                    position: 'absolute', bottom: '100%', left: 0, width: '320px', 
+                                    maxHeight: '400px', background: isDarkMode ? '#2c3e50' : '#fff', 
+                                    boxShadow: '0 -4px 16px rgba(0,0,0,0.25)', borderRadius: '8px', 
+                                    zIndex: 2000, display: 'flex', flexDirection: 'column',
+                                    border: '1px solid var(--border-color)', marginBottom: '8px'
+                                }}
+                                onMouseEnter={() => {
+                                    // メニューが開いた際に前回の位置を復元（ライフサイクル的にここが確実）
+                                    const container = document.getElementById('font-list-container');
+                                    if (container && lastScrollTop > 0) {
+                                        container.scrollTop = lastScrollTop;
+                                    }
+                                }}
+                            >
+                                <div style={{ padding: '8px', borderBottom: '1px solid #eee' }}>
+                                    <input 
+                                        type="text"
+                                        autoFocus
+                                        placeholder={isLoadingFonts ? "システムフォントを読み込み中..." : `フォントを検索 (${systemFonts.length}件ロード済み)...`}
+                                        value={fontSearch}
+                                        onChange={(e) => setFontSearch(e.target.value)}
+                                        onClick={(e) => e.stopPropagation()}
+                                        style={{ 
+                                            width: '100%', padding: '4px 8px', fontSize: '11px', 
+                                            borderRadius: '4px', border: '1px solid #ddd',
+                                            background: isDarkMode ? 'rgba(255,255,255,0.05)' : '#fff',
+                                            color: isDarkMode ? '#fff' : '#333'
+                                        }}
+                                    />
+                                </div>
+                                <div 
+                                    id="font-list-container"
+                                    style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}
+                                    onScroll={(e) => {
+                                        const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+                                        setLastScrollTop(scrollTop);
+                                        if (scrollHeight - scrollTop <= clientHeight + 100) {
+                                            setVisibleCount(prev => prev + 40);
+                                        }
+                                    }}
+                                >
+                                    {isLoadingFonts ? (
+                                        <div style={{ padding: '20px', textAlign: 'center', opacity: 0.5, fontSize: '11px' }}>
+                                            システムフォントをスキャン中...<br/>
+                                            （ロード済み：{systemFonts.length}件）
+                                        </div>
+                                    ) : (
+                                        (() => {
+                                            const query = fontSearch.toLowerCase();
+                                            
+                                            // プリセットフォントの変換
+                                            const presetItems = PRESET_FONTS.map(p => ({ 
+                                                label: p.label, 
+                                                value: p.value, 
+                                                isPreset: true, 
+                                                isJp: true,
+                                                subLabel: p.value
+                                            }));
+
+                                            // システムフォントの展開と和名表示用オブジェクト作成
+                                            const systemItems = [];
+                                            systemFonts.forEach(item => {
+                                                item.fonts.forEach(f => {
+                                                    // 表示名は「ファミリー名 (ウェイト名)」
+                                                    const label = f.weight && f.weight !== 'Regular' 
+                                                        ? `${item.family} (${f.weight})` 
+                                                        : item.family;
+                                                    
+                                                    systemItems.push({
+                                                        label: label,
+                                                        value: f.ps,
+                                                        isPreset: false,
+                                                        isJp: item.isJp,
+                                                        subLabel: f.ps,
+                                                        familyName: item.family
+                                                    });
+                                                });
+                                            });
+
+                                            // 重複排除 (プリセットがシステム側にもある場合はプリセット優先)
+                                            const seen = new Set();
+                                            const uniqueItems = [];
+                                            [...presetItems, ...systemItems].forEach(item => {
+                                                if (!seen.has(item.value)) {
+                                                    seen.add(item.value);
+                                                    uniqueItems.push(item);
+                                                }
+                                            });
+
+                                            // フィルタリング (ラベル、PS名、ファミリー名で検索可能)
+                                            let filtered = uniqueItems.filter(item => 
+                                                !query || 
+                                                item.label.toLowerCase().includes(query) || 
+                                                item.value.toLowerCase().includes(query) ||
+                                                (item.familyName && item.familyName.toLowerCase().includes(query))
+                                            );
+
+                                            if (filtered.length === 0) {
+                                                return <div style={{ padding: '20px', fontSize: '11px', opacity: 0.5, textAlign: 'center' }}>一致するフォントが見つかりません</div>;
+                                            }
+
+                                            // 日本語とその他に分ける（ロード時の分類を活かす）
+                                            const jpList = filtered.filter(f => f.isJp);
+                                            const otherList = filtered.filter(f => !f.isJp);
+                                            
+                                            const combinedList = [...jpList, ...otherList];
+                                            const displayItems = query ? combinedList : combinedList.slice(0, visibleCount);
+
+                                            return (
+                                                <>
+                                                    {displayItems.map((item, idx) => {
+                                                        const showSectionHeader = !query && (
+                                                            (idx === 0 && item.isJp) || 
+                                                            (idx === jpList.length && !item.isJp && jpList.length > 0)
+                                                        );
+
+                                                        return (
+                                                            <React.Fragment key={idx}>
+                                                                {showSectionHeader && (
+                                                                    <div style={{ 
+                                                                        padding: '8px 14px', fontSize: '10px', fontWeight: 'bold', 
+                                                                        opacity: 0.4, background: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                                                                        borderBottom: '1px solid rgba(0,0,0,0.03)'
+                                                                    }}>
+                                                                        {item.isJp ? '日本語 / 推奨書体' : 'その他 / 欧文等'}
+                                                                    </div>
+                                                                )}
+                                                                <div 
+                                                                    onClick={(e) => { e.stopPropagation(); handleChange('fontFamily', item.value); setIsFontMenuOpen(false); setFontSearch(''); }}
+                                                                    style={{ 
+                                                                        padding: '10px 14px', fontSize: '14px', cursor: 'pointer',
+                                                                        background: settings.fontFamily === item.value ? 'rgba(142,68,173,0.1)' : 'transparent',
+                                                                        color: isDarkMode ? '#eee' : '#333',
+                                                                        fontFamily: item.value,
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '12px',
+                                                                        borderBottom: '1px solid rgba(0,0,0,0.03)',
+                                                                        transition: 'background 0.2s'
+                                                                    }}
+                                                                    className="font-option-hover"
+                                                                    title={item.subLabel}
+                                                                >
+                                                                    <span style={{ fontSize: '18px', fontWeight: 'bold', opacity: 0.8, width: '24px', textAlign: 'center' }}>あ</span>
+                                                                    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                                                                        <span style={{ fontSize: '12px', fontWeight: item.isPreset ? '600' : 'normal', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                                            {item.label}
+                                                                        </span>
+                                                                        {item.label !== item.subLabel && (
+                                                                            <span style={{ fontSize: '9px', opacity: 0.5, fontFamily: 'sans-serif' }}>{item.subLabel}</span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </React.Fragment>
+                                                        );
+                                                    })}
+                                                    {!query && combinedList.length > visibleCount && (
+                                                        <div style={{ padding: '10px', textAlign: 'center', fontSize: '10px', opacity: 0.3 }}>
+                                                            スクロールしてさらに表示 ({combinedList.length - visibleCount}件)
+                                                        </div>
+                                                    )}
+                                                </>
+                                            );
+                                        })()
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 

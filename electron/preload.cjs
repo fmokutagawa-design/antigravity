@@ -16,6 +16,8 @@ contextBridge.exposeInMainWorld('api', {
     system: {
         getFonts: () => ipcRenderer.invoke('system:getFonts')
     },
+    // Generic invoke for settings/persistence
+    invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
     // UIスケール用: webFrame.setZoomFactor でビューポート全体を正しくズーム
     setZoomFactor: (factor) => webFrame.setZoomFactor(factor),
     isElectron: true

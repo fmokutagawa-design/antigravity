@@ -952,6 +952,43 @@ function App() {
       }
     }
 
+    // --- Persistent Data Loading (Electron) ---
+    if (isElectron && window.api) {
+      window.api.invoke('app:getSettings').then(async (data) => {
+        if (!data) return;
+
+        // Restore Settings
+        if (data.settings) {
+          setSettings(prev => ({ ...prev, ...data.settings }));
+        }
+
+        // Restore Dark Mode
+        if (data.isDarkMode !== undefined) {
+          setIsDarkMode(data.isDarkMode);
+        }
+
+        // Restore Project
+        if (data.projectPath && !isWindowMode) {
+          try {
+            setProjectHandle(data.projectPath);
+            const tree = await fileSystem.readDirectory({ handle: data.projectPath });
+            setFileTree(tree);
+            setIsProjectMode(true);
+
+            // Restore last active file AFTER project is ready
+            if (data.activeFile) {
+              // Wait slightly for useMaterials to settle
+              setTimeout(() => {
+                handleOpenFile(data.activeFile, data.activeFile.split(/[/\\]/).pop());
+              }, 500);
+            }
+          } catch (e) {
+            console.error("Failed to restore project:", e);
+          }
+        }
+      });
+    }
+
     // Live Sync for Window Mode - Prevent infinite loop by checking for changes
     const handleStorageChange = (e) => {
       // 別窓モード（isWindowMode）の場合は、他タブからの設定同期を無視する
@@ -1584,11 +1621,29 @@ function App() {
 
 
 
-  // Save to local storage on change
+  // Save settings and state to persistent storage (Electron)
+  useEffect(() => {
+    if (!isElectron || !window.api) return;
+
+    const saveTimeout = setTimeout(async () => {
+      const persistentData = {
+        settings,
+        activeFile: activeFileHandle,
+        projectPath: projectHandle,
+        isDarkMode,
+        // Optional: cursor position could be added here if editorRef supports getting it
+      };
+      await window.api.invoke('app:saveSettings', persistentData);
+    }, 5500); // Debounce save slightly
+
+    return () => clearTimeout(saveTimeout);
+  }, [settings, activeFileHandle, projectHandle, isDarkMode]);
+
+  // Save to local storage on change (Web fallback)
   useEffect(() => {
     localStorage.setItem('novel-editor-text', text);
     setLastSaved(new Date());
-  }, [text, calculateTotalChars]);
+  }, [text]);
 
   useEffect(() => {
     const settingsKey = isWindowMode ? 'novel-editor-settings-window' : 'novel-editor-settings';

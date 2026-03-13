@@ -178,14 +178,118 @@ ipcMain.handle('fs:showInExplorer', async (event, path) => {
     shell.showItemInFolder(path);
 });
 
-// System Fonts
-const fontList = require('font-list');
-ipcMain.handle('system:getFonts', async () => {
+// --- Persistence and Caching ---
+const SETTINGS_FILE = path.join(app.getPath('userData'), 'user_settings.json');
+const FONT_CACHE_FILE = path.join(app.getPath('userData'), 'font_cache.json');
+
+// Get Application Settings
+ipcMain.handle('app:getSettings', async () => {
+    if (fs.existsSync(SETTINGS_FILE)) {
+        try {
+            return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'));
+        } catch (e) {
+            console.error("Failed to parse settings file", e);
+        }
+    }
+    return null;
+});
+
+// Save Application Settings
+ipcMain.handle('app:saveSettings', async (event, settings) => {
     try {
-        const fonts = await fontList.getFonts();
-        return fonts.map(f => f.replace(/"/g, ''));
+        fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8');
+        return true;
     } catch (e) {
-        console.error("Failed to get fonts", e);
+        console.error("Failed to save settings file", e);
+        return false;
+    }
+});
+
+// System Fonts with Persistent Cache
+const { exec } = require('child_process');
+let memoryFontCache = null;
+
+// Background scan worker
+const scanFontsInternal = () => new Promise((resolve, reject) => {
+    const jxaScript = `
+        ObjC.import("AppKit");
+        var fm = $.NSFontManager.sharedFontManager;
+        if (!fm) throw new Error("Could not get sharedFontManager");
+        var fList = fm.availableFontFamilies;
+        var res = [];
+        for (var i = 0; i < fList.count; i++) {
+            var fam = fList.objectAtIndex(i);
+            if (!fam) continue;
+            var members = fm.availableMembersOfFontFamily(fam);
+            var mList = [];
+            if (members && members.count) {
+                for (var j = 0; j < members.count; j++) {
+                    var m = members.objectAtIndex(j);
+                    if (m && m.count >= 2) {
+                        mList.push({ps: m.objectAtIndex(0).js, weight: m.objectAtIndex(1).js});
+                    }
+                }
+            }
+            res.push({family: fam.js, fonts: mList});
+        }
+        JSON.stringify(res);
+    `.replace(/\n/g, ' ');
+
+    exec(`osascript -l JavaScript -e '${jxaScript}'`, { maxBuffer: 15 * 1024 * 1024 }, (error, stdout) => {
+        if (error) {
+            // Fallback to simple scan if JXA fails
+            const fontList = require('font-list');
+            fontList.getFonts({ maxBuffer: 10 * 1024 * 1024 })
+                .then(fonts => {
+                    const legacyData = fonts.map(f => {
+                        const name = f.replace(/"/g, '');
+                        return { family: name, fonts: [{ ps: name, weight: 'Regular' }] };
+                    });
+                    resolve(legacyData);
+                })
+                .catch(reject);
+        } else {
+            try {
+                resolve(JSON.parse(stdout));
+            } catch (e) {
+                reject(e);
+            }
+        }
+    });
+});
+
+ipcMain.handle('system:getFonts', async () => {
+    // 1. Return memory cache immediately if available
+    if (memoryFontCache) return memoryFontCache;
+
+    // 2. Try to load from persistent cache file
+    if (fs.existsSync(FONT_CACHE_FILE)) {
+        try {
+            const cached = JSON.parse(fs.readFileSync(FONT_CACHE_FILE, 'utf-8'));
+            if (cached && cached.length > 0) {
+                memoryFontCache = cached;
+                // Kick off background scan to keep cache fresh without blocking
+                console.log("Returning cached fonts, updating in background...");
+                scanFontsInternal().then(freshData => {
+                    memoryFontCache = freshData;
+                    fs.writeFileSync(FONT_CACHE_FILE, JSON.stringify(freshData), 'utf-8');
+                }).catch(e => console.error("Background font scan failed", e));
+                return cached;
+            }
+        } catch (e) {
+            console.error("Failed to read font cache", e);
+        }
+    }
+
+    // 3. No cache available, must block for initial scan
+    console.log("No font cache, performing initial scan...");
+    try {
+        const data = await scanFontsInternal();
+        memoryFontCache = data;
+        fs.writeFileSync(FONT_CACHE_FILE, JSON.stringify(data), 'utf-8');
+        return data;
+    } catch (e) {
+        console.error("Initial font scan failed", e);
         return [];
     }
 });

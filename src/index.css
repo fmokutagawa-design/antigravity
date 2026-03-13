@@ -624,6 +624,14 @@ body.dark-mode .sidebar-nav-item.active {
   width: 100%;
 }
 
+.font-option-hover:hover {
+  background-color: rgba(142, 68, 173, 0.2) !important;
+}
+
+body.dark-mode .font-option-hover:hover {
+  background-color: rgba(142, 68, 173, 0.4) !important;
+}
+
 /* Color Grid - Horizontal Override */
 .control-grid.color-grid {
   display: flex;
