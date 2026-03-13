@@ -177,3 +177,15 @@ ipcMain.handle('fs:delete', async (event, targetPath) => {
 ipcMain.handle('fs:showInExplorer', async (event, path) => {
     shell.showItemInFolder(path);
 });
+
+// System Fonts
+const fontList = require('font-list');
+ipcMain.handle('system:getFonts', async () => {
+    try {
+        const fonts = await fontList.getFonts();
+        return fonts.map(f => f.replace(/"/g, ''));
+    } catch (e) {
+        console.error("Failed to get fonts", e);
+        return [];
+    }
+});

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 // Reuseable Toggle Switch Component for consistency
 const Toggle = ({ active, onClick, label }) => (
@@ -34,6 +34,17 @@ const Toolbar = ({
     };
 
     const [showTextMenu, setShowTextMenu] = useState(false);
+    const [systemFonts, setSystemFonts] = useState([]);
+
+    useEffect(() => {
+        if (window.api?.system?.getFonts) {
+            window.api.system.getFonts().then(fonts => {
+                // Sort fonts alphabetically and filter duplicates
+                const uniqueFonts = Array.from(new Set(fonts)).sort();
+                setSystemFonts(uniqueFonts);
+            });
+        }
+    }, []);
 
     return (
         <div className="settings-panel" style={{ overflowX: 'hidden', height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -155,39 +166,13 @@ const Toolbar = ({
                             <option value="var(--font-mincho)">明朝 (標準)</option>
                             <option value="var(--font-gothic)">ゴシック (標準)</option>
                             <option value="'Hiragino Mincho ProN', 'Hiragino Mincho Pro', 'ヒラギノ明朝 ProN', 'ヒラギノ明朝 Pro', serif">ヒラギノ明朝</option>
-                            <option value="'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'ヒラギノ角ゴ ProN', sans-serif">ヒラギノ角ゴ (見やすいゴシック)</option>
-                            <option value="'FOT-筑紫Aオールド明朝 Pr6N', 'FOT-筑紫Aオールド明朝 Pr6', 'Tsukushi A Old Mincho', '筑紫Aオールド明朝', '筑紫Aオールド明朝 Pr6N', serif">筑紫Aオールド明朝</option>
-                            <option value="'FOT-筑紫Bオールド明朝 Pr6N', 'FOT-筑紫Bオールド明朝 Pr6', 'Tsukushi B Old Mincho', '筑紫Bオールド明朝', '筑紫Bオールド明朝 Pr6N', serif">筑紫Bオールド明朝</option>
-                            <option value="'FOT-筑紫Cオールド明朝 Pr6N', 'FOT-筑紫Cオールド明朝 Pr6', 'Tsukushi C Old Mincho', '筑紫Cオールド明朝', '筑紫Cオールド明朝 Pr6N', serif">筑紫Cオールド明朝</option>
+                            <option value="'Hiragino Sans', sans-serif">ヒラギノ角ゴ</option>
                             <option value="'Meiryo', sans-serif">メイリオ</option>
-                            <option value="'BIZ UDGothic', 'BIZ UDゴシック', sans-serif">BIZ UDゴシック (見やすい・太字)</option>
-                            <option value="'A-OTF A1ゴシック Std', 'A-OTF A1ゴシック StdN', 'A1ゴシック', sans-serif">A1ゴシック (見やすい太字)</option>
                             <option value="var(--font-hand)">紅道 (手書き風)</option>
                             <option value="'Klee One', cursive">クレー</option>
-                            <option value="'A-OTF 黎ミン Pr6N', 'A-OTF 黎ミン Pro', '黎ミン', serif">モリサワ 黎ミン</option>
-                            <option value="'A P-OTF 秀英にじみ明朝 StdN', 'A P-OTF 秀英にじみ明朝 Std', '秀英にじみ明朝', serif">秀英にじみ明朝</option>
-                            <option value="'02うつくし明朝体', 'うつくし明朝体', serif">うつくし明朝体</option>
-                            <option value="'A-OTF 毎日新聞明朝 Pro', '毎日新聞明朝', serif">毎日新聞明朝</option>
-                            <option value="'A-OTF A1明朝 Std', 'A1明朝', serif">A1明朝</option>
-                            <option value="'BIZ UDMincho', serif">BIZ UD明朝</option>
-                            <option value="'Kiwi Maru', serif">キウイ丸</option>
-                            <option value="'Zen Old Mincho', serif">Zenオールド明朝</option>
-                            <option value="'Hina Mincho', serif">ひな明朝</option>
-                            <option value="'Kaisei Opti', serif">解星オプティ</option>
-                            <option value="'Kaisei Tokumin', serif">解星特ミン</option>
-                            <option value="'YuMincho', 'Yu Mincho', serif">游明朝 (標準)</option>
-                            <option value="'YuMincho-Demibold', 'YuMincho-Bold', 'Yu Mincho Demibold', '游明朝体', serif">游明朝 Demibold (太字)</option>
-                            <option value="'YuGothic-Bold', 'Yu Gothic Bold', 'Yu Gothic', sans-serif">游ゴシック Bold (太字)</option>
-                            <option value="'RyuminPr6N-Ultra', 'RyuminPr6N-Heavy', 'A-OTF Ryumin Pr6N', serif">リュウミン 極太</option>
-                            <option value="'GothicMB101Pr6N-Ultra', 'A-OTF Gothic MB101 Pr6N', sans-serif">ゴシックMB101 極太</option>
-                            <option value="'ToppanBunkyuMidashiMincho-ExtraBold', 'AP-OTF Bunkyu MdMin StdN', serif">凸版文久見出し明朝</option>
-                            <option value="'FOT-UDMinchoPr6N-B', 'FOT-UDMinchoPro-B', 'UD明朝', serif">UD明朝 Bold</option>
-                            <option value="'SoukouMincho', '装甲明朝', serif">装甲明朝 (極太)</option>
-                            <option value="'GenkaiMincho', '源界明朝', serif">源界明朝</option>
-                            <option value="'EVA-Matisse_Classic', 'EVA-Matisse Classic', 'EVA明朝', serif">エヴァ明朝 (EVA-Matisse Classic)</option>
-                            <option value="'FOT-MatissePro-EB', 'FOT-マティス Pro EB', 'Matisse Pro', serif">マティス Pro EB (極太)</option>
-                            <option value="'FOT-MatissePro-UB', 'FOT-マティス Pro UB', 'Matisse Pro', serif">マティス Pro UB (超特太)</option>
-                            <option value="'Yuji Syuku', serif">Yuji Syuku (游築・手書き風)</option>
+                            {systemFonts.map((font, idx) => (
+                                <option key={idx} value={font}>{font}</option>
+                            ))}
                         </datalist>
                     </div>
                 </div>
