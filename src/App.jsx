@@ -683,7 +683,7 @@ function App() {
       setActiveTab('editor');
 
       try {
-        const usageKey = `file_usage_${projectHandle ? projectHandle.name : 'default'} `;
+        const usageKey = `file_usage_${projectHandle ? (typeof projectHandle === 'string' ? projectHandle : projectHandle.name) : 'default'} `;
         let filePath = fileName;
         if (options.path) {
           filePath = options.path;
@@ -691,9 +691,12 @@ function App() {
           const matched = allMaterialFiles.find(f => f.name === fileName);
           if (matched) filePath = matched.path;
         }
-        const newStats = { ...usageStats, [filePath]: (usageStats[filePath] || 0) + 1 };
-        setUsageStats(newStats);
-        localStorage.setItem(usageKey, JSON.stringify(newStats));
+
+        setUsageStats(prev => {
+          const newStats = { ...prev, [filePath]: (prev[filePath] || 0) + 1 };
+          localStorage.setItem(usageKey, JSON.stringify(newStats));
+          return newStats;
+        });
       } catch (e) {
         console.error('Failed to track usage:', e);
       }
@@ -709,7 +712,7 @@ function App() {
       console.error('Failed to open file:', error);
       showToast('ファイルを開けませんでした。');
     }
-  }, [allMaterialFiles, projectHandle, usageStats, showToast]);
+  }, [allMaterialFiles, projectHandle, showToast]); // Removed usageStats to fix infinite loop
 
   // Handle auto-opening file from URL parameter
   useEffect(() => {
@@ -1214,7 +1217,7 @@ function App() {
       window.removeEventListener('openSemanticGraph', handleOpenGraph);
       window.removeEventListener('openMatrixOutliner', handleOpenOutliner);
     };
-  }, [isWindowMode, handleOpenFile]); // Fixed: Added handleOpenFile for completeness, but kept isWindowMode as primary trigger
+  }, [isWindowMode]); // Removed handleOpenFile to avoid infinite loop (it's now stable anyway)
 
   // CRITICAL: Sync attributes to Body for CSS Selectors
   useEffect(() => {
