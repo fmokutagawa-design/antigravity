@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './SearchReplace.css';
 import ReplacePreviewModal from './ReplacePreviewModal';
 
@@ -37,7 +37,7 @@ const SearchReplace = ({ text, onReplace, isOpen, onClose, editorRef, allFiles =
         }
     }, [currentMatchIndex, matches, editorRef, isGrepMode]);
 
-    const handleSearch = () => {
+    const handleSearch = useCallback(() => {
         if (!searchTerm) {
             setMatches([]);
             setCurrentMatchIndex(-1);
@@ -94,9 +94,17 @@ const SearchReplace = ({ text, onReplace, isOpen, onClose, editorRef, allFiles =
 
         } catch (error) {
             console.error('Search error:', error);
-            showToast('検索パターンにエラーがあります。');
+            if (showToast) showToast('検索パターンにエラーがあります。');
         }
-    };
+    }, [searchTerm, caseSensitive, useRegex, isGrepMode, text, allFiles, showToast]);
+
+    // 検索語・オプション変更時に自動で再検索（ローカルのみ）
+    useEffect(() => {
+        if (!isOpen) return;
+        if (!isGrepMode) {
+            handleSearch();
+        }
+    }, [handleSearch, isOpen, isGrepMode]);
 
     const handleGrepJump = (result) => {
         if (onOpenFile) {
@@ -205,7 +213,7 @@ const SearchReplace = ({ text, onReplace, isOpen, onClose, editorRef, allFiles =
             setMatches([]);
             setCurrentMatchIndex(-1);
         } catch (error) {
-            console.error("Search error:", e);
+            console.error("Search error:", error);
             showToast('検索でエラーが発生しました');
         }
     };
@@ -239,18 +247,18 @@ const SearchReplace = ({ text, onReplace, isOpen, onClose, editorRef, allFiles =
         }
     };
 
-    const handleMouseMove = (e) => {
+    const handleMouseMove = useCallback((e) => {
         if (isDragging) {
             setPosition({
                 x: e.clientX - dragOffset.x,
                 y: e.clientY - dragOffset.y
             });
         }
-    };
+    }, [isDragging, dragOffset]);
 
-    const handleMouseUp = () => {
+    const handleMouseUp = useCallback(() => {
         setIsDragging(false);
-    };
+    }, []);
 
     useEffect(() => {
         if (isDragging) {
@@ -261,7 +269,7 @@ const SearchReplace = ({ text, onReplace, isOpen, onClose, editorRef, allFiles =
                 window.removeEventListener('mouseup', handleMouseUp);
             };
         }
-    }, [isDragging, dragOffset]);
+    }, [isDragging, handleMouseMove, handleMouseUp]);
 
     if (!isOpen) return null;
 
