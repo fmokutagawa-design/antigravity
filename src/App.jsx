@@ -583,6 +583,25 @@ function App() {
     projectHandleRef.current = projectHandle;
   }, [projectHandle]);
 
+  // Reference Panel State
+  const [showReference, setShowReference] = useState(false);
+  const [referenceContent, setReferenceContent] = useState('');
+  const [referenceFileName, setReferenceFileName] = useState('');
+  const [referenceWidth, setReferenceWidth] = useState(400); // Default width
+  const [isResizing, setIsResizing] = useState(false);
+  const [usageStats, setUsageStats] = useState({}); // Track file access frequency
+
+  const [activeTab, setActiveTab] = useState('editor'); // 'editor' or 'preview'
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [showOutline, setShowOutline] = useState(false); // Outline Panel State
+
+  const [lastSaved, setLastSaved] = useState(null);
+  const lastSavedTextRef = useRef('');
+
+  const editorRef = React.useRef(null);
+  const fileInputRef = useRef(null);
+  const [projectContextMenu, setProjectContextMenu] = useState(null); // { x, y }
+
   const {
     materialsTree,
     allMaterialFiles,
@@ -703,26 +722,6 @@ function App() {
     }
   }, [allMaterialFiles, pendingFileSelect, handleOpenFile]);
 
-  // Reference Panel State
-  const [showReference, setShowReference] = useState(false);
-  const [referenceContent, setReferenceContent] = useState('');
-  const [referenceFileName, setReferenceFileName] = useState('');
-  const [referenceWidth, setReferenceWidth] = useState(400); // Default width
-  const [isResizing, setIsResizing] = useState(false);
-  const [usageStats, setUsageStats] = useState({}); // Track file access frequency
-
-  const [activeTab, setActiveTab] = useState('editor'); // 'editor' or 'preview'
-  // const [isAIOpen, setSidebarTab('ai')] = useState(false); // Removed
-  // const [showCandidateBox, setSidebarTab('candidates')] = useState(false); // Removed
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [showOutline, setShowOutline] = useState(false); // Outline Panel State
-
-  const [lastSaved, setLastSaved] = useState(null);
-  const lastSavedTextRef = useRef('');
-
-  const editorRef = React.useRef(null);
-  const fileInputRef = useRef(null);
-  const [projectContextMenu, setProjectContextMenu] = useState(null); // { x, y }
 
   const handleLaunchAI = useCallback((mode, options = {}) => {
     const modeNames = {
