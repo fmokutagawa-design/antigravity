@@ -577,6 +577,131 @@ function App() {
     rapidModeDefault: false,
     todoCategories: ['背景', '人物', '心理', '描写', '設定', '伏線', '調査', 'その他'],
   });
+  /* Fix for Stale Closure: Use Ref to track projectHandle */
+  const projectHandleRef = React.useRef(projectHandle);
+  React.useEffect(() => {
+    projectHandleRef.current = projectHandle;
+  }, [projectHandle]);
+
+  const {
+    materialsTree,
+    allMaterialFiles,
+    tags: availableTags,
+    linkGraph,
+    refreshMaterials,
+    isLoading: isMaterialsLoading
+  } = useMaterials(projectHandle);
+
+  // Update fileTree when materialsTree changes
+  useEffect(() => {
+    setFileTree(materialsTree);
+    if (projectHandle) {
+      setIsProjectMode(true);
+    }
+  }, [materialsTree, projectHandle]);
+
+  // Session Stats State
+  const [sessionStartTotal, setSessionStartTotal] = useState(null);
+  const [currentSessionChars, setCurrentSessionChars] = useState(0);
+
+  // Calculate total characters in all files
+  const calculateTotalChars = useCallback(() => {
+    if (!allMaterialFiles) return 0;
+    let total = 0;
+    for (const file of allMaterialFiles) {
+      if (activeFileHandle && file.handle && activeFileHandle.isSameEntry && file.handle.isSameEntry(activeFileHandle)) {
+        total += (parseNote(text).body?.length || 0);
+      } else {
+        total += (file.body?.length || 0);
+      }
+    }
+    return total;
+  }, [allMaterialFiles, activeFileHandle, text]);
+
+  // Initialize session start total
+  useEffect(() => {
+    if (allMaterialFiles && allMaterialFiles.length > 0 && sessionStartTotal === null) {
+      setSessionStartTotal(calculateTotalChars());
+    }
+  }, [allMaterialFiles, sessionStartTotal, calculateTotalChars]);
+
+  // Update session chars whenever text or files change
+  useEffect(() => {
+    if (sessionStartTotal !== null) {
+      const currentTotal = calculateTotalChars();
+      setCurrentSessionChars(currentTotal - sessionStartTotal);
+    }
+  }, [calculateTotalChars, sessionStartTotal]);
+
+  const handleResetSession = () => {
+    setSessionStartTotal(calculateTotalChars());
+    setCurrentSessionChars(0);
+  };
+
+  const handleOpenFile = useCallback(async (fileHandle, fileName, options = {}) => {
+    try {
+      let targetHandle = fileHandle;
+      if (!targetHandle && fileName && allMaterialFiles) {
+        const found = allMaterialFiles.find(f => f.name === fileName || (f.handle && typeof f.handle === 'string' && f.handle.endsWith(fileName)));
+        if (found) {
+          targetHandle = found.handle;
+        } else {
+          const foundTxt = allMaterialFiles.find(f => f.name === `${fileName}.txt`);
+          if (foundTxt) targetHandle = foundTxt.handle;
+        }
+      }
+
+      if (!targetHandle) {
+        console.warn(`File not found: ${fileName} (handle is null)`);
+        showToast(`ファイル "${fileName}" が見つかりませんでした。`);
+        return;
+      }
+
+      const content = await fileSystem.readFile(targetHandle);
+      setText(content);
+      lastSavedTextRef.current = content;
+      setActiveFileHandle(targetHandle);
+      setActiveTab('editor');
+
+      try {
+        const usageKey = `file_usage_${projectHandle ? projectHandle.name : 'default'} `;
+        let filePath = fileName;
+        if (options.path) {
+          filePath = options.path;
+        } else {
+          const matched = allMaterialFiles.find(f => f.name === fileName);
+          if (matched) filePath = matched.path;
+        }
+        const newStats = { ...usageStats, [filePath]: (usageStats[filePath] || 0) + 1 };
+        setUsageStats(newStats);
+        localStorage.setItem(usageKey, JSON.stringify(newStats));
+      } catch (e) {
+        console.error('Failed to track usage:', e);
+      }
+
+      if (options.position !== undefined && editorRef.current) {
+        setTimeout(() => {
+          if (editorRef.current && editorRef.current.setCursorPosition) {
+            editorRef.current.setCursorPosition(options.position);
+          }
+        }, 100);
+      }
+    } catch (error) {
+      console.error('Failed to open file:', error);
+      showToast('ファイルを開けませんでした。');
+    }
+  }, [allMaterialFiles, projectHandle, usageStats, showToast]);
+
+  // Handle auto-opening file from URL parameter
+  useEffect(() => {
+    if (pendingFileSelect && allMaterialFiles && allMaterialFiles.length > 0) {
+      const target = allMaterialFiles.find(f => f.name === pendingFileSelect || (f.handle && f.handle.name === pendingFileSelect));
+      if (target) {
+        handleOpenFile(target.handle, target.name);
+        setPendingFileSelect(null); // Clear after opening
+      }
+    }
+  }, [allMaterialFiles, pendingFileSelect, handleOpenFile]);
 
   // Reference Panel State
   const [showReference, setShowReference] = useState(false);
@@ -884,255 +1009,6 @@ function App() {
   const [searchReplaceInitialTerm, setSearchReplaceInitialTerm] = useState('');
   const [searchReplaceInitialGrepMode, setSearchReplaceInitialGrepMode] = useState(false);
 
-
-
-  // CRITICAL: Sync attributes to Body for CSS Selectors
-  useEffect(() => {
-    document.body.dataset.colorTheme = settings.colorTheme || 'light';
-    const paperStyle = settings.paperStyle || 'plain';
-    document.body.dataset.paperStyle = paperStyle === 'grid' ? 'manuscript' : paperStyle;
-  }, [settings.colorTheme, settings.paperStyle]);
-
-  // Determine effective settings for rendering
-  // If in Window Mode, override fontSize with reference window specific size
-  const effectiveSettings = React.useMemo(() => {
-    // 'isVertical' is already inside 'settings'.
-    // No need to merge external variable (which doesn't exist).
-
-    if (isWindowMode) {
-      // windowモードでは settings.fontSize をそのまま使う
-      // fontSize が未設定の場合のみ defaultReferenceWindowFontSize から算出
-      const fontSize = settings.fontSize || Math.round((settings.defaultReferenceWindowFontSize || 1.1) * 12);
-      return {
-        ...settings,
-        fontSize
-      };
-    }
-    return settings;
-  }, [settings, isWindowMode]);
-
-  const handlePopOutTab = (tabName, fileHandle = null) => {
-    const url = new URL(window.location.href);
-    url.searchParams.set('mode', 'window');
-    url.searchParams.set('tab', tabName);
-    if (fileHandle) {
-      // Electron: fileHandle is a string path → pass full path for direct read
-      // Browser: fileHandle is a FileSystemHandle → pass name for pendingFileSelect
-      if (typeof fileHandle === 'string') {
-        url.searchParams.set('filepath', fileHandle); // Full path for Electron direct read
-        url.searchParams.set('file', fileHandle.split('/').pop().split('\\').pop());
-      } else {
-        url.searchParams.set('file', fileHandle.name);
-      }
-    }
-    // Electron: pass project path so new window can auto-load
-    if (isElectron && projectHandle) {
-      url.searchParams.set('project', typeof projectHandle === 'string' ? projectHandle : '');
-    }
-    window.open(url.toString(), '_blank', 'width=1000,height=800,menubar=no,toolbar=no');
-  };
-
-  const handleResumeProject = async () => {
-    if (!savedProjectHandle) return;
-
-    try {
-      if (isElectron) {
-        // Electron: savedProjectHandle is string path, no permission API needed
-        // Robustness: Handle if DB has object wrapper
-        const projectPath = savedProjectHandle;
-
-        setProjectHandle(projectPath);
-        const tree = await fileSystem.readDirectory({ handle: projectPath }); // Ensure format
-        setFileTree(tree);
-        setIsProjectMode(true);
-        setSavedProjectHandle(null);
-      } else {
-        // Browser: FileSystemHandle
-        // Request permission (must be triggered by user action)
-        if (savedProjectHandle.requestPermission) {
-          const permission = await savedProjectHandle.requestPermission({ mode: 'readwrite' });
-          if (permission === 'granted') {
-            setProjectHandle(savedProjectHandle);
-            const tree = await fileSystem.readDirectory(savedProjectHandle);
-            setFileTree(tree);
-            setIsProjectMode(true); // Ensure project mode is active
-            setSavedProjectHandle(null); // Clear saved handle as it's now active
-          } else {
-            showToast('権限が許可されませんでした。');
-          }
-        } else {
-          // Fallback if handle is malformed
-          console.error("Invalid handle format", savedProjectHandle);
-          showToast("プロジェクト情報の復元に失敗しました。再度フォルダを開いてください。");
-          setSavedProjectHandle(null);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to resume project:', error);
-      showToast('プロジェクトの再開に失敗しました。');
-      await clearProjectHandle();
-      setSavedProjectHandle(null);
-    }
-  };
-
-
-
-  const {
-    materialsTree,
-    allMaterialFiles,
-    tags: availableTags,
-    linkGraph,
-    refreshMaterials,
-    isLoading: isMaterialsLoading
-  } = useMaterials(projectHandle);
-
-
-
-
-  // Update fileTree when materialsTree changes
-  // Update fileTree when materialsTree changes
-  useEffect(() => {
-    // Always update fileTree, even if empty, to reflect current project state
-    setFileTree(materialsTree);
-
-    if (projectHandle) {
-      setIsProjectMode(true);
-      // Only switch tab if we have files and aren't already on files tab
-      /* Removed auto-switch to prevent annoying jumps
-      if (materialsTree.length > 0 && sidebarTab !== 'files') {
-        setSidebarTab('files');
-      }
-      */
-    }
-  }, [materialsTree, projectHandle]);
-
-  // Session Stats State
-  const [sessionStartTotal, setSessionStartTotal] = useState(null);
-  const [currentSessionChars, setCurrentSessionChars] = useState(0);
-
-  // Calculate total characters in all files (including current edits)
-  const calculateTotalChars = useCallback(() => {
-    if (!allMaterialFiles) return 0;
-
-    // Sum all files
-    let total = 0;
-    for (const file of allMaterialFiles) {
-      if (activeFileHandle && file.handle && activeFileHandle.isSameEntry && file.handle.isSameEntry(activeFileHandle)) {
-        // This is the active file, use 'text' processing
-        // Note: text includes metadata if showMetadata is true? 
-        // parseNote handles stripping metadata for char count
-        total += (parseNote(text).body?.length || 0);
-      } else {
-        total += (file.body?.length || 0);
-      }
-    }
-    return total;
-  }, [allMaterialFiles, activeFileHandle, text]);
-
-  // Initialize session start total
-  useEffect(() => {
-    if (allMaterialFiles && allMaterialFiles.length > 0 && sessionStartTotal === null) {
-      // Initial load
-      setSessionStartTotal(calculateTotalChars());
-    }
-  }, [calculateTotalChars]);
-
-  // Update session chars whenever text or files change
-  useEffect(() => {
-    if (sessionStartTotal !== null) {
-      const currentTotal = calculateTotalChars();
-      setCurrentSessionChars(currentTotal - sessionStartTotal);
-    }
-  }, [calculateTotalChars, sessionStartTotal]);
-
-  const handleResetSession = () => {
-    setSessionStartTotal(calculateTotalChars());
-    setCurrentSessionChars(0);
-  };
-
-  // Helper to read file content (Common for Editor, New Window, etc.)
-  const readFileContent = async (handle) => {
-    return await fileSystem.readFile(handle);
-  };
-
-  const handleOpenFile = useCallback(async (fileHandle, fileName, options = {}) => {
-    try {
-      // FIX: Resolve handle from name if null (Called from StoryView)
-      let targetHandle = fileHandle;
-      if (!targetHandle && fileName && allMaterialFiles) {
-        // Try to find by name or path
-        const found = allMaterialFiles.find(f => f.name === fileName || (f.handle && typeof f.handle === 'string' && f.handle.endsWith(fileName)));
-        if (found) {
-          targetHandle = found.handle;
-        } else {
-          // Try appending .txt
-          const foundTxt = allMaterialFiles.find(f => f.name === `${fileName}.txt`);
-          if (foundTxt) targetHandle = foundTxt.handle;
-        }
-      }
-
-      if (!targetHandle) {
-        console.warn(`File not found: ${fileName} (handle is null)`);
-        showToast(`ファイル "${fileName}" が見つかりませんでした。`);
-        return;
-      }
-
-      // Use abstracted fileSystem to support both Electron and Browser
-      const content = await readFileContent(targetHandle);
-
-      setText(content);
-      lastSavedTextRef.current = content;
-      setActiveFileHandle(targetHandle);
-      setActiveTab('editor');
-
-      // Track usage
-      try {
-        const usageKey = `file_usage_${projectHandle ? projectHandle.name : 'default'} `;
-
-        // Try to find full path
-        let filePath = fileName;
-        if (options.path) {
-          filePath = options.path;
-        } else {
-          // Try to find in allMaterialFiles
-          const matched = allMaterialFiles.find(f => f.name === fileName);
-          if (matched) filePath = matched.path;
-        }
-
-        const newStats = { ...usageStats, [filePath]: (usageStats[filePath] || 0) + 1 };
-        setUsageStats(newStats);
-        localStorage.setItem(usageKey, JSON.stringify(newStats));
-      } catch (e) {
-        console.error('Failed to track usage:', e);
-      }
-
-      // If position is provided, set cursor position after a brief delay
-      if (options.position !== undefined && editorRef.current) {
-        setTimeout(() => {
-          if (editorRef.current && editorRef.current.setCursorPosition) {
-            editorRef.current.setCursorPosition(options.position);
-          }
-        }, 100);
-      }
-    } catch (error) {
-      console.error('Failed to open file:', error);
-      showToast('ファイルを開けませんでした。');
-    }
-  }, [allMaterialFiles, projectHandle, usageStats, showToast]);
-
-  // Handle auto-opening file from URL parameter
-  useEffect(() => {
-    if (pendingFileSelect && allMaterialFiles && allMaterialFiles.length > 0) {
-      const target = allMaterialFiles.find(f => f.name === pendingFileSelect || (f.handle && f.handle.name === pendingFileSelect));
-      if (target) {
-        handleOpenFile(target.handle, target.name);
-        setPendingFileSelect(null); // Clear after opening
-      }
-    }
-  }, [allMaterialFiles, pendingFileSelect, handleOpenFile]);
-
-
-
   // Load settings and presets from local storage on mount
   useEffect(() => {
     // ウィンドウモードでファイル指定がある場合、保存テキストの復元をスキップ
@@ -1339,7 +1215,102 @@ function App() {
       window.removeEventListener('openSemanticGraph', handleOpenGraph);
       window.removeEventListener('openMatrixOutliner', handleOpenOutliner);
     };
-  }, [isWindowMode, handleOpenFile]);
+  }, [isWindowMode, handleOpenFile]); // Fixed: Added handleOpenFile for completeness, but kept isWindowMode as primary trigger
+
+  // CRITICAL: Sync attributes to Body for CSS Selectors
+  useEffect(() => {
+    document.body.dataset.colorTheme = settings.colorTheme || 'light';
+    const paperStyle = settings.paperStyle || 'plain';
+    document.body.dataset.paperStyle = paperStyle === 'grid' ? 'manuscript' : paperStyle;
+  }, [settings.colorTheme, settings.paperStyle]);
+
+  // Determine effective settings for rendering
+  // If in Window Mode, override fontSize with reference window specific size
+  const effectiveSettings = React.useMemo(() => {
+    // 'isVertical' is already inside 'settings'.
+    // No need to merge external variable (which doesn't exist).
+
+    if (isWindowMode) {
+      // windowモードでは settings.fontSize をそのまま使う
+      // fontSize が未設定の場合のみ defaultReferenceWindowFontSize から算出
+      const fontSize = settings.fontSize || Math.round((settings.defaultReferenceWindowFontSize || 1.1) * 12);
+      return {
+        ...settings,
+        fontSize
+      };
+    }
+    return settings;
+  }, [settings, isWindowMode]);
+
+  const handlePopOutTab = (tabName, fileHandle = null) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('mode', 'window');
+    url.searchParams.set('tab', tabName);
+    if (fileHandle) {
+      // Electron: fileHandle is a string path → pass full path for direct read
+      // Browser: fileHandle is a FileSystemHandle → pass name for pendingFileSelect
+      if (typeof fileHandle === 'string') {
+        url.searchParams.set('filepath', fileHandle); // Full path for Electron direct read
+        url.searchParams.set('file', fileHandle.split('/').pop().split('\\').pop());
+      } else {
+        url.searchParams.set('file', fileHandle.name);
+      }
+    }
+    // Electron: pass project path so new window can auto-load
+    if (isElectron && projectHandle) {
+      url.searchParams.set('project', typeof projectHandle === 'string' ? projectHandle : '');
+    }
+    window.open(url.toString(), '_blank', 'width=1000,height=800,menubar=no,toolbar=no');
+  };
+
+  const handleResumeProject = async () => {
+    if (!savedProjectHandle) return;
+
+    try {
+      if (isElectron) {
+        // Electron: savedProjectHandle is string path, no permission API needed
+        // Robustness: Handle if DB has object wrapper
+        const projectPath = savedProjectHandle;
+
+        setProjectHandle(projectPath);
+        const tree = await fileSystem.readDirectory({ handle: projectPath }); // Ensure format
+        setFileTree(tree);
+        setIsProjectMode(true);
+        setSavedProjectHandle(null);
+      } else {
+        // Browser: FileSystemHandle
+        // Request permission (must be triggered by user action)
+        if (savedProjectHandle.requestPermission) {
+          const permission = await savedProjectHandle.requestPermission({ mode: 'readwrite' });
+          if (permission === 'granted') {
+            setProjectHandle(savedProjectHandle);
+            const tree = await fileSystem.readDirectory(savedProjectHandle);
+            setFileTree(tree);
+            setIsProjectMode(true); // Ensure project mode is active
+            setSavedProjectHandle(null); // Clear saved handle as it's now active
+          } else {
+            showToast('権限が許可されませんでした。');
+          }
+        } else {
+          // Fallback if handle is malformed
+          console.error("Invalid handle format", savedProjectHandle);
+          showToast("プロジェクト情報の復元に失敗しました。再度フォルダを開いてください。");
+          setSavedProjectHandle(null);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to resume project:', error);
+      showToast('プロジェクトの再開に失敗しました。');
+      await clearProjectHandle();
+      setSavedProjectHandle(null);
+    }
+  };
+
+
+
+
+
+
 
   const handleTextChange = useCallback((newContent) => {
     if (showMetadata) {
@@ -1385,12 +1356,7 @@ function App() {
     }
   };
 
-
-  /* Fix for Stale Closure: Use Ref to track projectHandle */
-  const projectHandleRef = React.useRef(projectHandle);
-  React.useEffect(() => {
-    projectHandleRef.current = projectHandle;
-  }, [projectHandle]);
+  /* Removed duplicate projectHandleRef (now at line 580) */
 
   const handleOpenLink = async (linkTarget) => {
     try {
