@@ -563,7 +563,10 @@ function App() {
   // Handlers
   const [showMetadata, setShowMetadata] = useState(false); // Default to hiding metadata
   const [isSidebarVisible, setIsSidebarVisible] = useState(true); // Focus Mode Toggle
-  const [isWindowMode, setIsWindowMode] = useState(false); // Window Mode State
+  const [isWindowMode] = useState(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('mode') === 'window';
+  }); // Window Mode State
 
   // Project management state
   const [sidebarTab, setSidebarTab] = useState('settings'); // 'files', 'tags', 'links', or 'settings'
@@ -1088,6 +1091,9 @@ function App() {
       window.api.invoke('app:getSettings').then(async (data) => {
         if (!data) return;
 
+        // ウィンドウモードでは Electron 永続設定でメイン設定を上書きしない
+        if (isWindowMode) return;
+
         // Restore Settings
         if (data.settings) {
           setSettings(prev => ({ ...prev, ...data.settings }));
@@ -1154,7 +1160,6 @@ function App() {
 
     const params = new URLSearchParams(window.location.search);
     if (params.get('mode') === 'window') {
-      setIsWindowMode(true);
       setIsSidebarVisible(false);
       const targetTab = params.get('tab');
       if (targetTab) setActiveTab(targetTab);
@@ -1598,6 +1603,7 @@ function App() {
   // Save settings and state to persistent storage (Electron)
   useEffect(() => {
     if (!isElectron || !window.api) return;
+    if (isWindowMode) return; // 子ウィンドウの設定は共有設定に書かない
 
     const saveTimeout = setTimeout(async () => {
       const persistentData = {
