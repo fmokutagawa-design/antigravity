@@ -935,26 +935,24 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
             </>
           )}
           <div className="context-menu-item" onClick={() => {
-            // Paste is insecure in some browsers but works in Electron context usually or fires event
-            // Note: document.execCommand('paste') often falls due to security
-            // If it fails, user uses Ctrl+V.
-            // But we can try focusing and invoking.
-            textareaRef.current.focus();
+            const ta = textareaRef.current;
+            if (!ta) { setEditorContextMenu(null); return; }
             navigator.clipboard.readText().then(text => {
-              // We need to use our paste logic to handle vertical/history?
-              // But simple paste inserts text.
-              // We can use the pasteFromHistory method exposed or just let event bubble?
-              // Easier: triggering paste event or just inserting
-              // Reuse handleChange logic via pasteFromHistory if possible?
-              // The parent component has pasteFromHistory via Ref.
-              // But we are INSIDE editor.
-              // We can call internal logic.
-              // However, let's stick to standard execCommand or clipboard API.
-              // Since this is Editor.jsx, we can use the `pasteFromHistory` logic defined in useImperativeHandle?
-              // No, unable to call it directly unless we extract it.
-              document.execCommand('paste');
-            }).catch(err => {
-              document.execCommand('paste');
+              if (!text) { setEditorContextMenu(null); return; }
+              const start = ta.selectionStart;
+              const end = ta.selectionEnd;
+              const currentVal = ta.value;
+              const rawVal = settings.isVertical ? fromVerticalDisplay(currentVal) : currentVal;
+              const newValue = rawVal.substring(0, start) + text + rawVal.substring(end);
+              pushHistory(value, newValue, start);
+              nextCursorPos.current = start + text.length;
+              onChange(newValue);
+              addToClipboard(text);
+              requestAnimationFrame(() => {
+                ta.focus();
+              });
+            }).catch(() => {
+              ta.focus();
             });
             setEditorContextMenu(null);
           }}>
