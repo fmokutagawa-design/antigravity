@@ -1,10 +1,55 @@
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
 const isDev = !app.isPackaged;
 
+// Mac用Editメニュー設定
+const template = [
+    ...(process.platform === 'darwin' ? [{
+        label: app.name,
+        submenu: [
+            { role: 'about' },
+            { type: 'separator' },
+            { role: 'hide' },
+            { role: 'hideOthers' },
+            { role: 'unhide' },
+            { type: 'separator' },
+            { role: 'quit' }
+        ]
+    }] : []),
+    {
+        label: 'Edit',
+        submenu: [
+            { role: 'undo' },
+            { role: 'redo' },
+            { type: 'separator' },
+            { role: 'cut' },
+            { role: 'copy' },
+            { role: 'paste' },
+            { role: 'selectAll' }
+        ]
+    },
+    {
+        label: 'View',
+        submenu: [
+            { role: 'reload' },
+            { role: 'forceReload' },
+            { role: 'toggleDevTools' },
+            { type: 'separator' },
+            { role: 'resetZoom' },
+            { role: 'zoomIn' },
+            { role: 'zoomOut' },
+            { type: 'separator' },
+            { role: 'togglefullscreen' }
+        ]
+    }
+];
+
 function createWindow() {
+    const menu = Menu.buildFromTemplate(template);
+    Menu.setApplicationMenu(menu);
+
     const win = new BrowserWindow({
         width: 1200,
         height: 900,

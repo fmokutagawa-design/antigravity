@@ -88,6 +88,8 @@ function App() {
     },
     strictManuscriptMode: false,
     enableGhostText: true, // Ghost Text Toggle
+    showSelectionToolbar: true, // 範囲選択ツールバーの表示
+    showCardCreate: false, // カード化ボタン（デフォルト非表示）
     customCSS: '', // User custom CSS
   });
 

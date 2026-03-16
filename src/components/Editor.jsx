@@ -130,7 +130,7 @@ function computeTotalLines(text, maxPerLine) {
 
 import ReactDOM from 'react-dom';
 
-const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertRuby, onInsertLink, onLaunchAI, ghostText, setGhostText, corrections = [], onShorten, onDescribe, onCardCreate }, ref) => {
+const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertRuby, onInsertLink, onLaunchAI, ghostText, setGhostText, corrections = [], onShorten, onDescribe, onCardCreate, showSelectionToolbar = true }, ref) => {
   const textareaRef = useRef(null);
   const [editorContextMenu, setEditorContextMenu] = React.useState(null);
 
@@ -985,11 +985,12 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         </div>,
         document.body
       )}
-      {ReactDOM.createPortal(
+      {showSelectionToolbar && ReactDOM.createPortal(
         <SelectionToolbar
           visible={selectionToolbar.visible}
           position={selectionToolbar.position}
           showAIActions={settings.enableSelectionAI || false}
+          showCardCreate={settings.showCardCreate !== false}
           onCopy={async () => {
             await navigator.clipboard.writeText(selectionToolbar.text);
             setSelectionToolbar({ ...selectionToolbar, visible: false });

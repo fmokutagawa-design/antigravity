@@ -112,6 +112,8 @@ const Toolbar = ({
                     <Toggle active={showOutline} onClick={onToggleOutline} label="アウトライン" />
                     <Toggle active={showMetadata} onClick={() => setShowMetadata(!showMetadata)} label="メタ表示" />
                     <Toggle active={settings.showLogo !== false} onClick={() => handleChange('showLogo', settings.showLogo === false)} label="ロゴ表示" />
+                    <Toggle active={settings.showSelectionToolbar !== false} onClick={() => handleChange('showSelectionToolbar', settings.showSelectionToolbar === false)} label="範囲選択ツールバー" />
+                    <Toggle active={settings.showCardCreate === true} onClick={() => handleChange('showCardCreate', !settings.showCardCreate)} label="カード化ボタン" />
                     <div className="control-item">
                         <label>UIスケール</label>
                         <select

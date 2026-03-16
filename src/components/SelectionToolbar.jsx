@@ -9,7 +9,8 @@ const SelectionToolbar = ({
     onDescribe,
     onCardCreate,
     visible,
-    showAIActions = true
+    showAIActions = true,
+    showCardCreate = true
 }) => {
     if (!visible || !position) return null;
 
@@ -20,7 +21,7 @@ const SelectionToolbar = ({
                 position: 'fixed',
                 top: `${position.top}px`,
                 left: `${position.left}px`,
-                transform: 'translate(-50%, -100%)', // Center horizontally, place above
+                transform: 'translate(-50%, -100%)',
                 marginTop: '-10px',
                 backgroundColor: 'var(--bg-popover, #2c3e50)',
                 color: 'white',
@@ -35,7 +36,13 @@ const SelectionToolbar = ({
                 pointerEvents: 'auto',
                 animation: 'fadeIn 0.15s ease-out'
             }}
-            onMouseDown={(e) => e.preventDefault()} // Prevent losing focus/selection
+            onMouseDown={(e) => {
+                // ボタンクリック時のみ preventDefault（選択状態保持）
+                // それ以外ではブラウザのデフォルト動作を許可
+                if (e.target.tagName === 'BUTTON') {
+                    e.preventDefault();
+                }
+            }}
         >
             <button
                 onClick={onCopy}
@@ -53,99 +60,23 @@ const SelectionToolbar = ({
                 className="toolbar-btn"
                 title="コピー"
             >
-                ✂️
+                📋
             </button>
             {showAIActions && (
             <>
             <div style={{ width: '1px', background: 'rgba(255,255,255,0.2)', margin: '2px 0' }} />
-            <button
-                onClick={onRewrite}
-                style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'white',
-                    padding: '6px 10px',
-                    cursor: 'pointer',
-                    borderRadius: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                }}
-                className="toolbar-btn"
-            >
-                🔄 リライト
-            </button>
-            <button
-                onClick={onProofread}
-                style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'white',
-                    padding: '6px 10px',
-                    cursor: 'pointer',
-                    borderRadius: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                }}
-                className="toolbar-btn"
-            >
-                📝 校正
-            </button>
-            <button
-                onClick={onShorten}
-                style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'white',
-                    padding: '6px 10px',
-                    cursor: 'pointer',
-                    borderRadius: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                }}
-                className="toolbar-btn"
-            >
-                📐 短く
-            </button>
-            <button
-                onClick={onDescribe}
-                style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'white',
-                    padding: '6px 10px',
-                    cursor: 'pointer',
-                    borderRadius: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                }}
-                className="toolbar-btn"
-            >
-                🎨 描写
-            </button>
+            <button onClick={onRewrite} style={{ background: 'transparent', border: 'none', color: 'white', padding: '6px 10px', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px' }} className="toolbar-btn">🔄 リライト</button>
+            <button onClick={onProofread} style={{ background: 'transparent', border: 'none', color: 'white', padding: '6px 10px', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px' }} className="toolbar-btn">📝 校正</button>
+            <button onClick={onShorten} style={{ background: 'transparent', border: 'none', color: 'white', padding: '6px 10px', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px' }} className="toolbar-btn">📐 短く</button>
+            <button onClick={onDescribe} style={{ background: 'transparent', border: 'none', color: 'white', padding: '6px 10px', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px' }} className="toolbar-btn">🎨 描写</button>
             </>
             )}
+            {showCardCreate && (
+            <>
             <div style={{ width: '1px', background: 'rgba(255,255,255,0.2)', margin: '2px 0' }} />
-            <button
-                onClick={onCardCreate}
-                style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'white',
-                    padding: '6px 10px',
-                    cursor: 'pointer',
-                    borderRadius: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                }}
-                className="toolbar-btn"
-            >
-                🃏 カード化
-            </button>
+            <button onClick={onCardCreate} style={{ background: 'transparent', border: 'none', color: 'white', padding: '6px 10px', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px' }} className="toolbar-btn">🃏 カード化</button>
+            </>
+            )}
 
             <style>{`
                 .toolbar-btn:hover {
