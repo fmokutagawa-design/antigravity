@@ -404,13 +404,59 @@ const SearchReplace = ({ text, onReplace, isOpen, onClose, editorRef, allFiles =
                     ) : (
                         /* Standard Results display */
                         matches.length > 0 && (
-                            <div className="search-results">
-                                <span>
-                                    {matches.length}件見つかりました ({currentMatchIndex + 1}/{matches.length})
-                                </span>
-                                <div className="navigation-buttons">
-                                    <button onClick={goToPrevious} title="前へ (Shift+Enter)">↑</button>
-                                    <button onClick={goToNext} title="次へ (Enter)">↓</button>
+                            <div className="search-results-area">
+                                <div className="search-results">
+                                    <span>
+                                        {matches.length} 件 ({currentMatchIndex + 1}/{matches.length})
+                                    </span>
+                                    <div className="navigation-buttons">
+                                        <button onClick={goToPrevious} title="前へ (Shift+Enter)">▲</button>
+                                        <button onClick={goToNext} title="次へ (Enter)">▼</button>
+                                    </div>
+                                </div>
+                                <div className="search-results-list" style={{ marginTop: '4px', maxHeight: '200px', overflowY: 'auto', borderTop: '1px solid #eee' }}>
+                                    {matches.map((match, i) => {
+                                        const contextStart = Math.max(0, match.index - 15);
+                                        const contextEnd = Math.min(text.length, match.index + match.length + 15);
+                                        const before = text.substring(contextStart, match.index);
+                                        const matched = text.substring(match.index, match.index + match.length);
+                                        const after = text.substring(match.index + match.length, contextEnd);
+                                        // 行番号を計算
+                                        const lineNumber = text.substring(0, match.index).split('\n').length;
+
+                                        return (
+                                            <div
+                                                key={i}
+                                                className="grep-item"
+                                                onClick={() => setCurrentMatchIndex(i)}
+                                                style={{
+                                                    padding: '4px 8px',
+                                                    borderBottom: '1px solid #f0f0f0',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.85rem',
+                                                    whiteSpace: 'nowrap',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    background: i === currentMatchIndex ? 'rgba(52, 152, 219, 0.12)' : 'transparent',
+                                                    borderLeft: i === currentMatchIndex ? '3px solid var(--accent-color, #3498db)' : '3px solid transparent',
+                                                }}
+                                                title={`${lineNumber}行目: ${before}${matched}${after}`}
+                                            >
+                                                <span style={{ color: '#999', fontSize: '0.75rem', marginRight: '6px', minWidth: '2.5em', display: 'inline-block' }}>
+                                                    {lineNumber}:
+                                                </span>
+                                                <span style={{ color: 'var(--text-main, #666)' }}>
+                                                    {contextStart > 0 ? '…' : ''}{before}
+                                                </span>
+                                                <span style={{ fontWeight: 'bold', color: 'var(--accent-color, #3498db)', background: 'rgba(52,152,219,0.1)', borderRadius: '2px', padding: '0 1px' }}>
+                                                    {matched}
+                                                </span>
+                                                <span style={{ color: 'var(--text-main, #666)' }}>
+                                                    {after}{contextEnd < text.length ? '…' : ''}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )
