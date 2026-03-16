@@ -12,6 +12,7 @@ const SearchReplace = ({ text, onReplace, isOpen, onClose, editorRef, allFiles =
     const [isDragging, setIsDragging] = useState(false);
     const [position, setPosition] = useState({ x: window.innerWidth - 450, y: 80 });
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+    const [isComposing, setIsComposing] = useState(false);
 
     // Grep State
     const [isGrepMode, setIsGrepMode] = useState(false);
@@ -99,12 +100,14 @@ const SearchReplace = ({ text, onReplace, isOpen, onClose, editorRef, allFiles =
     }, [searchTerm, caseSensitive, useRegex, isGrepMode, text, allFiles, showToast]);
 
     // 検索語・オプション変更時に自動で再検索（ローカルのみ）
+    // ★ 変更: 検索の自動実行をIME確定後のみに
     useEffect(() => {
         if (!isOpen) return;
+        if (isComposing) return;  // ★ IME変換中は検索しない
         if (!isGrepMode) {
             handleSearch();
         }
-    }, [handleSearch, isOpen, isGrepMode]);
+    }, [handleSearch, isOpen, isGrepMode, isComposing]);
 
     const handleGrepJump = (result) => {
         if (onOpenFile) {
@@ -305,6 +308,11 @@ const SearchReplace = ({ text, onReplace, isOpen, onClose, editorRef, allFiles =
                             placeholder={isGrepMode ? "Grep検索 (全ファイル)" : "検索..."}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
+                            onCompositionStart={() => setIsComposing(true)}
+                            onCompositionEnd={(e) => {
+                                setIsComposing(false);
+                                setSearchTerm(e.target.value);
+                            }}
                             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                             autoFocus
                         />
