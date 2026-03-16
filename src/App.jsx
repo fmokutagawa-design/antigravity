@@ -88,8 +88,6 @@ function App() {
     },
     strictManuscriptMode: false,
     enableGhostText: true, // Ghost Text Toggle
-    showSelectionToolbar: true, // 範囲選択ツールバーの表示
-    showCardCreate: false, // カード化ボタン（デフォルト非表示）
     customCSS: '', // User custom CSS
   });
 
@@ -743,35 +741,13 @@ function App() {
     setSidebarTab('ai');
   }, [showToast]);
 
-  const handleShorten = useCallback((text = '') => {
-    const selectedText = text || window.getSelection().toString();
-    if (selectedText) {
-      handleLaunchAI('shorten', { selectedText });
-    }
-  }, [handleLaunchAI]);
 
-  const handleDescribe = useCallback((text = '') => {
-    const selectedText = text || window.getSelection().toString();
-    if (selectedText) {
-      handleLaunchAI('describe', { selectedText });
-    }
-  }, [handleLaunchAI]);
 
   const [showCardCreator, setShowCardCreator] = useState(false);
-  const [cardCreatorInitialData, setCardCreatorInitialData] = useState({});
+
   const [cardCreatorInitialType, setCardCreatorInitialType] = useState('登場人物');
 
-  const handleCreateCardFromSelection = useCallback((text = '') => {
-    const selectedText = text || window.getSelection().toString();
-    if (selectedText) {
-      setCardCreatorInitialData({ description: selectedText });
-      setCardCreatorInitialType('登場人物'); // Default to character for now
-      setShowCardCreator(true);
-    } else {
-      setCardCreatorInitialData({});
-      setShowCardCreator(true);
-    }
-  }, []);
+
 
   // Input Modal State
   const [inputModal, setInputModal] = useState({
@@ -3364,7 +3340,7 @@ function App() {
                         onAdopt={adoptCandidate}
                         onDiscard={discardCandidate}
                         onDiscardAll={discardAllCandidates}
-                        onCreateCard={handleCreateCardFromSelection}
+                        onCreateCard={() => openCardCreator()}
                       />
                     )}
                     renderSnippetsPanel={() => (
@@ -3498,9 +3474,7 @@ function App() {
                   ghostText={ghostText}
                   setGhostText={setGhostText}
                   onCursorStats={handleCursorStats}
-                  onShorten={handleShorten}
-                  onDescribe={handleDescribe}
-                  onCardCreate={handleCreateCardFromSelection}
+
                   onInsertRuby={() => editorRef.current?.insertRuby()}
                   onInsertLink={() => {
                     const textarea = editorRef.current?.textareaRef?.current;
@@ -3787,7 +3761,7 @@ function App() {
             onClose={() => setShowCardCreator(false)}
             onSave={handleCreateCard}
             initialType={cardCreatorInitialType}
-            initialDescription={cardCreatorInitialData.description}
+            initialDescription=""
           />
         </React.Suspense>
       )}

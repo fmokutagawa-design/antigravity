@@ -4,7 +4,7 @@ import '../index.css';
 import { toVerticalDisplay, fromVerticalDisplay } from '../utils/verticalPunctuation';
 import { useUndoHistory } from '../hooks/useUndoHistory';
 import { useClipboardHistory } from '../hooks/useClipboardHistory';
-import SelectionToolbar from './SelectionToolbar';
+
 
 /**
  * Editor Component
@@ -130,7 +130,7 @@ function computeTotalLines(text, maxPerLine) {
 
 import ReactDOM from 'react-dom';
 
-const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertRuby, onInsertLink, onLaunchAI, ghostText, setGhostText, corrections = [], onShorten, onDescribe, onCardCreate, showSelectionToolbar = true }, ref) => {
+const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertRuby, onInsertLink, onLaunchAI, ghostText, setGhostText, corrections = [] }, ref) => {
   const textareaRef = useRef(null);
   const [editorContextMenu, setEditorContextMenu] = React.useState(null);
 
@@ -178,40 +178,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     }
   }, [editorContextMenu]);
 
-  // --- Selection Toolbar State ---
-  const [selectionToolbar, setSelectionToolbar] = React.useState({ visible: false, position: null, text: '' });
 
-  const handleMouseUp = useCallback((e) => {
-    // Wait for selection to settle
-    setTimeout(() => {
-      const textarea = textareaRef.current;
-      if (!textarea) return;
-
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-
-      if (start !== end) {
-        const selectedText = textarea.value.substring(start, end);
-        // Simple positioning: near the mouse cursor
-        // Adjust to ensure it doesn't go off-screen (handled by css/browser usually, but let's be safe)
-        setSelectionToolbar({
-          visible: true,
-          position: { top: e.clientY, left: e.clientX },
-          text: selectedText
-        });
-      } else {
-        setSelectionToolbar(prev => prev.visible ? { ...prev, visible: false } : prev);
-      }
-    }, 10);
-  }, []);
-
-  const handleKeyUpSelection = useCallback((e) => {
-    // Hide toolbar on typing.
-    // If Shift+Arrow, maybe show? For now, hide to avoid visual clutter while typing.
-    if (!e.shiftKey) {
-      setSelectionToolbar(prev => prev.visible ? { ...prev, visible: false } : prev);
-    }
-  }, []);
 
 
 
@@ -598,8 +565,15 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         : '《》';
       const newValue = rawValue.substring(0, start) + insertion + rawValue.substring(end);
       pushHistory(value, newValue, start);
+      // カーソルを《》の間に配置（読みを入力する位置）
       nextCursorPos.current = start + (selectedText ? selectedText.length + 1 : 1);
       onChange(newValue);
+      // useLayoutEffect だけでは縦書き時に復元されないことがあるため、明示的にフォーカス
+      setTimeout(() => {
+        const pos = start + (selectedText ? selectedText.length + 1 : 1);
+        ta.focus();
+        ta.setSelectionRange(pos, pos);
+      }, 0);
     },
     setCursorPosition: (position) => {
       const ta = textareaRef.current;
@@ -769,10 +743,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         onScroll={handleCursor}
         onSelect={handleCursor}
         onClick={handleCursor}
-        onMouseUp={handleMouseUp}
         onKeyUp={(e) => {
           handleCursor(e);
-          handleKeyUpSelection(e);
         }}
         onContextMenu={(e) => {
           e.preventDefault();
@@ -894,9 +866,12 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
                       if (!ta) return;
                       const start = ta.selectionStart;
                       const end = ta.selectionEnd;
-                      const selected = ta.value.substring(start, end);
+                      const rawValue = settings.isVertical ? fromVerticalDisplay(ta.value) : ta.value;
+                      const selected = rawValue.substring(start, end);
                       const wrapped = `{font:${f.name}}${selected}{/font}`;
-                      const newValue = ta.value.substring(0, start) + wrapped + ta.value.substring(end);
+                      const newValue = rawValue.substring(0, start) + wrapped + rawValue.substring(end);
+                      pushHistory(value, newValue, start);
+                      nextCursorPos.current = start + wrapped.length;
                       onChange(newValue);
                       setEditorContextMenu(null);
                     }}>
@@ -909,10 +884,13 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
                     if (!ta) return;
                     const start = ta.selectionStart;
                     const end = ta.selectionEnd;
-                    const selected = ta.value.substring(start, end);
+                    const rawValue = settings.isVertical ? fromVerticalDisplay(ta.value) : ta.value;
+                    const selected = rawValue.substring(start, end);
                     // Remove font tags from selection
                     const cleaned = selected.replace(/\{font[:：][^}]*\}/g, '').replace(/\{\/font\}/g, '');
-                    const newValue = ta.value.substring(0, start) + cleaned + ta.value.substring(end);
+                    const newValue = rawValue.substring(0, start) + cleaned + rawValue.substring(end);
+                    pushHistory(value, newValue, start);
+                    nextCursorPos.current = start + cleaned.length;
                     onChange(newValue);
                     setEditorContextMenu(null);
                   }}>
@@ -985,41 +963,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         </div>,
         document.body
       )}
-      {showSelectionToolbar && ReactDOM.createPortal(
-        <SelectionToolbar
-          visible={selectionToolbar.visible}
-          position={selectionToolbar.position}
-          showAIActions={settings.enableSelectionAI || false}
-          showCardCreate={settings.showCardCreate !== false}
-          onCopy={async () => {
-            await navigator.clipboard.writeText(selectionToolbar.text);
-            setSelectionToolbar({ ...selectionToolbar, visible: false });
-          }}
-          onRewrite={() => {
-            if (onLaunchAI) onLaunchAI('rewrite', { selectedText: selectionToolbar.text });
-            setSelectionToolbar({ ...selectionToolbar, visible: false });
-          }}
-          onProofread={() => {
-            if (onLaunchAI) onLaunchAI('proofread', { selectedText: selectionToolbar.text });
-            setSelectionToolbar({ ...selectionToolbar, visible: false });
-          }}
-          onShorten={() => {
-            if (onShorten) onShorten(selectionToolbar.text);
-            else if (onLaunchAI) onLaunchAI('shorten', { selectedText: selectionToolbar.text });
-            setSelectionToolbar({ ...selectionToolbar, visible: false });
-          }}
-          onDescribe={() => {
-            if (onDescribe) onDescribe(selectionToolbar.text);
-            else if (onLaunchAI) onLaunchAI('describe', { selectedText: selectionToolbar.text });
-            setSelectionToolbar({ ...selectionToolbar, visible: false });
-          }}
-          onCardCreate={() => {
-            if (onCardCreate) onCardCreate(selectionToolbar.text);
-            setSelectionToolbar({ ...selectionToolbar, visible: false });
-          }}
-        />,
-        document.body
-      )}
+
     </div>
   );
 });
