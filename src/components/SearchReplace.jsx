@@ -30,13 +30,7 @@ const SearchReplace = ({ text, onReplace, isOpen, onClose, editorRef, allFiles =
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [proposedChanges, setProposedChanges] = useState([]);
 
-    // Jump to current match when index changes in Local mode
-    useEffect(() => {
-        if (!isGrepMode && currentMatchIndex >= 0 && matches.length > 0 && editorRef?.current) {
-            const match = matches[currentMatchIndex];
-            editorRef.current.jumpToPosition(match.index, match.index + match.length);
-        }
-    }, [currentMatchIndex, matches, editorRef, isGrepMode]);
+    // Jump to current match - Moved to explicit jumpToMatch function for reliability
 
     const handleSearch = useCallback(() => {
         if (!searchTerm) {
@@ -229,14 +223,27 @@ const SearchReplace = ({ text, onReplace, isOpen, onClose, editorRef, allFiles =
         }
     };
 
+    // 明示的にジャンプを実行する関数
+    const jumpToMatch = useCallback((index) => {
+        if (index < 0 || index >= matches.length) return;
+        setCurrentMatchIndex(index);
+        const match = matches[index];
+        if (editorRef?.current) {
+            // 少し遅延させてフォーカスを確実に戻す
+            setTimeout(() => {
+                editorRef.current.jumpToPosition(match.index, match.index + match.length);
+            }, 0);
+        }
+    }, [matches, editorRef]);
+
     const goToNext = () => {
         if (matches.length === 0) return;
-        setCurrentMatchIndex((currentMatchIndex + 1) % matches.length);
+        jumpToMatch((currentMatchIndex + 1) % matches.length);
     };
 
     const goToPrevious = () => {
         if (matches.length === 0) return;
-        setCurrentMatchIndex((currentMatchIndex - 1 + matches.length) % matches.length);
+        jumpToMatch((currentMatchIndex - 1 + matches.length) % matches.length);
     };
 
     // Dragging handlers
@@ -428,7 +435,7 @@ const SearchReplace = ({ text, onReplace, isOpen, onClose, editorRef, allFiles =
                                             <div
                                                 key={i}
                                                 className="grep-item"
-                                                onClick={() => setCurrentMatchIndex(i)}
+                                                onClick={() => jumpToMatch(i)}
                                                 style={{
                                                     padding: '4px 8px',
                                                     borderBottom: '1px solid #f0f0f0',
