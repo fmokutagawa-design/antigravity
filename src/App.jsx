@@ -3620,7 +3620,7 @@ function App() {
                   <>
                     <span style={{ margin: '0 8px', opacity: 0.2 }}>|</span>
                     <span style={{ opacity: 0.8, color: '#8e44ad' }}>
-                      🏆 {projectSettings.prizeName}: {Math.ceil(text.length / 400)}枚 / {projectSettings.targetPages}枚
+                      🏆 {projectSettings.prizeName}: {Math.ceil(text.length / ((settings.charsPerLine || 20) * (settings.linesPerPage || 20)))}枚 / {projectSettings.targetPages}枚
                     </span>
                   </>
                 )}
