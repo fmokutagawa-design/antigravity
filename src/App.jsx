@@ -2869,15 +2869,7 @@ function App() {
               >
                 📊
               </div>
-              <div
-                className={`sidebar-nav-item ${sidebarTab === 'todo' ? 'active' : ''}`}
-                onClick={() => setSidebarTab('todo')}
-                title="TODO管理"
-                style={{ position: 'relative' }}
-              >
-                📋
-                {(() => { const c = (text.match(/\[TODO:/g) || []).length; return c > 0 ? <span style={{ position: 'absolute', top: '2px', right: '2px', fontSize: '8px', background: '#e65100', color: '#fff', borderRadius: '50%', width: '14px', height: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>{c}</span> : null; })()}
-              </div>
+
               <div
                 className={`sidebar-nav-item ${sidebarTab === 'ai' ? 'active' : ''}`}
                 onClick={() => setSidebarTab(sidebarTab === 'ai' ? null : 'ai')}
@@ -3292,6 +3284,22 @@ function App() {
                         }}
                       />
                     )}
+                    renderTodoPanel={() => (
+                      <TodoPanel
+                        text={text}
+                        activeFileName={activeFileHandle ? (typeof activeFileHandle === 'string' ? activeFileHandle.split(/[/\\]/).pop() : activeFileHandle.name) : null}
+                        onJumpToIndex={(index) => {
+                          if (editorRef.current?.jumpToIndex) {
+                            editorRef.current.jumpToIndex(index);
+                          }
+                        }}
+                        onInsertTodo={() => {
+                          setInputModalMode('insert_todo');
+                          setInputModalValue('');
+                          setShowInputModal(true);
+                        }}
+                      />
+                    )}
                     renderClipboardHistory={() => (
                       <ClipboardPanel
                         history={editorRef.current?.clipboardHistory || []}
@@ -3301,21 +3309,7 @@ function App() {
                       />
                     )}
                   />
-                ) : sidebarTab === 'todo' ? (
-                  <TodoPanel
-                    text={text}
-                    activeFileName={activeFileHandle ? (typeof activeFileHandle === 'string' ? activeFileHandle.split(/[/\\]/).pop() : activeFileHandle.name) : null}
-                    onJumpToIndex={(index) => {
-                      if (editorRef.current?.jumpToIndex) {
-                        editorRef.current.jumpToIndex(index);
-                      }
-                    }}
-                    onInsertTodo={() => {
-                      setInputModalMode('insert_todo');
-                      setInputModalValue('');
-                      setShowInputModal(true);
-                    }}
-                  />
+
                 ) : sidebarTab === 'ai' ? (
                   <AIPanel
                     text={text}

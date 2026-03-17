@@ -1,89 +1,78 @@
 import React, { useState } from 'react';
 
-const SectionHeader = ({ title, isOpen, onClick, icon }) => (
-    <div
-        onClick={onClick}
-        style={{
-            padding: '10px 15px',
-            cursor: 'pointer',
-            background: 'var(--bg-secondary)',
-            borderBottom: '1px solid var(--border-color)',
-            fontWeight: 'bold',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            userSelect: 'none'
-        }}
-    >
-        <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {icon} {title}
-        </span>
-        <span>{isOpen ? '▼' : '▶'}</span>
-    </div>
-);
-
 const ProgressPanel = ({
-    // Render props or components for each section
     renderProgressTracker,
     renderChecklistPanel,
+    renderTodoPanel,
     renderClipboardHistory
 }) => {
-    // We can use accordion style or tabs. Plan mentions "sub-sections (collapsible accordion)".
-    // Let's implement simple collapsible sections.
-
-    const [sections, setSections] = useState({
-        progress: true,
-        checklist: false,
-        clipboard: false
-    });
-
-    const toggleSection = (section) => {
-        setSections(prev => ({
-            ...prev,
-            [section]: !prev[section]
-        }));
-    };
+    const [activeTab, setActiveTab] = useState('progress');
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            {/* Progress Section */}
-            <SectionHeader
-                title="Session Progress"
-                icon="📊"
-                isOpen={sections.progress}
-                onClick={() => toggleSection('progress')}
-            />
-            {sections.progress && (
-                <div style={{ padding: '0', borderBottom: '1px solid var(--border-color)' }}>
-                    {renderProgressTracker && renderProgressTracker()}
-                </div>
-            )}
+            {/* Tab Navigation */}
+            <div style={{
+                display: 'flex',
+                borderBottom: '1px solid var(--border-color, #eee)',
+                background: 'var(--bg-secondary, #f8f9fa)',
+                flexShrink: 0
+            }}>
+                <button
+                    onClick={() => setActiveTab('progress')}
+                    style={{
+                        flex: 1,
+                        padding: '8px 4px',
+                        fontSize: '11px',
+                        border: 'none',
+                        background: activeTab === 'progress' ? 'var(--bg-primary, #fff)' : 'transparent',
+                        borderBottom: activeTab === 'progress' ? '2px solid var(--accent-color, #8e44ad)' : '2px solid transparent',
+                        cursor: 'pointer',
+                        fontWeight: activeTab === 'progress' ? 'bold' : 'normal',
+                        color: 'inherit'
+                    }}
+                >
+                    📊 進捗
+                </button>
+                <button
+                    onClick={() => setActiveTab('todo')}
+                    style={{
+                        flex: 1,
+                        padding: '8px 4px',
+                        fontSize: '11px',
+                        border: 'none',
+                        background: activeTab === 'todo' ? 'var(--bg-primary, #fff)' : 'transparent',
+                        borderBottom: activeTab === 'todo' ? '2px solid var(--accent-color, #8e44ad)' : '2px solid transparent',
+                        cursor: 'pointer',
+                        fontWeight: activeTab === 'todo' ? 'bold' : 'normal',
+                        color: 'inherit'
+                    }}
+                >
+                    📋 TODO
+                </button>
+                <button
+                    onClick={() => setActiveTab('checklist')}
+                    style={{
+                        flex: 1,
+                        padding: '8px 4px',
+                        fontSize: '11px',
+                        border: 'none',
+                        background: activeTab === 'checklist' ? 'var(--bg-primary, #fff)' : 'transparent',
+                        borderBottom: activeTab === 'checklist' ? '2px solid var(--accent-color, #8e44ad)' : '2px solid transparent',
+                        cursor: 'pointer',
+                        fontWeight: activeTab === 'checklist' ? 'bold' : 'normal',
+                        color: 'inherit'
+                    }}
+                >
+                    ✅ チェック
+                </button>
+            </div>
 
-            {/* Checklist Section */}
-            <SectionHeader
-                title="Checklist"
-                icon="✅"
-                isOpen={sections.checklist}
-                onClick={() => toggleSection('checklist')}
-            />
-            {sections.checklist && (
-                <div style={{ padding: '0', borderBottom: '1px solid var(--border-color)' }}>
-                    {renderChecklistPanel && renderChecklistPanel()}
-                </div>
-            )}
-
-            {/* Clipboard Section */}
-            <SectionHeader
-                title="Clipboard History"
-                icon="📋"
-                isOpen={sections.clipboard}
-                onClick={() => toggleSection('clipboard')}
-            />
-            {sections.clipboard && (
-                <div style={{ padding: '0', borderBottom: '1px solid var(--border-color)', flex: 1, overflowY: 'auto', minHeight: '200px' }}>
-                    {renderClipboardHistory && renderClipboardHistory()}
-                </div>
-            )}
+            {/* Tab Content */}
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+                {activeTab === 'progress' && renderProgressTracker && renderProgressTracker()}
+                {activeTab === 'todo' && renderTodoPanel && renderTodoPanel()}
+                {activeTab === 'checklist' && renderChecklistPanel && renderChecklistPanel()}
+            </div>
         </div>
     );
 };
