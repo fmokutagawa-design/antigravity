@@ -2877,13 +2877,7 @@ function App() {
               >
                 🤖
               </div>
-              <div
-                className={`sidebar-nav-item ${sidebarTab === 'notes' ? 'active' : ''}`}
-                onClick={() => setSidebarTab('notes')}
-                title="メモ (Notes)"
-              >
-                📝
-              </div>
+
               <div
                 className={`sidebar-nav-item ${sidebarTab === 'prizes' ? 'active' : ''}`}
                 onClick={() => setSidebarTab('prizes')}
@@ -3352,24 +3346,34 @@ function App() {
                         onDragStart={handleSnippetDragStart}
                       />
                     )}
+                    renderNotesPanel={() => (
+                      <NotesPanel
+                        key={notesText}
+                        initialText={notesText}
+                        onSave={async (newText) => {
+                          setNotesText(newText);
+                          if (projectHandle) {
+                            try {
+                              let notesFileHandle;
+                              try {
+                                notesFileHandle = await projectHandle.getFileHandle('_notes.txt');
+                              } catch {
+                                notesFileHandle = await projectHandle.getFileHandle('_notes.txt', { create: true });
+                              }
+                              const writable = await notesFileHandle.createWritable();
+                              await writable.write(newText);
+                              await writable.close();
+                              refreshMaterials();
+                            } catch (err) {
+                              console.error('Failed to save notes:', err);
+                            }
+                          }
+                        }}
+                        projectHandle={projectHandle}
+                      />
+                    )}
                   />
-                ) : sidebarTab === 'notes' ? (
-                  <NotesPanel
-                    key={notesText ? 'loaded' : 'empty'}
-                    initialText={notesText}
-                    onSave={async (content) => {
-                      if (projectHandle && allMaterialFiles) {
-                        const noteFile = allMaterialFiles.find(f => f.name === '_notes.txt');
-                        if (noteFile) {
-                          await fileSystem.writeFile(noteFile.handle, content);
-                        } else {
-                          await handleCreateFileInProject(projectHandle, '_notes.txt', content);
-                        }
-                        if (!noteFile) await refreshMaterials();
-                      }
-                    }}
-                    projectHandle={projectHandle}
-                  />
+
                 ) : sidebarTab === 'prizes' ? (
                   <PrizePanel
                     projectSettings={projectSettings}

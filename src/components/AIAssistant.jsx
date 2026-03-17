@@ -152,7 +152,7 @@ const AIAssistant = ({
     // AI Model Props
     aiModel = 'local', setAiModel = null, localModels = [], selectedLocalModel = '', setSelectedLocalModel = null, isLocalConnected = false, checkLocalConnection = null,
     // Integrated panels
-    renderCandidateBoxPanel, renderSnippetsPanel
+    renderCandidateBoxPanel, renderSnippetsPanel, renderNotesPanel
 }) => {
     const [activeMode, setActiveMode] = useState('generator'); // 'generator', 'chat', 'correction', 'candidates', 'memos'
     const [chatInput, setChatInput] = useState('');
@@ -544,7 +544,8 @@ const AIAssistant = ({
                             { id: 'chat', label: '💬 チャット' },
                             { id: 'correction', label: '📝 校正' },
                             { id: 'candidates', label: '📦 候補' },
-                            { id: 'memos', label: '📌 メモ' }
+                            { id: 'memos', label: '📌 メモ' },
+                            { id: 'notes', label: '📓 ノート' }
                         ].map(tab => (
                             <button
                                 key={tab.id}
@@ -607,6 +608,7 @@ const AIAssistant = ({
                 <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }`}</style>
                 {activeMode === 'candidates' && renderCandidateBoxPanel && renderCandidateBoxPanel()}
                 {activeMode === 'memos' && renderSnippetsPanel && renderSnippetsPanel()}
+                {activeMode === 'notes' && renderNotesPanel && renderNotesPanel()}
 
                 {activeMode === 'chat' && (
                     <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -1020,7 +1022,7 @@ const AIAssistant = ({
                                                         addCandidate({
                                                             type: activeAIAction || 'general',
                                                             content: cleanText,
-                                                            originalText: inputText || '',
+                                                            originalText: chatInput || '',
                                                             source: {
                                                                 mode: activeAIAction || 'general',
                                                                 timestamp: new Date().toISOString()
