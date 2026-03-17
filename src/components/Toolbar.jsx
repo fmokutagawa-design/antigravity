@@ -109,7 +109,7 @@ const Toolbar = ({
             <div className="toolbar-section">
                 <div className="section-title">環境・表示</div>
                 <div className="control-grid">
-                    <Toggle active={showOutline} onClick={onToggleOutline} label="アウトライン" />
+
                     <Toggle active={showMetadata} onClick={() => setShowMetadata(!showMetadata)} label="メタ表示" />
                     <Toggle active={settings.showLogo !== false} onClick={() => handleChange('showLogo', settings.showLogo === false)} label="ロゴ表示" />
 
