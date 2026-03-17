@@ -568,9 +568,6 @@ const Toolbar = ({
                             ×
                         </button>
                     </div>
-                    {onBatchExport && (
-                        <button onClick={onBatchExport} className="span-full" style={{ padding: '4px', fontSize: '11px', marginTop: '4px' }}>📦 一括書き出し</button>
-                    )}
                     <div className="span-full" style={{ marginTop: '6px' }}>
                         <div style={{ fontSize: '10px', color: '#888', marginBottom: '2px' }}>カスタムCSS</div>
                         <textarea
