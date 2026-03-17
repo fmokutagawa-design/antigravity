@@ -3,8 +3,7 @@ import React, { useState } from 'react';
 const ProgressPanel = ({
     renderProgressTracker,
     renderChecklistPanel,
-    renderTodoPanel,
-    renderClipboardHistory
+    renderTodoPanel
 }) => {
     const [activeTab, setActiveTab] = useState('progress');
 

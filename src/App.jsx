@@ -2886,6 +2886,13 @@ function App() {
                 🏆
               </div>
               <div
+                className={`sidebar-nav-item ${sidebarTab === 'clipboard' ? 'active' : ''}`}
+                onClick={() => setSidebarTab('clipboard')}
+                title="クリップボード"
+              >
+                📋
+              </div>
+              <div
                 className={`sidebar-nav-item ${sidebarTab === 'snapshots' ? 'active' : ''}`}
                 onClick={() => setSidebarTab('snapshots')}
                 title="スナップショット履歴"
@@ -3294,14 +3301,14 @@ function App() {
                         }}
                       />
                     )}
-                    renderClipboardHistory={() => (
-                      <ClipboardPanel
-                        history={editorRef.current?.clipboardHistory || []}
-                        onPaste={(text) => {
-                          editorRef.current?.pasteFromHistory(text);
-                        }}
-                      />
-                    )}
+                  />
+
+                ) : sidebarTab === 'clipboard' ? (
+                  <ClipboardPanel
+                    history={editorRef.current?.clipboardHistory || []}
+                    onPaste={(text) => {
+                      editorRef.current?.pasteFromHistory(text);
+                    }}
                   />
 
                 ) : sidebarTab === 'ai' ? (
