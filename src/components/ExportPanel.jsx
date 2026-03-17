@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 const ExportPanel = ({
   onFormat,
@@ -8,7 +8,6 @@ const ExportPanel = ({
   onBatchExport,
   colorTheme
 }) => {
-  const [showTextMenu, setShowTextMenu] = useState(false);
   const isDark = colorTheme === 'dark';
 
   const btnStyle = {
