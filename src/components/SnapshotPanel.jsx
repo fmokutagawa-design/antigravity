@@ -6,6 +6,7 @@ const SnapshotPanel = ({ filePath, currentText, onRestore, showToast, onSaveNow 
     const [loading, setLoading] = useState(false);
     const [previewId, setPreviewId] = useState(null);
     const [diffView, setDiffView] = useState(null);
+    const [storageInfo, setStorageInfo] = useState({ snapshotBytes: 0, totalBytes: 0 });
 
     const loadSnapshots = useCallback(async () => {
         if (!filePath) {
@@ -17,12 +18,38 @@ const SnapshotPanel = ({ filePath, currentText, onRestore, showToast, onSaveNow 
         try {
             const list = await getSnapshots(filePath);
             setSnapshots(list);
+            setStorageInfo(calculateStorageUsage());
         } catch (e) {
             console.error('Failed to load snapshots:', e);
             setSnapshots([]);
         }
         setLoading(false);
     }, [filePath]);
+
+    const calculateStorageUsage = () => {
+        let snapshotBytes = 0;
+        let totalBytes = 0;
+        try {
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                const value = localStorage.getItem(key);
+                const size = (key.length + value.length) * 2; // UTF-16
+                totalBytes += size;
+                if (key.startsWith('nexus-snap-')) {
+                    snapshotBytes += size;
+                }
+            }
+        } catch (e) {
+            console.error('Storage calculation failed:', e);
+        }
+        return { snapshotBytes, totalBytes };
+    };
+
+    const formatBytes = (bytes) => {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    };
 
     useEffect(() => {
         loadSnapshots();
@@ -64,6 +91,7 @@ const SnapshotPanel = ({ filePath, currentText, onRestore, showToast, onSaveNow 
         try {
             await clearSnapshots(filePath);
             setSnapshots([]);
+            setStorageInfo(calculateStorageUsage());
             if (showToast) showToast('履歴をクリアしました');
         } catch (e) {
             console.error('Failed to clear snapshots:', e);
@@ -263,6 +291,30 @@ const SnapshotPanel = ({ filePath, currentText, onRestore, showToast, onSaveNow 
                     ))}
                 </div>
             )}
+
+            {/* ストレージ使用量 */}
+            <div style={{
+                padding: '8px 12px',
+                borderTop: '1px solid var(--border-color, #eee)',
+                fontSize: '10px',
+                color: '#888',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexShrink: 0
+            }}>
+                <span>
+                    📦 スナップショット: {formatBytes(storageInfo.snapshotBytes)}
+                </span>
+                <span>
+                    全体: {formatBytes(storageInfo.totalBytes)} / ~5 MB
+                </span>
+                {storageInfo.totalBytes > 4 * 1024 * 1024 && (
+                    <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>
+                        ⚠️ 容量注意
+                    </span>
+                )}
+            </div>
         </div>
     );
 };
