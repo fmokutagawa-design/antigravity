@@ -15,7 +15,7 @@ const LinkPanel = ({
 
     // Get backlinks for current file
     const backlinks = useMemo(() => {
-        if (!activeFile || !linkGraph || !(linkGraph instanceof Map)) return [];
+        if (!activeFile || !activeFile.name || !linkGraph || !(linkGraph instanceof Map)) return [];
         const currentPath = activeFile.path;
         const currentName = activeFile.name.replace(/\.[^/.]+$/, ""); // remove extension
         const incoming = [];
@@ -56,7 +56,7 @@ const LinkPanel = ({
 
     // Scan for mentions when text changes (debounced)
     useEffect(() => {
-        if (!currentText || !allFiles) return;
+        if (!currentText || !allFiles || allFiles.length === 0) return;
 
         const timer = setTimeout(() => {
             setIsScanning(true);
@@ -131,7 +131,7 @@ const LinkPanel = ({
                                 >
                                     <div className="backlink-header">
                                         <span className="file-icon">📄</span>
-                                        <span className="file-name">{file.name.replace(/\.[^/.]+$/, "")}</span>
+                                        <span className="file-name">{(file.name || '').replace(/\.[^/.]+$/, "")}</span>
                                     </div>
                                     {file.context && (
                                         <div className="backlink-context" style={{ fontSize: '0.85em', color: '#666', marginTop: '4px', paddingLeft: '20px', fontStyle: 'italic' }}>

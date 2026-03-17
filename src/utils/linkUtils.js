@@ -10,6 +10,7 @@ export function findUnlinkedMentions(text, allFiles) {
 
     const mentions = [];
     const fileNames = allFiles
+        .filter(f => f && f.name) // Skip entries without a name
         .map(f => f.name.replace(/\.[^/.]+$/, "")) // Remove extension
         .filter(n => n.length >= 2); // Ignore single char names to avoid noise
 
