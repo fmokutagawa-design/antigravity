@@ -8,24 +8,6 @@ const SnapshotPanel = ({ filePath, currentText, onRestore, showToast, onSaveNow 
     const [diffView, setDiffView] = useState(null);
     const [storageInfo, setStorageInfo] = useState({ snapshotBytes: 0, totalBytes: 0 });
 
-    const loadSnapshots = useCallback(async () => {
-        if (!filePath) {
-            setSnapshots([]);
-            setLoading(false);
-            return;
-        }
-        setLoading(true);
-        try {
-            const list = await getSnapshots(filePath);
-            setSnapshots(list);
-            setStorageInfo(calculateStorageUsage());
-        } catch (e) {
-            console.error('Failed to load snapshots:', e);
-            setSnapshots([]);
-        }
-        setLoading(false);
-    }, [filePath]);
-
     const calculateStorageUsage = () => {
         let snapshotBytes = 0;
         let totalBytes = 0;
@@ -50,6 +32,24 @@ const SnapshotPanel = ({ filePath, currentText, onRestore, showToast, onSaveNow 
         if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
         return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
     };
+
+    const loadSnapshots = useCallback(async () => {
+        if (!filePath) {
+            setSnapshots([]);
+            setLoading(false);
+            return;
+        }
+        setLoading(true);
+        try {
+            const list = await getSnapshots(filePath);
+            setSnapshots(list);
+            setStorageInfo(calculateStorageUsage());
+        } catch (e) {
+            console.error('Failed to load snapshots:', e);
+            setSnapshots([]);
+        }
+        setLoading(false);
+    }, [filePath]);
 
     useEffect(() => {
         loadSnapshots();
