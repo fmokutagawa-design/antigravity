@@ -3408,7 +3408,9 @@ function App() {
                         targetPages: prizeData.targetPages,
                         deadline: prizeData.deadline,
                         prizeName: prizeData.prizeName,
-                        prizeId: prizeData.prizeId
+                        prizeId: prizeData.prizeId,
+                        prizeCharsPerLine: prizeData.editorFormat?.charsPerLine || 0,
+                        prizeLinesPerPage: prizeData.editorFormat?.linesPerPage || 0
                       }));
                       // 賞の原稿形式に合わせてエディタ設定を自動変更
                       if (prizeData.editorFormat && (prizeData.editorFormat.charsPerLine > 0 || prizeData.editorFormat.linesPerPage > 0)) {
@@ -3620,7 +3622,11 @@ function App() {
                   <>
                     <span style={{ margin: '0 8px', opacity: 0.2 }}>|</span>
                     <span style={{ opacity: 0.8, color: '#8e44ad' }}>
-                      🏆 {projectSettings.prizeName}: {Math.ceil(text.length / ((settings.charsPerLine || 20) * (settings.linesPerPage || 20)))}枚 / {projectSettings.targetPages}枚
+                      🏆 {projectSettings.prizeName}: {(() => {
+                        const cpl = projectSettings.prizeCharsPerLine || 20;
+                        const lpp = projectSettings.prizeLinesPerPage || 20;
+                        return Math.ceil(text.length / (cpl * lpp));
+                      })()}枚 / {projectSettings.targetPages}枚
                     </span>
                   </>
                 )}
