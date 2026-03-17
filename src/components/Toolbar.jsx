@@ -22,18 +22,15 @@ const Toggle = ({ active, onClick, label }) => (
 
 const Toolbar = ({
     settings, setSettings, presets = [], onSavePreset, onLoadPreset, onDeletePreset,
-    isDarkMode, setIsDarkMode, showMetadata, setShowMetadata, showOutline, onToggleOutline, onFormat,
+    isDarkMode, setIsDarkMode, showMetadata, setShowMetadata, showOutline, onToggleOutline,
     // AI Props
-    aiModel, setAiModel, localModels = [], selectedLocalModel, setSelectedLocalModel, isLocalConnected, checkLocalConnection,
-    // Export
-    onBatchExport, onEpubExport, onDocxExport, onPrint
+    aiModel, setAiModel, localModels = [], selectedLocalModel, setSelectedLocalModel, isLocalConnected, checkLocalConnection
 }) => {
 
     const handleChange = (key, value) => {
         setSettings(prev => ({ ...prev, [key]: value }));
     };
 
-    const [showTextMenu, setShowTextMenu] = useState(false);
     const [systemFonts, setSystemFonts] = useState([]);
     const [isFontMenuOpen, setIsFontMenuOpen] = useState(false);
     const [fontSearch, setFontSearch] = useState('');
@@ -548,55 +545,10 @@ const Toolbar = ({
                 </div>
             </div>
 
-            {/* 4. ツール・出力 */}
+            {/* 4. プリセット */}
             <div className="toolbar-section">
-                <div className="section-title">ツール・出力</div>
+                <div className="section-title">プリセット</div>
                 <div className="control-grid">
-                    <div
-                        className="span-full"
-                        onClick={() => setShowTextMenu(!showTextMenu)}
-                        style={{
-                            padding: '4px',
-                            fontSize: '11px',
-                            position: 'relative',
-                            background: settings.colorTheme === 'dark' ? '#2c3e50' : '#f8f9fa',
-                            border: '1px solid var(--border-color)',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            textAlign: 'center',
-                            userSelect: 'none',
-                            color: settings.colorTheme === 'dark' ? '#eee' : '#555',
-                            fontWeight: '600'
-                        }}
-                    >
-                        Aa 文字整形
-                        {showTextMenu && (
-                            <div className="dropdown-menu" style={{
-                                position: 'absolute',
-                                bottom: '100%',
-                                left: 0,
-                                right: 0,
-                                background: settings.colorTheme === 'dark' ? '#34495e' : 'white',
-                                border: '1px solid var(--border-color)',
-                                padding: '2px',
-                                zIndex: 1100,
-                                boxShadow: '0 -2px 8px rgba(0,0,0,0.15)',
-                                borderRadius: '4px'
-                            }}>
-                                <button onClick={(e) => { e.stopPropagation(); onFormat('fullwidth'); setShowTextMenu(false); }} style={{ display: 'block', width: '100%', padding: '4px', textAlign: 'left', fontSize: '10px', background: 'none', border: 'none', cursor: 'pointer', color: settings.colorTheme === 'dark' ? '#fff' : '#333' }}>全角化</button>
-                                <button onClick={(e) => { e.stopPropagation(); onFormat('quotes'); setShowTextMenu(false); }} style={{ display: 'block', width: '100%', padding: '4px', textAlign: 'left', fontSize: '10px', background: 'none', border: 'none', cursor: 'pointer', color: settings.colorTheme === 'dark' ? '#fff' : '#333' }}>引用符『』</button>
-                                <button onClick={(e) => { e.stopPropagation(); onFormat('markdown'); setShowTextMenu(false); }} style={{ display: 'block', width: '100%', padding: '4px', textAlign: 'left', fontSize: '10px', background: 'none', border: 'none', cursor: 'pointer', color: settings.colorTheme === 'dark' ? '#fff' : '#333' }}>MD→『』</button>
-                            </div>
-                        )}
-                    </div>
-                    <button onClick={onPrint ? onPrint : () => window.print()} className="span-full" style={{ padding: '4px', fontSize: '11px' }}>🖨️ PDF/印刷</button>
-                    {onEpubExport && (
-                        <button onClick={onEpubExport} className="span-full" style={{ padding: '4px', fontSize: '11px', marginTop: '4px' }}>📚 EPUB書き出し</button>
-                    )}
-                    {onDocxExport && (
-                        <button onClick={onDocxExport} className="span-full" style={{ padding: '4px', fontSize: '11px', marginTop: '4px' }}>📄 Word書き出し</button>
-                    )}
-
                     <div className="span-full" style={{ display: 'flex', gap: '2px', marginTop: '4px' }}>
                         <select id="preset-load-select" onChange={(e) => e.target.value && onLoadPreset(e.target.value)} style={{ flex: 1, height: '22px', fontSize: '10px' }}>
                             <option value="">読込...</option>

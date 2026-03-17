@@ -9,6 +9,7 @@ import Stats from './components/Stats';
 import AIAssistant from './components/AIAssistant';
 import ClipboardHistory from './components/ClipboardHistory';
 import ClipboardPanel from './components/ClipboardPanel';
+import ExportPanel from './components/ExportPanel';
 import CandidateBoxPanel from './components/CandidateBoxPanel';
 import AIPanel from './components/AIPanel';
 import SearchReplace from './components/SearchReplace';
@@ -2893,6 +2894,13 @@ function App() {
                 📋
               </div>
               <div
+                className={`sidebar-nav-item ${sidebarTab === 'export' ? 'active' : ''}`}
+                onClick={() => setSidebarTab('export')}
+                title="出力・整形"
+              >
+                📤
+              </div>
+              <div
                 className={`sidebar-nav-item ${sidebarTab === 'snapshots' ? 'active' : ''}`}
                 onClick={() => setSidebarTab('snapshots')}
                 title="スナップショット履歴"
@@ -3311,6 +3319,16 @@ function App() {
                     }}
                   />
 
+                ) : sidebarTab === 'export' ? (
+                  <ExportPanel
+                    onFormat={handleFormat}
+                    onPrint={handlePrint}
+                    onEpubExport={() => handleEpubExport(null, allMaterialFiles)}
+                    onDocxExport={handleDocxExport}
+                    onBatchExport={handleBatchExport}
+                    colorTheme={settings.colorTheme}
+                  />
+
                 ) : sidebarTab === 'ai' ? (
                   <AIPanel
                     text={text}
@@ -3420,9 +3438,6 @@ function App() {
                       settings={settings}
                       setSettings={setSettings}
                       presets={presets}
-                      onFormat={handleFormat}
-                      onEpubExport={() => handleEpubExport(null, allMaterialFiles)}
-                      onDocxExport={handleDocxExport}
                       onSavePreset={handleSavePreset}
                       onLoadPreset={handleLoadPreset}
                       onDeletePreset={handleDeletePreset}
@@ -3439,8 +3454,6 @@ function App() {
                       setSelectedLocalModel={setSelectedLocalModel}
                       isLocalConnected={isLocalConnected}
                       checkLocalConnection={checkLocalConnection}
-                      onBatchExport={handleBatchExport}
-                      onPrint={handlePrint}
                     />
                   </div>
                 ) : null}
