@@ -63,6 +63,11 @@ const ExportPanel = ({
           onMouseLeave={e => e.target.style.background = 'none'}>
           ⏎ スペース2つ→改行
         </button>
+        <button onClick={() => onFormat('break-before-dialogue')} style={btnStyle}
+          onMouseEnter={e => e.target.style.background = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}
+          onMouseLeave={e => e.target.style.background = 'none'}>
+          💬 会話文前で改行（スペース+「→改行+「）
+        </button>
         <button onClick={() => onFormat('ellipsis')} style={btnStyle}
           onMouseEnter={e => e.target.style.background = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}
           onMouseLeave={e => e.target.style.background = 'none'}>
