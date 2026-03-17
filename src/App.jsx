@@ -631,7 +631,13 @@ function App() {
     if (!allMaterialFiles) return 0;
     let total = 0;
     for (const file of allMaterialFiles) {
-      if (activeFileHandle && file.handle && activeFileHandle.isSameEntry && file.handle.isSameEntry(activeFileHandle)) {
+      // activeFileHandle との比較: パス文字列 or name で判定（isSameEntry は非同期のため使えない）
+      const isActiveFile = activeFileHandle && file.handle && (
+        (typeof activeFileHandle === 'string' && typeof file.handle === 'string' && activeFileHandle === file.handle) ||
+        (activeFileHandle.name && file.handle.name && activeFileHandle.name === file.handle.name) ||
+        (file.name && activeFileHandle.name && file.name === activeFileHandle.name)
+      );
+      if (isActiveFile) {
         total += (parseNote(text).body?.length || 0);
       } else {
         total += (file.body?.length || 0);
