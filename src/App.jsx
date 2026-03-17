@@ -487,7 +487,7 @@ function App() {
       newBody = convertMarkdownToNovel(newBody);
       changed = true;
     } else if (type === 'double-space-to-newline') {
-      newBody = newBody.replace(/  /g, ' \n');
+      newBody = newBody.replace(/[ 　]{2,}/g, '　\n');
       changed = true;
     } else if (type === 'ellipsis') {
       newBody = newBody.replace(/\.{3,}/g, '……').replace(/…{1,}/g, (m) => '……'.repeat(Math.max(1, Math.round(m.length / 2))));
