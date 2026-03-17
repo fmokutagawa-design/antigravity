@@ -3616,6 +3616,14 @@ function App() {
                 </span>
                 <span style={{ margin: '0 8px', opacity: 0.2 }}>|</span>
                 <span style={{ opacity: 0.6 }}>本日: {currentSessionChars >= 0 ? `+ ${currentSessionChars} ` : currentSessionChars} 文字</span>
+                {projectSettings?.prizeName && (
+                  <>
+                    <span style={{ margin: '0 8px', opacity: 0.2 }}>|</span>
+                    <span style={{ opacity: 0.8, color: '#8e44ad' }}>
+                      🏆 {projectSettings.prizeName}: {Math.ceil(text.length / 400)}枚 / {projectSettings.targetPages}枚
+                    </span>
+                  </>
+                )}
                 {(() => { const todoCount = (text.match(/\[TODO:/g) || []).length; return todoCount > 0 ? (<><span style={{ margin: '0 8px', opacity: 0.2 }}>|</span><span style={{ opacity: 0.8, color: '#e65100' }}>📋 TODO: {todoCount}件</span></>) : null; })()}
               </div>
 
