@@ -578,19 +578,20 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     setCursorPosition: (position) => {
       const ta = textareaRef.current;
       if (!ta) return;
-      ta.focus();
       ta.setSelectionRange(position, position);
-      // ブラウザネイティブのスクロールを利用してカーソル位置を表示
       ta.blur();
-      ta.focus();
+      requestAnimationFrame(() => {
+        if (textareaRef.current) textareaRef.current.focus();
+      });
     },
     jumpToPosition: (start, end) => {
       const ta = textareaRef.current;
       if (!ta) return;
       ta.setSelectionRange(start, end != null ? end : start);
-      // ブラウザネイティブのスクロールを利用（縦書き・横書き両対応）
       ta.blur();
-      ta.focus();
+      requestAnimationFrame(() => {
+        if (textareaRef.current) textareaRef.current.focus();
+      });
     }
   }));
 
