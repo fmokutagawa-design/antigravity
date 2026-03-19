@@ -581,16 +581,23 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       ta.setSelectionRange(position, position);
       ta.blur();
       requestAnimationFrame(() => {
-        if (textareaRef.current) textareaRef.current.focus();
+        const el = textareaRef.current;
+        if (!el) return;
+        el.focus();
+        el.setSelectionRange(position, position);
       });
     },
     jumpToPosition: (start, end) => {
       const ta = textareaRef.current;
       if (!ta) return;
-      ta.setSelectionRange(start, end != null ? end : start);
+      const selEnd = end != null ? end : start;
+      ta.setSelectionRange(start, selEnd);
       ta.blur();
       requestAnimationFrame(() => {
-        if (textareaRef.current) textareaRef.current.focus();
+        const el = textareaRef.current;
+        if (!el) return;
+        el.focus();
+        el.setSelectionRange(start, selEnd);
       });
     }
   }));
