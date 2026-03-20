@@ -532,15 +532,19 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   }, [settings.isVertical]);
 
   const scrollToCaretPosition = useCallback((charIndex) => {
+    console.log('[JUMP DEBUG] scrollToCaretPosition called, charIndex=', charIndex);
+    
     const ta = textareaRef.current;
     const container = ta?.closest('.editor-container');
+    
+    console.log('[JUMP DEBUG] ta=', !!ta, 'container=', !!container);
     if (!ta || !container) return;
 
     const { maxPerLine, cell, padding } = baseMetrics;
-    // displayValue と同じテキストで走査する
     const text = settings.isVertical ? toVerticalDisplay(value) : value;
+    
+    console.log('[JUMP DEBUG] textLen=', text.length, 'maxPerLine=', maxPerLine, 'cell=', cell, 'isVertical=', settings.isVertical);
 
-    // charIndex → line, pos（computeCharPositions の KINSOKU_ENABLED=false ケースと同一）
     let line = 0;
     let pos = 0;
     for (let i = 0; i < charIndex && i < text.length; i++) {
@@ -556,25 +560,34 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       }
     }
 
+    console.log('[JUMP DEBUG] computed line=', line, 'pos=', pos);
+
     if (settings.isVertical) {
-      // vertical-rl: line=0 は右端。line が増えると左へ。
-      // container.scrollLeft: 0 = 最も右（RTL的な原点）
-      // textarea の right は padding で配置。行0 が右端で line*cell ずつ左にずれる。
-      // コンテナ幅の半分にキャレット行が来るようにする
       const caretOffsetFromRight = line * cell + padding;
-      const viewCenter = container.clientWidth / 2;
-      // scrollLeft は右端(=0)から左方向に負の値（Chromeの場合）
-      // ただし container は通常の overflow-x: scroll なので scrollLeft は 0〜max
-      // container.scrollWidth - container.clientWidth = maxScrollLeft
       const maxScrollLeft = container.scrollWidth - container.clientWidth;
-      // 右端からの距離を左端基準に変換
+      const viewCenter = container.clientWidth / 2;
       const targetScrollLeft = maxScrollLeft - caretOffsetFromRight + viewCenter;
-      container.scrollLeft = Math.max(0, Math.min(maxScrollLeft, targetScrollLeft));
+      const clampedScrollLeft = Math.max(0, Math.min(maxScrollLeft, targetScrollLeft));
+      
+      console.log('[JUMP DEBUG] VERTICAL: caretOffsetFromRight=', caretOffsetFromRight, 
+        'scrollWidth=', container.scrollWidth, 
+        'clientWidth=', container.clientWidth, 
+        'maxScrollLeft=', maxScrollLeft,
+        'targetScrollLeft=', targetScrollLeft,
+        'clampedScrollLeft=', clampedScrollLeft,
+        'BEFORE scrollLeft=', container.scrollLeft);
+      
+      container.scrollLeft = clampedScrollLeft;
+      
+      console.log('[JUMP DEBUG] AFTER scrollLeft=', container.scrollLeft);
     } else {
-      // horizontal: 行が下に増える
       const caretY = line * cell + padding;
       const viewCenter = container.clientHeight / 2;
-      container.scrollTop = Math.max(0, caretY - viewCenter);
+      const targetScrollTop = Math.max(0, caretY - viewCenter);
+      
+      console.log('[JUMP DEBUG] HORIZONTAL: caretY=', caretY, 'targetScrollTop=', targetScrollTop);
+      
+      container.scrollTop = targetScrollTop;
     }
   }, [value, settings.isVertical, baseMetrics]);
 
@@ -636,17 +649,17 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       });
     },
     jumpToPosition: (start, end) => {
+      console.log('[JUMP DEBUG] jumpToPosition called, start=', start, 'end=', end);
       const ta = textareaRef.current;
-      if (!ta) return;
+      if (!ta) { console.log('[JUMP DEBUG] textarea is null!'); return; }
       const selEnd = end != null ? end : start;
-      // まずスクロール
       scrollToCaretPosition(start);
-      // 次フレームで focus + selection
       requestAnimationFrame(() => {
         const el = textareaRef.current;
         if (!el) return;
         el.focus();
         el.setSelectionRange(start, selEnd);
+        console.log('[JUMP DEBUG] rAF: focus + setSelectionRange done');
       });
     }
   }));
