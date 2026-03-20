@@ -531,52 +531,48 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     };
   }, [settings.isVertical]);
 
-  // キャレット位置から editor-container のスクロール位置を計算してジャンプ
-  const scrollToCaretPosition = useCallback((charIndex) => {
-    const container = textareaRef.current?.closest('.editor-container');
-    if (!container) return;
+  // ブラウザネイティブのキャレット追従を利用して editor-container をスクロール
+  const scrollToCaretPosition = useCallback((charIndex, selEnd) => {
+    const ta = textareaRef.current;
+    const container = ta?.closest('.editor-container');
+    if (!ta || !container) return;
 
-    const { cell, maxPerLine } = baseMetrics;
+    // 1. textarea の overflow を一時的に auto にする
+    const origOverflow = ta.style.overflow;
+    const origOverflowX = ta.style.overflowX;
+    const origOverflowY = ta.style.overflowY;
+    ta.style.overflow = 'auto';
+    ta.style.overflowX = 'auto';
+    ta.style.overflowY = 'auto';
 
-    // charIndex までの行数を計算（改行で行が変わる＋maxPerLine で折り返し）
-    const textUpToCaret = (settings.isVertical ? toVerticalDisplay(value) : value).substring(0, charIndex);
-    let line = 0;
-    let pos = 0;
-    for (const char of textUpToCaret) {
-      if (char === '\n') {
-        line++;
-        pos = 0;
-        continue;
-      }
-      if (pos >= maxPerLine) {
-        line++;
-        pos = 0;
-      }
-      pos++;
-    }
+    // 2. focus + setSelectionRange でブラウザにキャレット位置まで内部スクロールさせる
+    ta.focus();
+    ta.setSelectionRange(charIndex, selEnd != null ? selEnd : charIndex);
 
-    const PADDING = baseMetrics.padding || 10;
+    // 3. textarea の内部スクロール量を取得
+    const innerScrollTop = ta.scrollTop;
+    const innerScrollLeft = ta.scrollLeft;
 
+    // 4. 内部スクロール量を container に転写
     if (settings.isVertical) {
-      // 縦書き: 行は右から左に進むので、scrollLeft を調整
-      // line 番目の列のピクセル位置（右端からの距離）
-      const caretPixelX = line * cell;
-      const containerWidth = container.clientWidth;
-      // コンテナ内で見える範囲の中央あたりにキャレットが来るようにする
-      const targetScrollLeft = caretPixelX - containerWidth / 2 + PADDING;
-      // scrollLeft は右から左に向かって正の値（rtl相当の動き）
-      // editor-container は direction: ltr だが writing-mode: vertical-rl の textarea を含む
-      // scrollLeft の最大値は scrollWidth - clientWidth
-      const maxScroll = container.scrollWidth - containerWidth;
-      container.scrollLeft = Math.max(0, Math.min(maxScroll, maxScroll - targetScrollLeft));
+      // 縦書き: container は横スクロール
+      // vertical-rl の場合、textarea.scrollLeft は負の値になることがある（ブラウザ依存）
+      // scrollLeft が負: 右端が基準、左方向が負 → container.scrollLeft に加算
+      container.scrollLeft += innerScrollLeft;
     } else {
-      // 横書き: scrollTop を調整
-      const caretPixelY = line * cell;
-      const containerHeight = container.clientHeight;
-      const targetScrollTop = caretPixelY - containerHeight / 2 + PADDING;
-      container.scrollTop = Math.max(0, targetScrollTop);
+      // 横書き: container は縦スクロール
+      container.scrollTop += innerScrollTop;
     }
-  }, [value, settings.isVertical, baseMetrics]);
+
+    // 5. textarea の内部スクロールを 0 にリセット
+    ta.scrollTop = 0;
+    ta.scrollLeft = 0;
+
+    // 6. overflow を元に戻す
+    ta.style.overflow = origOverflow;
+    ta.style.overflowX = origOverflowX;
+    ta.style.overflowY = origOverflowY;
+  }, [settings.isVertical]);
 
   useImperativeHandle(ref, () => ({
     focus: () => textareaRef.current?.focus(),
@@ -625,8 +621,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     setCursorPosition: (position) => {
       const ta = textareaRef.current;
       if (!ta) return;
-      ta.setSelectionRange(position, position);
-      scrollToCaretPosition(position);
+      scrollToCaretPosition(position, position);
       requestAnimationFrame(() => {
         const el = textareaRef.current;
         if (!el) return;
@@ -638,8 +633,9 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       const ta = textareaRef.current;
       if (!ta) return;
       const selEnd = end != null ? end : start;
-      ta.setSelectionRange(start, selEnd);
-      scrollToCaretPosition(start);
+      scrollToCaretPosition(start, selEnd);
+      // scrollToCaretPosition 内で focus + setSelectionRange 済みだが、
+      // rAF で再度 setSelectionRange を保証
       requestAnimationFrame(() => {
         const el = textareaRef.current;
         if (!el) return;
