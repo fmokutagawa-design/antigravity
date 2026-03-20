@@ -531,6 +531,53 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     };
   }, [settings.isVertical]);
 
+  // キャレット位置から editor-container のスクロール位置を計算してジャンプ
+  const scrollToCaretPosition = useCallback((charIndex) => {
+    const container = textareaRef.current?.closest('.editor-container');
+    if (!container) return;
+
+    const { cell, maxPerLine } = baseMetrics;
+
+    // charIndex までの行数を計算（改行で行が変わる＋maxPerLine で折り返し）
+    const textUpToCaret = (settings.isVertical ? toVerticalDisplay(value) : value).substring(0, charIndex);
+    let line = 0;
+    let pos = 0;
+    for (const char of textUpToCaret) {
+      if (char === '\n') {
+        line++;
+        pos = 0;
+        continue;
+      }
+      if (pos >= maxPerLine) {
+        line++;
+        pos = 0;
+      }
+      pos++;
+    }
+
+    const PADDING = baseMetrics.padding || 10;
+
+    if (settings.isVertical) {
+      // 縦書き: 行は右から左に進むので、scrollLeft を調整
+      // line 番目の列のピクセル位置（右端からの距離）
+      const caretPixelX = line * cell;
+      const containerWidth = container.clientWidth;
+      // コンテナ内で見える範囲の中央あたりにキャレットが来るようにする
+      const targetScrollLeft = caretPixelX - containerWidth / 2 + PADDING;
+      // scrollLeft は右から左に向かって正の値（rtl相当の動き）
+      // editor-container は direction: ltr だが writing-mode: vertical-rl の textarea を含む
+      // scrollLeft の最大値は scrollWidth - clientWidth
+      const maxScroll = container.scrollWidth - containerWidth;
+      container.scrollLeft = Math.max(0, Math.min(maxScroll, maxScroll - targetScrollLeft));
+    } else {
+      // 横書き: scrollTop を調整
+      const caretPixelY = line * cell;
+      const containerHeight = container.clientHeight;
+      const targetScrollTop = caretPixelY - containerHeight / 2 + PADDING;
+      container.scrollTop = Math.max(0, targetScrollTop);
+    }
+  }, [value, settings.isVertical, baseMetrics]);
+
   useImperativeHandle(ref, () => ({
     focus: () => textareaRef.current?.focus(),
     textarea: textareaRef.current,
@@ -579,7 +626,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       const ta = textareaRef.current;
       if (!ta) return;
       ta.setSelectionRange(position, position);
-      ta.blur();
+      scrollToCaretPosition(position);
       requestAnimationFrame(() => {
         const el = textareaRef.current;
         if (!el) return;
@@ -592,7 +639,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       if (!ta) return;
       const selEnd = end != null ? end : start;
       ta.setSelectionRange(start, selEnd);
-      ta.blur();
+      scrollToCaretPosition(start);
       requestAnimationFrame(() => {
         const el = textareaRef.current;
         if (!el) return;
