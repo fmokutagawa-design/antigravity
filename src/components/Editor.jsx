@@ -540,6 +540,46 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     console.log('[JUMP DEBUG] ta=', !!ta, 'container=', !!container);
     if (!ta || !container) return;
 
+    const isClean = settings.paperStyle === 'clean';
+
+    if (isClean) {
+      // クリーンモード: プロポーショナルフォントのため行計算不可
+      // textarea を一時的に 1x1 に縮小し、ブラウザの内部スクロールを利用
+      const origWidth = ta.style.width;
+      const origHeight = ta.style.height;
+      const origOverflow = ta.style.overflow;
+
+      ta.style.overflow = 'auto';
+      ta.style.width = '1px';
+      ta.style.height = '1px';
+
+      ta.focus();
+      ta.setSelectionRange(charIndex, charIndex);
+
+      // ブラウザが内部的にスクロールしたはず
+      const innerTop = ta.scrollTop;
+      const innerLeft = ta.scrollLeft;
+
+      console.log('[JUMP DEBUG] CLEAN MODE: innerTop=', innerTop, 'innerLeft=', innerLeft);
+
+      // container に転写
+      if (settings.isVertical) {
+        // vertical-rl: scrollLeft は負方向
+        container.scrollLeft = innerLeft;
+      } else {
+        container.scrollTop = innerTop;
+      }
+
+      // textarea を元に戻す
+      ta.scrollTop = 0;
+      ta.scrollLeft = 0;
+      ta.style.width = origWidth;
+      ta.style.height = origHeight;
+      ta.style.overflow = origOverflow;
+
+      return;
+    }
+
     const { maxPerLine, cell, padding } = baseMetrics;
     const text = settings.isVertical ? toVerticalDisplay(value) : value;
     
@@ -591,7 +631,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       
       container.scrollTop = targetScrollTop;
     }
-  }, [value, settings.isVertical, baseMetrics]);
+  }, [value, settings.isVertical, settings.paperStyle, baseMetrics]);
 
   useImperativeHandle(ref, () => ({
     focus: () => textareaRef.current?.focus(),
