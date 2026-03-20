@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import Toolbar from './components/Toolbar';
 import PrizePanel from './components/PrizePanel';
@@ -61,6 +61,12 @@ import './index.css';
 
 function App() {
   const [text, setText] = useState('');
+  const [debouncedText, setDebouncedText] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedText(text), 300);
+    return () => clearTimeout(timer);
+  }, [text]);
   const [settings, setSettings] = useState({
     colorTheme: 'light', // light, dark, blackboard
     paperStyle: 'lined', // plain, lined, grid, manuscript
@@ -2872,609 +2878,508 @@ function App() {
       {/* Main Workspace (Sidebar + Content) */}
       <div className="app-workspace" style={{ display: 'flex', flex: 1, overflow: 'hidden', width: '100%' }}>
 
-        {isSidebarVisible && (
-          <aside className="sidebar" style={{ width: '400px' }}>
-            <div className="sidebar-nav">
-              <div
-                className={`sidebar-nav-item ${sidebarTab === 'files' ? 'active' : ''} `}
-                onClick={() => setSidebarTab('files')}
-                title="ファイル"
-              >
-                📁
-              </div>
-              <div
-                className={`sidebar-nav-item ${sidebarTab === 'navigate' ? 'active' : ''} `}
-                onClick={() => setSidebarTab('navigate')}
-                title="ナビゲート (タグ/リンク/検索)"
-              >
-                🔗
-              </div>
-              <div
-                className={`sidebar-nav-item ${sidebarTab === 'progress' ? 'active' : ''} `}
-                onClick={() => setSidebarTab('progress')}
-                title="執筆捗・チェック"
-              >
-                📊
-              </div>
-
-              <div
-                className={`sidebar-nav-item ${sidebarTab === 'ai' ? 'active' : ''}`}
-                onClick={() => setSidebarTab(sidebarTab === 'ai' ? null : 'ai')}
-                title="AIアシスタント"
-              >
-                🤖
-              </div>
-
-              <div
-                className={`sidebar-nav-item ${sidebarTab === 'prizes' ? 'active' : ''}`}
-                onClick={() => setSidebarTab('prizes')}
-                title="新人賞"
-              >
-                🏆
-              </div>
-              <div
-                className={`sidebar-nav-item ${sidebarTab === 'clipboard' ? 'active' : ''}`}
-                onClick={() => setSidebarTab('clipboard')}
-                title="クリップボード"
-              >
-                📋
-              </div>
-              <div
-                className={`sidebar-nav-item ${sidebarTab === 'export' ? 'active' : ''}`}
-                onClick={() => setSidebarTab('export')}
-                title="出力・整形"
-              >
-                📤
-              </div>
-              <div
-                className={`sidebar-nav-item ${sidebarTab === 'snapshots' ? 'active' : ''}`}
-                onClick={() => setSidebarTab('snapshots')}
-                title="スナップショット履歴"
-              >
-                📸
-              </div>
-              <div
-                className={`sidebar-nav-item ${sidebarTab === 'settings' ? 'active' : ''} `}
-                onClick={() => setSidebarTab('settings')}
-                title="設定"
-              >
-                ⚙️
-              </div>
-
-
-              <div style={{ flex: 1 }}></div>
-
-              {/* --- View Section (Bottom) --- */}
-              <div
-                className={`sidebar-nav-item ${activeTab === 'materials' ? 'active' : ''} `}
-                onClick={() => setActiveTab('materials')}
-                title="資料一覧"
-              >
-                📚
-              </div>
-
-              <div
-                className={`sidebar-nav-item ${activeTab === 'storyboard' ? 'active' : ''} `}
-                onClick={() => setActiveTab('storyboard')}
-                title="ストーリーボード"
-              >
-                🧩
-              </div>
-              {projectHandle && (
+        {useMemo(() => {
+          if (!isSidebarVisible) return null;
+          return (
+            <aside className="sidebar" style={{ width: '400px' }}>
+              <div className="sidebar-nav">
                 <div
-                  className="sidebar-nav-item"
-                  onClick={async () => {
-                    if (await requestConfirm("確認", 'プロジェクトを閉じますか？')) {
-                      setProjectHandle(null);
-                      setFileTree([]);
-                      setActiveFileHandle(null);
-                      setText('');
-                      setIsProjectMode(false);
-                    }
-                  }}
-                  title="プロジェクトを閉じる"
-                  style={{ color: '#d32f2f' }}
+                  className={`sidebar-nav-item ${sidebarTab === 'files' ? 'active' : ''} `}
+                  onClick={() => setSidebarTab('files')}
+                  title="ファイル"
                 >
-                  ✖️
+                  📁
                 </div>
-              )}
-            </div>
-
-            <div className="sidebar-body">
-              {settings.showLogo !== false && (
-                <div className="sidebar-header" style={{ marginBottom: '0.1rem', display: 'flex', justifyContent: 'center', padding: '10px 10px 5px', borderBottom: 'none' }}>
-                  <img src="./nexus-logo-wide.png" alt="NEXUS" className="nexus-logo-wide" style={{ maxWidth: '90%', height: 'auto', display: 'block' }} />
+                <div
+                  className={`sidebar-nav-item ${sidebarTab === 'navigate' ? 'active' : ''} `}
+                  onClick={() => setSidebarTab('navigate')}
+                  title="ナビゲート (タグ/リンク/検索)"
+                >
+                  🔗
                 </div>
-              )}
+                <div
+                  className={`sidebar-nav-item ${sidebarTab === 'progress' ? 'active' : ''} `}
+                  onClick={() => setSidebarTab('progress')}
+                  title="執筆捗・チェック"
+                >
+                  📊
+                </div>
 
-              {/* Sidebar Tab Content */}
-              <div className="sidebar-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-                {sidebarTab === 'files' ? (
-                  <>
-                    {projectHandle && (
-                      <div className="project-tree-container" style={{ display: 'flex', flexDirection: 'column' }}>
-                        {projectContextMenu && ReactDOM.createPortal(
-                          <>
-                            <div
-                              style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99998 }}
-                              onClick={() => setProjectContextMenu(null)}
-                            />
-                            <div className="context-menu" style={{
-                              position: 'fixed',
-                              top: projectContextMenu.y,
-                              left: projectContextMenu.x,
-                              zIndex: 99999
-                            }}>
-                              <div className="context-menu-item" onClick={() => {
-                                handleRenameProject();
-                                setProjectContextMenu(null);
-                              }}>
-                                ✏️ 名前を変更
-                              </div>
-                              <div className="context-menu-item" onClick={() => {
-                                handleMoveProject();
-                                setProjectContextMenu(null);
-                              }}>
-                                🚚 移動
-                              </div>
-                              <div style={{ padding: '0', height: '1px', background: '#eee', margin: '4px 0' }}></div>
-                              <div className="context-menu-item" onClick={async () => {
-                                setProjectHandle(null);
-                                setFileTree([]);
-                                setActiveFileHandle(null);
-                                setText('');
-                                setIsProjectMode(false);
-                                setProjectContextMenu(null);
-                              }} style={{ color: '#d32f2f' }}>
-                                ✖️ プロジェクトを閉じる
-                              </div>
-                            </div>
-                          </>,
-                          document.body
-                        )}
-                      </div>
-                    )}
+                <div
+                  className={`sidebar-nav-item ${sidebarTab === 'ai' ? 'active' : ''}`}
+                  onClick={() => setSidebarTab(sidebarTab === 'ai' ? null : 'ai')}
+                  title="AIアシスタント"
+                >
+                  🤖
+                </div>
 
-                    {!projectHandle && (
-                      <div className="project-welcome-section" style={{ padding: '10px' }}>
-                        <button className="btn-open-project" onClick={handleCreateNewProject}>
-                          ✨ 新規プロジェクト作成
-                        </button>
-                        {savedProjectHandle && (
-                          <button
-                            className="btn-open-project"
-                            onClick={handleResumeProject}
-                            style={{ background: '#2196f3' }}
-                          >
-                            📂 {savedProjectHandle.name} を再開
-                          </button>
-                        )}
-                        <button
-                          className="btn-open-project"
-                          onClick={handleOpenProject}
-                          style={{ background: '#6c757d' }}
-                        >
-                          📂 フォルダを開く
-                        </button>
-                      </div>
-                    )}
+                <div
+                  className={`sidebar-nav-item ${sidebarTab === 'prizes' ? 'active' : ''}`}
+                  onClick={() => setSidebarTab('prizes')}
+                  title="新人賞"
+                >
+                  🏆
+                </div>
+                <div
+                  className={`sidebar-nav-item ${sidebarTab === 'clipboard' ? 'active' : ''}`}
+                  onClick={() => setSidebarTab('clipboard')}
+                  title="クリップボード"
+                >
+                  📋
+                </div>
+                <div
+                  className={`sidebar-nav-item ${sidebarTab === 'export' ? 'active' : ''}`}
+                  onClick={() => setSidebarTab('export')}
+                  title="出力・整形"
+                >
+                  📤
+                </div>
+                <div
+                  className={`sidebar-nav-item ${sidebarTab === 'snapshots' ? 'active' : ''}`}
+                  onClick={() => setSidebarTab('snapshots')}
+                  title="スナップショット履歴"
+                >
+                  📸
+                </div>
+                <div
+                  className={`sidebar-nav-item ${sidebarTab === 'settings' ? 'active' : ''} `}
+                  onClick={() => setSidebarTab('settings')}
+                  title="設定"
+                >
+                  ⚙️
+                </div>
 
-                    {sidebarTab === 'files' && (
-                      <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--border-color)' }}>
-                          <button
-                            onClick={() => setShowCardCreator(true)}
-                            style={{
-                              width: '100%',
-                              padding: '6px',
-                              background: 'var(--accent-color)',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '6px',
-                              fontWeight: 'bold',
-                              fontSize: '13px'
-                            }}
-                          >
-                            cards 🃏 新規カード作成
-                          </button>
-                        </div>
-                        <div style={{ flex: 1, overflow: 'auto' }}>
-                          {projectHandle ? (
-                            isMaterialsLoading ? (
-                              <div style={{ padding: '1rem', color: '#666', fontSize: '0.85rem', textAlign: 'center' }}>
-                                読み込み中...
-                              </div>
-                            ) : fileTree.length > 0 ? (
-                              <FileTree
-                                tree={fileTree}
-                                activeFile={activeFileHandle ? (activeFileHandle.handle || activeFileHandle) : null}
-                                onFileSelect={handleFileSelect}
-                                onCreateFile={handleCreateFileInProject}
-                                onCreateFolder={handleCreateFolderInProject}
-                                onRequestCreateFile={(parent) => {
-                                  setPendingCreateParent(parent);
-                                  setInputModalMode('create_file');
-                                  setInputModalValue('');
-                                  setShowInputModal(true);
-                                }}
-                                onRequestCreateFolder={(parent) => {
-                                  setPendingCreateParent(parent);
-                                  setInputModalMode('create_folder');
-                                  setInputModalValue('');
-                                  setShowInputModal(true);
-                                }}
-                                onOpenReference={handleOpenReference}
-                                onOpenInNewWindow={handleOpenInNewWindow}
-                                onRename={handleRename}
-                                onDelete={handleDelete}
-                                onDuplicate={handleDuplicateFile}
-                                onMove={handleMoveItem}
-                              />
-                            ) : (
-                              <div style={{ padding: '1rem', color: '#999', fontSize: '0.85rem', textAlign: 'center' }}>
-                                ファイルが見つかりません
-                              </div>
-                            )
-                          ) : (
-                            <div style={{ padding: '1rem', color: '#999', fontSize: '0.85rem', textAlign: 'center' }}>
-                              プロジェクトフォルダを開いてください
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
 
-                    {/* Footer Area with File Actions - Refined Grid with Labels */}
-                    <div className="sidebar-footer">
-                      <div className="file-actions-grid">
-                        <button className="action-btn-compact" onClick={handleSaveFile} title="上書き保存">
-                          <span className="icon">💾</span>
-                          <span className="label">保存</span>
-                        </button>
-                        <button className="action-btn-compact" onClick={() => handleDuplicateFile()} title="別名で保存">
-                          <span className="icon">📑</span>
-                          <span className="label">別名</span>
-                        </button>
-                        <button className="action-btn-compact" onClick={() => fileInputRef.current?.click()} title="読込">
-                          <span className="icon">📂</span>
-                          <span className="label">読込</span>
-                        </button>
-                        <button className="action-btn-compact" onClick={() => {
-                          navigator.clipboard.writeText(text).then(() => showToast('コピーしました')).catch(e => console.error(e));
-                        }} title="本文をコピー">
-                          <span className="icon">📋</span>
-                          <span className="label">コピー</span>
-                        </button>
+                <div style={{ flex: 1 }}></div>
 
-                        <button className="action-btn-compact" onClick={handlePrint} title="印刷">
-                          <span className="icon">🖨️</span>
-                          <span className="label">印刷</span>
-                        </button>
-                        <button
-                          className="action-btn-compact"
-                          onClick={() => {
-                            openInputModal('新規ファイル', 'ファイル名...', '', async (fileName) => {
-                              if (fileName) {
-                                const fullName = fileName.trim().endsWith('.txt') ? fileName.trim() : `${fileName.trim()}.txt`;
-                                try {
-                                  const newFile = await handleCreateFileInProject(null, fullName);
-                                  if (newFile) await handleFileSelect(newFile);
-                                } catch (err) { showToast("作成失敗: " + err.message); }
-                              }
-                            });
-                          }}
-                          title="新規ファイル"
-                        >
-                          <span className="icon">📄</span>
-                          <span className="label">新規</span>
-                        </button>
-                        <button
-                          className="action-btn-compact"
-                          onClick={() => {
-                            openInputModal('新規フォルダ', 'フォルダ名...', '', async (folderName) => {
-                              if (folderName) {
-                                handleCreateFolderInProject(null, folderName.trim()).catch(err => showToast("作成失敗: " + err.message));
-                              }
-                            });
-                          }}
-                          title="新規フォルダ"
-                        >
-                          <span className="icon">📁</span>
-                          <span className="label">フォルダ</span>
-                        </button>
+                {/* --- View Section (Bottom) --- */}
+                <div
+                  className={`sidebar-nav-item ${activeTab === 'materials' ? 'active' : ''} `}
+                  onClick={() => setActiveTab('materials')}
+                  title="資料一覧"
+                >
+                  📚
+                </div>
 
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept=".txt,text/plain"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleLoadFile(file);
-                            e.target.value = '';
-                          }}
-                          style={{ display: 'none' }}
-                        />
-                      </div>
-                    </div>
-                  </>
-                ) : sidebarTab === 'navigate' ? (
-                  <NavigatePanel
-                    renderTagPanel={() => (
-                      activeFileHandle ? (() => {
-                        const { metadata: currentMetadata } = parseNote(text);
-                        const allWorks = new Set();
-                        try {
-                          const savedWorks = localStorage.getItem('savedWorks');
-                          if (savedWorks) {
-                            try {
-                              JSON.parse(savedWorks).forEach(work => allWorks.add(work));
-                            } catch (e) { console.error('Failed to parse savedWorks', e); }
-                          }
-                        } catch (err) { console.error('Error in work list generation', err); }
-                        allMaterialFiles?.forEach(file => {
-                          if (file.metadata?.作品) {
-                            file.metadata.作品.split(',').forEach(work => {
-                              const trimmed = work.trim();
-                              if (trimmed) allWorks.add(trimmed);
-                            });
-                          }
-                        });
-                        try {
-                          localStorage.setItem('savedWorks', JSON.stringify(Array.from(allWorks)));
-                        } catch (err) { console.error('Error in work list generation', err); }
-                        return (
-                          <TagPanel
-                            currentFile={activeFileHandle}
-                            metadata={currentMetadata}
-                            onMetadataUpdate={handleMetadataUpdate}
-                            allWorks={Array.from(allWorks)}
-                            openInputModal={openInputModal}
-                          />
-                        );
-                      })() : (
-                        <div style={{ padding: '1rem', color: '#999', fontSize: '0.85rem', textAlign: 'center' }}>
-                          ファイルを開いてください
-                        </div>
-                      )
-                    )}
-                    renderLinkPanel={() => (
-                      <LinkPanel
-                        activeFile={activeFileHandle}
-                        allFiles={allMaterialFiles}
-                        linkGraph={linkGraph}
-                        currentText={text}
-                        onOpenLink={handleOpenLink}
-                        onInsertLink={handleInsertLink}
-                      />
-                    )}
-                    renderSearchPanel={() => (
-                      <SearchPanel
-                        allFiles={allMaterialFiles}
-                        currentText={text}
-                        currentFileName={activeFileHandle ? (activeFileHandle.name || (typeof activeFileHandle === 'string' ? activeFileHandle.split(/[/\\]/).pop() : '無題')) : '無題'}
-                        strictManuscriptMode={settings.strictManuscriptMode}
-                        onOpenFile={handleOpenFile}
-                        onProjectReplace={handleProjectReplace}
-                        onSwitchToReplace={(query) => {
-                          setIsSearchOpen(true);
-                          setSearchReplaceInitialTerm(query || '');
-                          setSearchReplaceInitialGrepMode(true);
-                        }}
-                      />
-                    )}
-                    renderOutlinePanel={() => (
-                      <OutlinePanel
-                        text={text}
-                        onJump={handleOutlineJump}
-                        onClose={() => { }}
-                        embedded={true}
-                      />
-                    )}
-                  />
-                ) : sidebarTab === 'progress' ? (
-                  <ProgressPanel
-                    renderProgressTracker={() => (
-                      <ProgressTracker
-                        allMaterialFiles={allMaterialFiles}
-                        projectSettings={projectSettings}
-                        onUpdateProjectSettings={saveProjectSettings}
-                        currentWork={(() => {
-                          try {
-                            return parseNote(text).metadata?.作品;
-                          } catch { return null; }
-                        })()}
-                        sessionCharDiff={currentSessionChars}
-                        onResetSession={handleResetSession}
-                      />
-                    )}
-                    renderChecklistPanel={() => (
-                      <ChecklistPanel
-                        allFiles={allMaterialFiles}
-                        currentWork={(() => {
-                          try {
-                            return parseNote(text).metadata?.作品;
-                          } catch { return null; }
-                        })()}
-                        activeFileContent={text}
-                        onUpdateFile={async (handle, content) => {
-                          await fileSystem.writeFile(handle, content);
-                          await refreshMaterials();
-                        }}
-                        onCreateFile={(fileName, content) => {
-                          if (projectHandle) {
-                            return handleCreateFileInProject(projectHandle, fileName, content);
-                          }
-                        }}
-                        onNavigate={handleNavigate}
-                        onInsert={(text) => {
-                          if (editorRef.current) {
-                            editorRef.current.insertText(text);
-                            setActiveTab('editor');
-                          }
-                        }}
-                      />
-                    )}
-                    renderTodoPanel={() => (
-                      <TodoPanel
-                        text={text}
-                        activeFileName={activeFileHandle ? (typeof activeFileHandle === 'string' ? activeFileHandle.split(/[/\\]/).pop() : activeFileHandle.name) : null}
-                        onJumpToIndex={(index) => {
-                          if (editorRef.current?.jumpToIndex) {
-                            editorRef.current.jumpToIndex(index);
-                          }
-                        }}
-                        onInsertTodo={() => {
-                          setInputModalMode('insert_todo');
-                          setInputModalValue('');
-                          setShowInputModal(true);
-                        }}
-                      />
-                    )}
-                  />
-
-                ) : sidebarTab === 'clipboard' ? (
-                  <ClipboardPanel
-                    history={editorRef.current?.clipboardHistory || []}
-                    onPaste={(text) => {
-                      editorRef.current?.pasteFromHistory(text);
-                    }}
-                  />
-
-                ) : sidebarTab === 'export' ? (
-                  <ExportPanel
-                    onFormat={handleFormat}
-                    onPrint={handlePrint}
-                    onEpubExport={() => handleEpubExport(null, allMaterialFiles)}
-                    onDocxExport={handleDocxExport}
-                    onBatchExport={handleBatchExport}
-                    colorTheme={settings.colorTheme}
-                  />
-
-                ) : sidebarTab === 'ai' ? (
-                  <AIPanel
-                    text={text}
-                    onInsert={handleAIInsert}
-                    isOpen={true}
-                    onClose={() => setSidebarTab(null)}
-                    allFiles={allMaterialFiles}
-                    addCandidate={addCandidate}
-                    activeFile={activeFileHandle}
-                    initialAction={aiAction}
-                    initialOptions={aiOptions}
-                    corrections={corrections}
-                    setCorrections={setCorrections}
-                    onApplyCorrection={handleApplyCorrection}
-                    onDiscardCorrection={handleDiscardCorrection}
-                    onApplyAllCorrections={handleApplyAllCorrections}
-                    projectId={typeof projectHandle === 'string' ? projectHandle : projectHandle?.name}
-                    aiModel={aiModel}
-                    setAiModel={setAiModel}
-                    localModels={localModels}
-                    selectedLocalModel={selectedLocalModel}
-                    setSelectedLocalModel={setSelectedLocalModel}
-                    isLocalConnected={isLocalConnected}
-                    checkLocalConnection={checkLocalConnection}
-                    renderCandidateBoxPanel={() => (
-                      <CandidateBoxPanel
-                        candidates={candidates}
-                        onAdopt={adoptCandidate}
-                        onDiscard={discardCandidate}
-                        onDiscardAll={discardAllCandidates}
-                        onCreateCard={() => openCardCreator()}
-                      />
-                    )}
-                    renderSnippetsPanel={() => (
-                      <SnippetsPanel
-                        snippets={snippets}
-                        onAdd={handleAddSnippet}
-                        onDelete={handleDeleteSnippet}
-                        onCopy={handleCopySnippet}
-                        onDragStart={handleSnippetDragStart}
-                      />
-                    )}
-                    renderNotesPanel={() => (
-                      <NotesPanel
-                        key={notesText}
-                        initialText={notesText}
-                        onSave={async (newText) => {
-                          setNotesText(newText);
-                          if (projectHandle) {
-                            try {
-                              let notesFileHandle;
-                              try {
-                                notesFileHandle = await projectHandle.getFileHandle('_notes.txt');
-                              } catch {
-                                notesFileHandle = await projectHandle.getFileHandle('_notes.txt', { create: true });
-                              }
-                              const writable = await notesFileHandle.createWritable();
-                              await writable.write(newText);
-                              await writable.close();
-                              refreshMaterials();
-                            } catch (err) {
-                              console.error('Failed to save notes:', err);
-                            }
-                          }
-                        }}
-                        projectHandle={projectHandle}
-                      />
-                    )}
-                  />
-
-                ) : sidebarTab === 'prizes' ? (
-                  <PrizePanel
-                    projectSettings={projectSettings}
-                    onApplyPrize={(prizeData) => {
-                      setProjectSettings(prev => ({
-                        ...prev,
-                        targetPages: prizeData.targetPages,
-                        deadline: prizeData.deadline,
-                        prizeName: prizeData.prizeName,
-                        prizeId: prizeData.prizeId,
-                        prizeCharsPerLine: prizeData.editorFormat?.charsPerLine || 0,
-                        prizeLinesPerPage: prizeData.editorFormat?.linesPerPage || 0
-                      }));
-                      // 賞の原稿形式に合わせてエディタ設定を自動変更
-                      if (prizeData.editorFormat && (prizeData.editorFormat.charsPerLine > 0 || prizeData.editorFormat.linesPerPage > 0)) {
-                        setSettings(prev => ({
-                          ...prev,
-                          charsPerLine: prizeData.editorFormat.charsPerLine || prev.charsPerLine,
-                          linesPerPage: prizeData.editorFormat.linesPerPage || prev.linesPerPage,
-                          paperStyle: 'manuscript',  // 原稿用紙モードに切替
-                        }));
+                <div
+                  className={`sidebar-nav-item ${activeTab === 'storyboard' ? 'active' : ''} `}
+                  onClick={() => setActiveTab('storyboard')}
+                  title="ストーリーボード"
+                >
+                  🧩
+                </div>
+                {projectHandle && (
+                  <div
+                    className="sidebar-nav-item"
+                    onClick={async () => {
+                      if (await requestConfirm("確認", 'プロジェクトを閉じますか？')) {
+                        setProjectHandle(null);
+                        setFileTree([]);
+                        setActiveFileHandle(null);
+                        setText('');
+                        setIsProjectMode(false);
                       }
                     }}
-                  />
-                ) : sidebarTab === 'snapshots' ? (
-                  <SnapshotPanel
-                    filePath={activeFileHandle ? (typeof activeFileHandle === 'string' ? activeFileHandle : (activeFileHandle.handle || activeFileHandle.name || null)) : null}
-                    currentText={text}
-                    onRestore={(content) => setText(content)}
-                    showToast={showToast}
-                    onSaveNow={async () => {
-                      const fp = activeFileHandle ? (typeof activeFileHandle === 'string' ? activeFileHandle : (activeFileHandle.handle || activeFileHandle.name || '')) : '';
-                      if (fp && text) await saveSnapshot(fp, text, text.length);
-                    }}
-                  />
-                ) : sidebarTab === 'settings' ? (
-                  <div style={{ flex: 1, overflowY: 'auto' }}>
-                    <Toolbar
-                      settings={settings}
-                      setSettings={setSettings}
-                      presets={presets}
-                      onSavePreset={handleSavePreset}
-                      onLoadPreset={handleLoadPreset}
-                      onDeletePreset={handleDeletePreset}
-                      isDarkMode={isDarkMode}
-                      setIsDarkMode={setIsDarkMode}
-                      showMetadata={showMetadata}
-                      setShowMetadata={setShowMetadata}
-                      showOutline={sidebarTab === 'navigate'}
-                      onToggleOutline={() => setSidebarTab(sidebarTab === 'navigate' ? null : 'navigate')}
+                    title="プロジェクトを閉じる"
+                    style={{ color: '#d32f2f' }}
+                  >
+                    ✖️
+                  </div>
+                )}
+              </div>
+
+              <div className="sidebar-body">
+                {settings.showLogo !== false && (
+                  <div className="sidebar-header" style={{ marginBottom: '0.1rem', display: 'flex', justifyContent: 'center', padding: '10px 10px 5px', borderBottom: 'none' }}>
+                    <img src="./nexus-logo-wide.png" alt="NEXUS" className="nexus-logo-wide" style={{ maxWidth: '90%', height: 'auto', display: 'block' }} />
+                  </div>
+                )}
+
+                {/* Sidebar Tab Content */}
+                <div className="sidebar-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+                  {sidebarTab === 'files' ? (
+                    <>
+                      {projectHandle && (
+                        <div className="project-tree-container" style={{ display: 'flex', flexDirection: 'column' }}>
+                          {projectContextMenu && ReactDOM.createPortal(
+                            <>
+                              <div
+                                style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99998 }}
+                                onClick={() => setProjectContextMenu(null)}
+                              />
+                              <div className="context-menu" style={{
+                                position: 'fixed',
+                                top: projectContextMenu.y,
+                                left: projectContextMenu.x,
+                                zIndex: 99999
+                              }}>
+                                <div className="context-menu-item" onClick={() => {
+                                  handleRenameProject();
+                                  setProjectContextMenu(null);
+                                }}>
+                                  ✏️ 名前を変更
+                                </div>
+                                <div className="context-menu-item" onClick={() => {
+                                  handleMoveProject();
+                                  setProjectContextMenu(null);
+                                }}>
+                                  🚚 移動
+                                </div>
+                                <div style={{ padding: '0', height: '1px', background: '#eee', margin: '4px 0' }}></div>
+                                <div className="context-menu-item" onClick={async () => {
+                                  setProjectHandle(null);
+                                  setFileTree([]);
+                                  setActiveFileHandle(null);
+                                  setText('');
+                                  setIsProjectMode(false);
+                                  setProjectContextMenu(null);
+                                }} style={{ color: '#d32f2f' }}>
+                                  ✖️ プロジェクトを閉じる
+                                </div>
+                              </div>
+                            </>,
+                            document.body
+                          )}
+                        </div>
+                      )}
+
+                      {!projectHandle && (
+                        <div className="project-welcome-section" style={{ padding: '10px' }}>
+                          <button className="btn-open-project" onClick={handleCreateNewProject}>
+                            ✨ 新規プロジェクト作成
+                          </button>
+                          {savedProjectHandle && (
+                            <button
+                              className="btn-open-project"
+                              onClick={handleResumeProject}
+                              style={{ background: '#2196f3' }}
+                            >
+                              📂 {savedProjectHandle.name} を再開
+                            </button>
+                          )}
+                          <button
+                            className="btn-open-project"
+                            onClick={handleOpenProject}
+                            style={{ background: '#6c757d' }}
+                          >
+                            📂 フォルダを開く
+                          </button>
+                        </div>
+                      )}
+
+                      {sidebarTab === 'files' && (
+                        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                          <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--border-color)' }}>
+                            <button
+                              onClick={() => setShowCardCreator(true)}
+                              style={{
+                                width: '100%',
+                                padding: '6px',
+                                background: 'var(--accent-color)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '6px',
+                                fontWeight: 'bold',
+                                fontSize: '13px'
+                              }}
+                            >
+                              cards 🃏 新規カード作成
+                            </button>
+                          </div>
+                          <div style={{ flex: 1, overflow: 'auto' }}>
+                            {projectHandle ? (
+                              isMaterialsLoading ? (
+                                <div style={{ padding: '1rem', color: '#666', fontSize: '0.85rem', textAlign: 'center' }}>
+                                  読み込み中...
+                                </div>
+                              ) : fileTree.length > 0 ? (
+                                <FileTree
+                                  tree={fileTree}
+                                  activeFile={activeFileHandle ? (activeFileHandle.handle || activeFileHandle) : null}
+                                  onFileSelect={handleFileSelect}
+                                  onCreateFile={handleCreateFileInProject}
+                                  onCreateFolder={handleCreateFolderInProject}
+                                  onRequestCreateFile={(parent) => {
+                                    setPendingCreateParent(parent);
+                                    setInputModalMode('create_file');
+                                    setInputModalValue('');
+                                    setShowInputModal(true);
+                                  }}
+                                  onRequestCreateFolder={(parent) => {
+                                    setPendingCreateParent(parent);
+                                    setInputModalMode('create_folder');
+                                    setInputModalValue('');
+                                    setShowInputModal(true);
+                                  }}
+                                  onOpenReference={handleOpenReference}
+                                  onOpenInNewWindow={handleOpenInNewWindow}
+                                  onRename={handleRename}
+                                  onDelete={handleDelete}
+                                  onDuplicate={handleDuplicateFile}
+                                  onMove={handleMoveItem}
+                                />
+                              ) : (
+                                <div style={{ padding: '1rem', color: '#999', fontSize: '0.85rem', textAlign: 'center' }}>
+                                  ファイルが見つかりません
+                                </div>
+                              )
+                            ) : (
+                              <div style={{ padding: '1rem', color: '#999', fontSize: '0.85rem', textAlign: 'center' }}>
+                                プロジェクトフォルダを開いてください
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Footer Area with File Actions - Refined Grid with Labels */}
+                      <div className="sidebar-footer">
+                        <div className="file-actions-grid">
+                          <button className="action-btn-compact" onClick={handleSaveFile} title="上書き保存">
+                            <span className="icon">💾</span>
+                            <span className="label">保存</span>
+                          </button>
+                          <button className="action-btn-compact" onClick={() => handleDuplicateFile()} title="別名で保存">
+                            <span className="icon">📑</span>
+                            <span className="label">別名</span>
+                          </button>
+                          <button className="action-btn-compact" onClick={() => fileInputRef.current?.click()} title="読込">
+                            <span className="icon">📂</span>
+                            <span className="label">読込</span>
+                          </button>
+                          <button className="action-btn-compact" onClick={() => {
+                            navigator.clipboard.writeText(debouncedText).then(() => showToast('コピーしました')).catch(e => console.error(e));
+                          }} title="本文をコピー">
+                            <span className="icon">📋</span>
+                            <span className="label">コピー</span>
+                          </button>
+
+                          <button className="action-btn-compact" onClick={handlePrint} title="印刷">
+                            <span className="icon">🖨️</span>
+                            <span className="label">印刷</span>
+                          </button>
+                          <button
+                            className="action-btn-compact"
+                            onClick={() => {
+                              openInputModal('新規ファイル', 'ファイル名...', '', async (fileName) => {
+                                if (fileName) {
+                                  const fullName = fileName.trim().endsWith('.txt') ? fileName.trim() : `${fileName.trim()}.txt`;
+                                  try {
+                                    const newFile = await handleCreateFileInProject(null, fullName);
+                                    if (newFile) await handleFileSelect(newFile);
+                                  } catch (err) { showToast("作成失敗: " + err.message); }
+                                }
+                              });
+                            }}
+                            title="新規ファイル"
+                          >
+                            <span className="icon">📄</span>
+                            <span className="label">新規</span>
+                          </button>
+                          <button
+                            className="action-btn-compact"
+                            onClick={() => {
+                              openInputModal('新規フォルダ', 'フォルダ名...', '', async (folderName) => {
+                                if (folderName) {
+                                  handleCreateFolderInProject(null, folderName.trim()).catch(err => showToast("作成失敗: " + err.message));
+                                }
+                              });
+                            }}
+                            title="新規フォルダ"
+                          >
+                            <span className="icon">📁</span>
+                            <span className="label">フォルダ</span>
+                          </button>
+
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".txt,text/plain"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleLoadFile(file);
+                              e.target.value = '';
+                            }}
+                            style={{ display: 'none' }}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  ) : sidebarTab === 'navigate' ? (
+                    <NavigatePanel
+                      renderTagPanel={() => (
+                        activeFileHandle ? (() => {
+                          const { metadata: currentMetadata } = parseNote(debouncedText);
+                          const allWorks = new Set();
+                          try {
+                            const savedWorks = localStorage.getItem('savedWorks');
+                            if (savedWorks) {
+                              try {
+                                JSON.parse(savedWorks).forEach(work => allWorks.add(work));
+                              } catch (e) { console.error('Failed to parse savedWorks', e); }
+                            }
+                          } catch (err) { console.error('Error in work list generation', err); }
+                          allMaterialFiles?.forEach(file => {
+                            if (file.metadata?.作品) {
+                              file.metadata.作品.split(',').forEach(work => {
+                                const trimmed = work.trim();
+                                if (trimmed) allWorks.add(trimmed);
+                              });
+                            }
+                          });
+                          try {
+                            localStorage.setItem('savedWorks', JSON.stringify(Array.from(allWorks)));
+                          } catch (err) { console.error('Error in work list generation', err); }
+                          return (
+                            <TagPanel
+                              currentFile={activeFileHandle}
+                              metadata={currentMetadata}
+                              onMetadataUpdate={handleMetadataUpdate}
+                              allWorks={Array.from(allWorks)}
+                              openInputModal={openInputModal}
+                            />
+                          );
+                        })() : (
+                          <div style={{ padding: '1rem', color: '#999', fontSize: '0.85rem', textAlign: 'center' }}>
+                            ファイルを開いてください
+                          </div>
+                        )
+                      )}
+                      renderLinkPanel={() => (
+                        <LinkPanel
+                          activeFile={activeFileHandle}
+                          allFiles={allMaterialFiles}
+                          linkGraph={linkGraph}
+                          currentText={debouncedText}
+                          onOpenLink={handleOpenLink}
+                          onInsertLink={handleInsertLink}
+                        />
+                      )}
+                      renderSearchPanel={() => (
+                        <SearchPanel
+                          allFiles={allMaterialFiles}
+                          currentText={debouncedText}
+                          currentFileName={activeFileHandle ? (activeFileHandle.name || (typeof activeFileHandle === 'string' ? activeFileHandle.split(/[/\\]/).pop() : '無題')) : '無題'}
+                          strictManuscriptMode={settings.strictManuscriptMode}
+                          onOpenFile={handleOpenFile}
+                          onProjectReplace={handleProjectReplace}
+                          onSwitchToReplace={(query) => {
+                            setIsSearchOpen(true);
+                            setSearchReplaceInitialTerm(query || '');
+                            setSearchReplaceInitialGrepMode(true);
+                          }}
+                        />
+                      )}
+                      renderOutlinePanel={() => (
+                        <OutlinePanel
+                          text={debouncedText}
+                          onJump={handleOutlineJump}
+                          onClose={() => { }}
+                          embedded={true}
+                        />
+                      )}
+                    />
+                  ) : sidebarTab === 'progress' ? (
+                    <ProgressPanel
+                      renderProgressTracker={() => (
+                        <ProgressTracker
+                          allMaterialFiles={allMaterialFiles}
+                          projectSettings={projectSettings}
+                          onUpdateProjectSettings={saveProjectSettings}
+                          currentWork={(() => {
+                            try {
+                              return parseNote(debouncedText).metadata?.作品;
+                            } catch { return null; }
+                          })()}
+                          sessionCharDiff={currentSessionChars}
+                          onResetSession={handleResetSession}
+                        />
+                      )}
+                      renderChecklistPanel={() => (
+                        <ChecklistPanel
+                          allFiles={allMaterialFiles}
+                          currentWork={(() => {
+                            try {
+                              return parseNote(debouncedText).metadata?.作品;
+                            } catch { return null; }
+                          })()}
+                          activeFileContent={debouncedText}
+                          onUpdateFile={async (handle, content) => {
+                            await fileSystem.writeFile(handle, content);
+                            await refreshMaterials();
+                          }}
+                          onCreateFile={(fileName, content) => {
+                            if (projectHandle) {
+                              return handleCreateFileInProject(projectHandle, fileName, content);
+                            }
+                          }}
+                          onNavigate={handleNavigate}
+                          onInsert={(insText) => {
+                            if (editorRef.current) {
+                              editorRef.current.insertText(insText);
+                              setActiveTab('editor');
+                            }
+                          }}
+                        />
+                      )}
+                      renderTodoPanel={() => (
+                        <TodoPanel
+                          text={debouncedText}
+                          activeFileName={activeFileHandle ? (typeof activeFileHandle === 'string' ? activeFileHandle.split(/[/\\]/).pop() : activeFileHandle.name) : null}
+                          onJumpToIndex={(index) => {
+                            if (editorRef.current?.jumpToIndex) {
+                              editorRef.current.jumpToIndex(index);
+                            }
+                          }}
+                          onInsertTodo={() => {
+                            setInputModalMode('insert_todo');
+                            setInputModalValue('');
+                            setShowInputModal(true);
+                          }}
+                        />
+                      )}
+                    />
+
+                  ) : sidebarTab === 'clipboard' ? (
+                    <ClipboardPanel
+                      history={editorRef.current?.clipboardHistory || []}
+                      onPaste={(pasteText) => {
+                        editorRef.current?.pasteFromHistory(pasteText);
+                      }}
+                    />
+
+                  ) : sidebarTab === 'export' ? (
+                    <ExportPanel
+                      onFormat={handleFormat}
+                      onPrint={handlePrint}
+                      onEpubExport={() => handleEpubExport(null, allMaterialFiles)}
+                      onDocxExport={handleDocxExport}
+                      onBatchExport={handleBatchExport}
+                      colorTheme={settings.colorTheme}
+                    />
+
+                  ) : sidebarTab === 'ai' ? (
+                    <AIPanel
+                      text={debouncedText}
+                      onInsert={handleAIInsert}
+                      isOpen={true}
+                      onClose={() => setSidebarTab(null)}
+                      allFiles={allMaterialFiles}
+                      addCandidate={addCandidate}
+                      activeFile={activeFileHandle}
+                      initialAction={aiAction}
+                      initialOptions={aiOptions}
+                      corrections={corrections}
+                      setCorrections={setCorrections}
+                      onApplyCorrection={handleApplyCorrection}
+                      onDiscardCorrection={handleDiscardCorrection}
+                      onApplyAllCorrections={handleApplyAllCorrections}
+                      projectId={typeof projectHandle === 'string' ? projectHandle : projectHandle?.name}
                       aiModel={aiModel}
                       setAiModel={setAiModel}
                       localModels={localModels}
@@ -3482,13 +3387,118 @@ function App() {
                       setSelectedLocalModel={setSelectedLocalModel}
                       isLocalConnected={isLocalConnected}
                       checkLocalConnection={checkLocalConnection}
+                      renderCandidateBoxPanel={() => (
+                        <CandidateBoxPanel
+                          candidates={candidates}
+                          onAdopt={adoptCandidate}
+                          onDiscard={discardCandidate}
+                          onDiscardAll={discardAllCandidates}
+                          onCreateCard={() => openCardCreator()}
+                        />
+                      )}
+                      renderSnippetsPanel={() => (
+                        <SnippetsPanel
+                          snippets={snippets}
+                          onAdd={handleAddSnippet}
+                          onDelete={handleDeleteSnippet}
+                          onCopy={handleCopySnippet}
+                          onDragStart={handleSnippetDragStart}
+                        />
+                      )}
+                      renderNotesPanel={() => (
+                        <NotesPanel
+                          key={notesText}
+                          initialText={notesText}
+                          onSave={async (newText) => {
+                            setNotesText(newText);
+                            if (projectHandle) {
+                              try {
+                                let notesFileHandle;
+                                try {
+                                  notesFileHandle = await projectHandle.getFileHandle('_notes.txt');
+                                } catch {
+                                  notesFileHandle = await projectHandle.getFileHandle('_notes.txt', { create: true });
+                                }
+                                const writable = await notesFileHandle.createWritable();
+                                await writable.write(newText);
+                                await writable.close();
+                                refreshMaterials();
+                              } catch (err) {
+                                console.error('Failed to save notes:', err);
+                              }
+                            }
+                          }}
+                          projectHandle={projectHandle}
+                        />
+                      )}
                     />
-                  </div>
-                ) : null}
-              </div> {/* sidebar-content */}
-            </div> {/* sidebar-body */}
-          </aside>
-        )}
+
+                  ) : sidebarTab === 'prizes' ? (
+                    <PrizePanel
+                      projectSettings={projectSettings}
+                      onApplyPrize={(prizeData) => {
+                        setProjectSettings(prev => ({
+                          ...prev,
+                          targetPages: prizeData.targetPages,
+                          deadline: prizeData.deadline,
+                          prizeName: prizeData.prizeName,
+                          prizeId: prizeData.prizeId,
+                          prizeCharsPerLine: prizeData.editorFormat?.charsPerLine || 0,
+                          prizeLinesPerPage: prizeData.editorFormat?.linesPerPage || 0
+                        }));
+                        // 賞の原稿形式に合わせてエディタ設定を自動変更
+                        if (prizeData.editorFormat && (prizeData.editorFormat.charsPerLine > 0 || prizeData.editorFormat.linesPerPage > 0)) {
+                          setSettings(prev => ({
+                            ...prev,
+                            charsPerLine: prizeData.editorFormat.charsPerLine || prev.charsPerLine,
+                            linesPerPage: prizeData.editorFormat.linesPerPage || prev.linesPerPage,
+                            paperStyle: 'manuscript',  // 原稿用紙モードに切替
+                          }));
+                        }
+                      }}
+                    />
+                  ) : sidebarTab === 'snapshots' ? (
+                    <SnapshotPanel
+                      filePath={activeFileHandle ? (typeof activeFileHandle === 'string' ? activeFileHandle : (activeFileHandle.handle || activeFileHandle.name || null)) : null}
+                      currentText={debouncedText}
+                      onRestore={(content) => setText(content)}
+                      showToast={showToast}
+                      onSaveNow={async () => {
+                        const fp = activeFileHandle ? (typeof activeFileHandle === 'string' ? activeFileHandle : (activeFileHandle.handle || activeFileHandle.name || '')) : '';
+                        if (fp && debouncedText) await saveSnapshot(fp, debouncedText, debouncedText.length);
+                      }}
+                    />
+                  ) : sidebarTab === 'settings' ? (
+                    <div style={{ flex: 1, overflowY: 'auto' }}>
+                      <Toolbar
+                        settings={settings}
+                        setSettings={setSettings}
+                        presets={presets}
+                        onSavePreset={handleSavePreset}
+                        onLoadPreset={handleLoadPreset}
+                        onDeletePreset={handleDeletePreset}
+                        isDarkMode={isDarkMode}
+                        setIsDarkMode={setIsDarkMode}
+                        showMetadata={showMetadata}
+                        setShowMetadata={setShowMetadata}
+                        showOutline={sidebarTab === 'navigate'}
+                        onToggleOutline={() => setSidebarTab(sidebarTab === 'navigate' ? null : 'navigate')}
+                        aiModel={aiModel}
+                        setAiModel={setAiModel}
+                        localModels={localModels}
+                        selectedLocalModel={selectedLocalModel}
+                        setSelectedLocalModel={setSelectedLocalModel}
+                        isLocalConnected={isLocalConnected}
+                        checkLocalConnection={checkLocalConnection}
+                      />
+                    </div>
+                  ) : null}
+                </div> {/* sidebar-content */}
+              </div> {/* sidebar-body */}
+            </aside>
+          );
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [isSidebarVisible, sidebarTab, activeTab, projectHandle, fileTree, activeFileHandle, isProjectMode, settings, projectContextMenu, savedProjectHandle, showCardCreator, isMaterialsLoading, allMaterialFiles, linkGraph, projectSettings, currentSessionChars, aiAction, aiOptions, corrections, aiModel, localModels, selectedLocalModel, isLocalConnected, candidates, snippets, notesText, presets, isDarkMode, showMetadata, debouncedText])}
 
         <div className="content-wrapper" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <main className={`main-content ${showReference && activeTab !== 'reference' ? 'split-view' : ''}`} style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
