@@ -563,22 +563,24 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     console.log('[JUMP DEBUG] computed line=', line, 'pos=', pos);
 
     if (settings.isVertical) {
+      // vertical-rl コンテナの scrollLeft は右端=0、左方向=負
+      // line=0 が右端、line が増えるほど左（負の方向）
       const caretOffsetFromRight = line * cell + padding;
-      const maxScrollLeft = container.scrollWidth - container.clientWidth;
       const viewCenter = container.clientWidth / 2;
-      const targetScrollLeft = maxScrollLeft - caretOffsetFromRight + viewCenter;
-      const clampedScrollLeft = Math.max(0, Math.min(maxScrollLeft, targetScrollLeft));
-      
-      console.log('[JUMP DEBUG] VERTICAL: caretOffsetFromRight=', caretOffsetFromRight, 
-        'scrollWidth=', container.scrollWidth, 
-        'clientWidth=', container.clientWidth, 
-        'maxScrollLeft=', maxScrollLeft,
+      // キャレット行がビューポート中央に来るように負の値を設定
+      const targetScrollLeft = -(caretOffsetFromRight - viewCenter);
+      // 最小値（最も左）= -(scrollWidth - clientWidth)
+      const minScrollLeft = -(container.scrollWidth - container.clientWidth);
+      const clampedScrollLeft = Math.max(minScrollLeft, Math.min(0, targetScrollLeft));
+
+      console.log('[JUMP DEBUG] VERTICAL: caretOffsetFromRight=', caretOffsetFromRight,
+        'minScrollLeft=', minScrollLeft,
         'targetScrollLeft=', targetScrollLeft,
         'clampedScrollLeft=', clampedScrollLeft,
         'BEFORE scrollLeft=', container.scrollLeft);
-      
+
       container.scrollLeft = clampedScrollLeft;
-      
+
       console.log('[JUMP DEBUG] AFTER scrollLeft=', container.scrollLeft);
     } else {
       const caretY = line * cell + padding;
