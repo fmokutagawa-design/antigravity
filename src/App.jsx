@@ -54,7 +54,11 @@ import { generateDocx, downloadBlob as downloadDocxBlob } from './utils/docxExpo
 // } from './utils/fileSystemUtils';
 import { saveProjectHandle, loadProjectHandle, clearProjectHandle } from './utils/indexedDBUtils';
 import { useMaterials } from './hooks/useMaterials';
-import { ollamaService } from './utils/ollamaService';
+import { useSnippets } from './hooks/useSnippets';
+import { useCandidates } from './hooks/useCandidates';
+import { useToastConfirm } from './hooks/useToastConfirm';
+import { useGhostText } from './hooks/useGhostText';
+import { useAIConnection } from './hooks/useAIConnection';
 import { parseNote, serializeNote } from './utils/metadataParser';
 import { convertToFullWidth, convertQuotesToJapanese, convertMarkdownToNovel } from './utils/typesetting';
 import './index.css';
@@ -116,133 +120,17 @@ function App() {
   const [pendingTag, setPendingTag] = useState(null); // Tag for create_file_with_tag
   const [aiOptions, setAiOptions] = useState({}); // New: options for AI (selectedText, etc)
   const [corrections, setCorrections] = useState([]); // AI proofreading markers
-  const [ghostText, setGhostText] = useState(''); // AI predictive suggestions (ghostwriting)
-  const ghostTextTimer = useRef(null);
-  const ghostTextAbortController = useRef(null);
-  const cursorStatsRef = useRef({ start: 0, end: 0, total: 0 });
 
-  // AI Model State (Lifted from AIAssistant)
-  const [aiModel, setAiModel] = useState('local'); // 'local', 'chatgpt', 'gemini', 'claude', 'genspark'
-  const [localModels, setLocalModels] = useState([]);
-  const [selectedLocalModel, setSelectedLocalModel] = useState('');
-  const [isLocalConnected, setIsLocalConnected] = useState(false);
+  // AI Connection (hook)
+  const { aiModel, setAiModel, localModels, selectedLocalModel, setSelectedLocalModel, isLocalConnected, checkLocalConnection } = useAIConnection();
 
-  const checkLocalConnection = useCallback(async () => {
-    try {
-      const isConnected = await ollamaService.checkConnection();
-      setIsLocalConnected(isConnected);
-      if (isConnected) {
-        const models = await ollamaService.getModels();
-        setLocalModels(models);
-        // Auto-select first model if not set or invalid
-        if (models.length > 0 && (!selectedLocalModel || !models.includes(selectedLocalModel))) {
-          setSelectedLocalModel(models[0]);
-        }
-      }
-    } catch (e) {
-      console.error("Ollama connection check failed", e);
-      setIsLocalConnected(false);
-    }
-  }, [selectedLocalModel]);
-
-  // Check connection on mount
-  useEffect(() => {
-    checkLocalConnection();
-    // Poll every 30s? Or just once. Once is fine for start.
-  }, []);
-
-  const handleCursorStats = useCallback((stats) => {
-    cursorStatsRef.current = stats;
-  }, []);
-
-  // Ghost Text Effect
-  useEffect(() => {
-    // 1. Clear existing ghost text on ANY change (skip if already empty to avoid extra re-render)
-    setGhostText(prev => prev === '' ? prev : '');
-
-    // 2. Abort previous generation
-    if (ghostTextAbortController.current) {
-      ghostTextAbortController.current.abort();
-    }
-    clearTimeout(ghostTextTimer.current);
-
-    // 3. Check preconditions
-    if (!settings.enableGhostText) return;
-    if (!text || text.length < 10) return; // Don't trigger on empty/short text
-
-    // 4. Debounce Trigger
-    ghostTextTimer.current = setTimeout(async () => {
-      const { end, total } = cursorStatsRef.current;
-
-      // Only trigger if cursor is at the very end of the file (or we can refine to end of line later)
-      // For now, "continue" mode implies appending.
-      if (end < total) return;
-
-      // Check connection (Optimistic or check simple flag? Service check is async)
-      // We can skip this if we assume user knows status, but better to check
-      // to avoid unnecessary errors.
-      // However, checkConnection invokes fetch, might be slow.
-      // Let's just try generate and handle fail silently.
-
-      ghostTextAbortController.current = new AbortController();
-
-      try {
-        // Use last 1000 chars for context, with Japanese continuation instruction
-        const rawContext = text.slice(-1000);
-        const systemPrompt = "以下の日本語の文章の続きを自然に書いてください。説明や翻訳は不要です。続きの文章だけを出力してください。";
-        const suggestion = await ollamaService.generateCompletion(rawContext, selectedLocalModel, ghostTextAbortController.current.signal, systemPrompt);
-
-        if (suggestion && suggestion.trim().length > 0) {
-          setGhostText(suggestion);
-        }
-      } catch (e) {
-        // Ignore aborts or failures
-      } finally {
-        ghostTextAbortController.current = null;
-      }
-    }, 1500);
-
-    return () => {
-      clearTimeout(ghostTextTimer.current);
-      if (ghostTextAbortController.current) {
-        ghostTextAbortController.current.abort();
-      }
-    };
-  }, [text, settings.enableGhostText, selectedLocalModel]);
+  // Ghost Text (hook)
+  const { ghostText, handleCursorStats } = useGhostText(text, settings.enableGhostText, selectedLocalModel);
 
 
   // Custom UI Management
-  const [toasts, setToasts] = useState([]);
+  const { toasts, showToast, removeToast, confirmConfig, requestConfirm } = useToastConfirm();
   const [notesText, setNotesText] = useState('');
-  const [confirmConfig, setConfirmConfig] = useState({ isOpen: false, title: '', message: '', onConfirm: null, isDanger: false });
-
-  const showToast = useCallback((message, type = 'info') => {
-    const id = Date.now();
-    setToasts(prev => [...prev.slice(-4), { id, message, type }]); // Keep last 5
-  }, []);
-
-  const removeToast = useCallback((id) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
-  }, []);
-
-  const requestConfirm = useCallback((title, message, isDanger = false) => {
-    return new Promise((resolve) => {
-      setConfirmConfig({
-        isOpen: true,
-        title,
-        message,
-        isDanger,
-        onConfirm: () => {
-          setConfirmConfig(prev => ({ ...prev, isOpen: false }));
-          resolve(true);
-        },
-        onCancel: () => {
-          setConfirmConfig(prev => ({ ...prev, isOpen: false }));
-          resolve(false);
-        }
-      });
-    });
-  }, []);
 
 
 
@@ -818,147 +706,11 @@ function App() {
   };
 
 
-  // Candidate Box State and Logic
-  const [candidates, setCandidates] = useState([]);
+  // Candidate Box (hook)
+  const { candidates, addCandidate, adoptCandidate, discardCandidate, discardAllCandidates } = useCandidates(projectHandle, showToast);
 
-  const CANDIDATES_FILE_NAME = '_candidates.json';
-
-  // Load candidates when projectHandle changes
-  useEffect(() => {
-    const loadCandidates = async () => {
-      if (projectHandle) {
-        try {
-          const fileHandle = await fileSystem.getFileHandle(projectHandle, CANDIDATES_FILE_NAME, { create: false });
-          const content = await fileSystem.readFile(fileHandle);
-          const parsedCandidates = JSON.parse(content);
-          setCandidates(parsedCandidates);
-          showToast('候補箱を読み込みました。');
-        } catch (e) {
-          if (!e.message?.includes('ENOENT') && !e.message?.includes('not found')) {
-            console.warn('候補箱の読み込みに失敗:', e.message);
-          }
-          setCandidates([]);
-        }
-      } else {
-        setCandidates([]); // Clear candidates if no project is open
-      }
-    };
-    loadCandidates();
-  }, [projectHandle, showToast]);
-
-  // Save candidates when candidates state changes
-  useEffect(() => {
-    const saveCandidates = async () => {
-      if (projectHandle && candidates.length > 0) {
-        try {
-          const fileHandle = await fileSystem.getFileHandle(projectHandle, CANDIDATES_FILE_NAME, { create: true });
-          await fileSystem.writeFile(fileHandle, JSON.stringify(candidates, null, 2));
-          // showToast('候補箱を保存しました。'); // Too frequent, maybe debounce or only on close
-        } catch (e) {
-          console.error('Failed to save candidates:', e);
-          showToast('候補箱の保存に失敗しました。');
-        }
-      } else if (projectHandle && candidates.length === 0) {
-        // If candidates become empty, delete the file
-        try {
-          await fileSystem.deleteEntry(await fileSystem.getFileHandle(projectHandle, CANDIDATES_FILE_NAME, { create: false }));
-        } catch (e) {
-          if (!e.message?.includes('ENOENT') && !e.message?.includes('not found')) {
-            console.warn('Failed to delete empty candidates file:', e);
-          }
-        }
-      }
-    };
-    saveCandidates();
-  }, [candidates, projectHandle, showToast]);
-
-  // Snippets State and Logic
-  const [snippets, setSnippets] = useState([]);
-  const SNIPPETS_FILE_NAME = '_snippets.json';
-
-  // Load snippets
-  useEffect(() => {
-    const loadSnippets = async () => {
-      if (projectHandle) {
-        try {
-          const fileHandle = await fileSystem.getFileHandle(projectHandle, SNIPPETS_FILE_NAME, { create: false });
-          const content = await fileSystem.readFile(fileHandle);
-          const parsed = JSON.parse(content);
-          setSnippets(parsed);
-        } catch (error) {
-          // Silent fail for first time
-          setSnippets([]);
-        }
-      } else {
-        setSnippets([]);
-      }
-    };
-    loadSnippets();
-  }, [projectHandle]);
-
-  // Save snippets
-  useEffect(() => {
-    const saveSnippets = async () => {
-      // Debounce saving? For now simple effect.
-      if (projectHandle && snippets.length > 0) {
-        try {
-          const fileHandle = await fileSystem.getFileHandle(projectHandle, SNIPPETS_FILE_NAME, { create: true });
-          await fileSystem.writeFile(fileHandle, JSON.stringify(snippets, null, 2));
-        } catch (e) {
-          console.error("Failed to save snippets", e);
-        }
-      }
-    };
-    // Save only if project exists. Note: Deleting handling omitted for simplicity unless user clears all.
-    saveSnippets();
-  }, [snippets, projectHandle]);
-
-  const handleAddSnippet = (text) => {
-    const newSnippet = {
-      id: Date.now().toString(),
-      content: text,
-      createdAt: Date.now()
-    };
-    setSnippets(prev => [newSnippet, ...prev]);
-  };
-
-  const handleDeleteSnippet = (id) => {
-    setSnippets(prev => prev.filter(s => s.id !== id));
-  };
-
-  const handleCopySnippet = (text) => {
-    navigator.clipboard.writeText(text);
-    showToast('コピーしました');
-  };
-
-  const handleSnippetDragStart = (e, snippet) => {
-    e.dataTransfer.setData('text/plain', snippet.content);
-    e.dataTransfer.effectAllowed = 'copy';
-  };
-
-
-  const addCandidate = useCallback((newCandidate) => {
-    setCandidates(prev => {
-      const candidateWithId = { ...newCandidate, id: Date.now(), status: 'pending' };
-      return [...prev, candidateWithId];
-    });
-    showToast('候補を追加しました。');
-  }, [showToast]);
-
-  const adoptCandidate = useCallback((id) => {
-    setCandidates(prev => prev.map(c => c.id === id ? { ...c, status: 'adopted' } : c));
-    showToast('候補を採用しました。');
-  }, [showToast]);
-
-  const discardCandidate = useCallback((id) => {
-    setCandidates(prev => prev.map(c => c.id === id ? { ...c, status: 'discarded' } : c));
-    showToast('候補を破棄しました。');
-  }, [showToast]);
-
-  const discardAllCandidates = useCallback(() => {
-    setCandidates(prev => prev.map(c => c.status === 'pending' ? { ...c, status: 'discarded' } : c));
-    showToast('全ての候補を破棄しました。');
-  }, [showToast]);
+  // Snippets (hook)
+  const { snippets, handleAddSnippet, handleDeleteSnippet, handleCopySnippet, handleSnippetDragStart } = useSnippets(projectHandle, showToast);
 
 
 
