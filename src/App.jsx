@@ -59,8 +59,10 @@ import { useCandidates } from './hooks/useCandidates';
 import { useToastConfirm } from './hooks/useToastConfirm';
 import { useGhostText } from './hooks/useGhostText';
 import { useAIConnection } from './hooks/useAIConnection';
+import { useSessionStats } from './hooks/useSessionStats';
+import { useReferencePanel } from './hooks/useReferencePanel';
 import { parseNote, serializeNote } from './utils/metadataParser';
-import { convertToFullWidth, convertQuotesToJapanese, convertMarkdownToNovel } from './utils/typesetting';
+import { applyFormat } from './utils/formatText';
 import './index.css';
 
 function App() {
@@ -366,51 +368,9 @@ function App() {
 
 
   const handleFormat = (type) => {
-    // Safely separate metadata and body to avoid corrupting YAML header
-    const { metadata, body } = parseNote(text);
-    let newBody = body;
-    let changed = false;
-
-    if (type === 'fullwidth') {
-      newBody = convertToFullWidth(newBody);
-      changed = true;
-    } else if (type === 'quotes') {
-      newBody = convertQuotesToJapanese(newBody);
-      changed = true;
-    } else if (type === 'markdown') {
-      newBody = convertMarkdownToNovel(newBody);
-      changed = true;
-    } else if (type === 'double-space-to-newline') {
-      newBody = newBody.replace(/[ 　]{2,}/g, '　\n');
-      changed = true;
-    } else if (type === 'break-before-dialogue') {
-      newBody = newBody.replace(/[ 　]+([「『])/g, '\n$1');
-      changed = true;
-    } else if (type === 'ellipsis') {
-      newBody = newBody.replace(/\.{3,}/g, '……').replace(/…{1,}/g, (m) => '……'.repeat(Math.max(1, Math.round(m.length / 2))));
-      changed = true;
-    } else if (type === 'dash') {
-      newBody = newBody.replace(/--+/g, '――').replace(/—+/g, '――').replace(/―{3,}/g, '――');
-      changed = true;
-    } else if (type === 'exclamation-space') {
-      newBody = newBody.replace(/([！？])(?![！？\s\n　」』）])/g, '$1　');
-      changed = true;
-    } else if (type === 'remove-blank-lines') {
-      newBody = newBody.replace(/\n{3,}/g, '\n\n');
-      changed = true;
-    } else if (type === 'indent') {
-      newBody = newBody.split('\n').map(line => {
-        if (line.trim() === '') return line;
-        if (/^[「『（]/.test(line)) return line;
-        if (/^[　\s]/.test(line)) return line;
-        return '　' + line;
-      }).join('\n');
-      changed = true;
-    }
-
-    if (changed && newBody !== body) {
-      const newText = serializeNote(newBody, metadata);
-      setText(newText);
+    const result = applyFormat(text, type);
+    if (result !== null) {
+      setText(result);
     }
   };
 
@@ -507,12 +467,8 @@ function App() {
     projectHandleRef.current = projectHandle;
   }, [projectHandle]);
 
-  // Reference Panel State
-  const [showReference, setShowReference] = useState(false);
-  const [referenceContent, setReferenceContent] = useState('');
-  const [referenceFileName, setReferenceFileName] = useState('');
-  const [referenceWidth, setReferenceWidth] = useState(400); // Default width
-  const [isResizing, setIsResizing] = useState(false);
+  // Reference Panel (hook)
+  const { showReference, setShowReference, referenceContent, setReferenceContent, referenceFileName, setReferenceFileName, referenceWidth, startResizing } = useReferencePanel();
   const [usageStats, setUsageStats] = useState({}); // Track file access frequency
 
   const [activeTab, setActiveTab] = useState('editor'); // 'editor' or 'preview'
@@ -543,49 +499,8 @@ function App() {
     }
   }, [materialsTree, projectHandle]);
 
-  // Session Stats State
-  const [sessionStartTotal, setSessionStartTotal] = useState(null);
-  const [currentSessionChars, setCurrentSessionChars] = useState(0);
-
-  // Calculate total characters in all files
-  const calculateTotalChars = useCallback(() => {
-    if (!allMaterialFiles) return 0;
-    let total = 0;
-    for (const file of allMaterialFiles) {
-      // activeFileHandle との比較: パス文字列 or name で判定（isSameEntry は非同期のため使えない）
-      const isActiveFile = activeFileHandle && file.handle && (
-        (typeof activeFileHandle === 'string' && typeof file.handle === 'string' && activeFileHandle === file.handle) ||
-        (activeFileHandle.name && file.handle.name && activeFileHandle.name === file.handle.name) ||
-        (file.name && activeFileHandle.name && file.name === activeFileHandle.name)
-      );
-      if (isActiveFile) {
-        total += (parseNote(text).body?.length || 0);
-      } else {
-        total += (file.body?.length || 0);
-      }
-    }
-    return total;
-  }, [allMaterialFiles, activeFileHandle, text]);
-
-  // Initialize session start total
-  useEffect(() => {
-    if (allMaterialFiles && allMaterialFiles.length > 0 && sessionStartTotal === null) {
-      setSessionStartTotal(calculateTotalChars());
-    }
-  }, [allMaterialFiles, sessionStartTotal, calculateTotalChars]);
-
-  // Update session chars whenever text or files change
-  useEffect(() => {
-    if (sessionStartTotal !== null) {
-      const currentTotal = calculateTotalChars();
-      setCurrentSessionChars(currentTotal - sessionStartTotal);
-    }
-  }, [calculateTotalChars, sessionStartTotal]);
-
-  const handleResetSession = () => {
-    setSessionStartTotal(calculateTotalChars());
-    setCurrentSessionChars(0);
-  };
+  // Session Stats (hook)
+  const { currentSessionChars, handleResetSession } = useSessionStats(allMaterialFiles, activeFileHandle, text);
 
   const handleOpenFile = useCallback(async (fileHandle, fileName, options = {}) => {
     try {
@@ -1452,32 +1367,6 @@ function App() {
     }
   }, [projectHandle]);
 
-  // Resizing logic
-  const startResizing = React.useCallback(() => {
-    setIsResizing(true);
-  }, []);
-
-  const stopResizing = React.useCallback(() => {
-    setIsResizing(false);
-  }, []);
-
-  const resize = React.useCallback((mouseMoveEvent) => {
-    if (isResizing) {
-      const newWidth = window.innerWidth - mouseMoveEvent.clientX;
-      if (newWidth > 200 && newWidth < window.innerWidth - 300) {
-        setReferenceWidth(newWidth);
-      }
-    }
-  }, [isResizing]);
-
-  useEffect(() => {
-    window.addEventListener("mousemove", resize);
-    window.addEventListener("mouseup", stopResizing);
-    return () => {
-      window.removeEventListener("mousemove", resize);
-      window.removeEventListener("mouseup", stopResizing);
-    };
-  }, [resize, stopResizing]);
 
   const handleSavePreset = (name) => {
     // If name is not provided (event object or empty), open modal
