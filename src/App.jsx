@@ -64,6 +64,9 @@ import { useReferencePanel } from './hooks/useReferencePanel';
 import { parseNote, serializeNote } from './utils/metadataParser';
 import { applyFormat } from './utils/formatText';
 import './index.css';
+import { useFileOperations } from './hooks/useFileOperations';
+import { useAutoSave } from './hooks/useAutoSave';
+import { useProjectActions } from './hooks/useProjectActions';
 
 function App() {
   const [text, setText] = useState('');
@@ -954,53 +957,104 @@ function App() {
     window.open(url.toString(), '_blank', 'width=1000,height=800,menubar=no,toolbar=no');
   };
 
-  const handleResumeProject = async () => {
-    if (!savedProjectHandle) return;
-
-    try {
-      if (isElectron) {
-        // Electron: savedProjectHandle is string path, no permission API needed
-        // Robustness: Handle if DB has object wrapper
-        const projectPath = savedProjectHandle;
-
-        setProjectHandle(projectPath);
-        const tree = await fileSystem.readDirectory({ handle: projectPath }); // Ensure format
-        setFileTree(tree);
-        setIsProjectMode(true);
-        setSavedProjectHandle(null);
-      } else {
-        // Browser: FileSystemHandle
-        // Request permission (must be triggered by user action)
-        if (savedProjectHandle.requestPermission) {
-          const permission = await savedProjectHandle.requestPermission({ mode: 'readwrite' });
-          if (permission === 'granted') {
-            setProjectHandle(savedProjectHandle);
-            const tree = await fileSystem.readDirectory(savedProjectHandle);
-            setFileTree(tree);
-            setIsProjectMode(true); // Ensure project mode is active
-            setSavedProjectHandle(null); // Clear saved handle as it's now active
-          } else {
-            showToast('権限が許可されませんでした。');
-          }
-        } else {
-          // Fallback if handle is malformed
-          console.error("Invalid handle format", savedProjectHandle);
-          showToast("プロジェクト情報の復元に失敗しました。再度フォルダを開いてください。");
-          setSavedProjectHandle(null);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to resume project:', error);
-      showToast('プロジェクトの再開に失敗しました。');
-      await clearProjectHandle();
-      setSavedProjectHandle(null);
-    }
-  };
 
 
 
 
 
+
+
+  // --- Extracted Hooks ---
+
+  const {
+    saveProjectSettings,
+    autoOrganizeFile,
+    handleOpenProject,
+    handleFileSelect,
+    handleCreateNewProject,
+    handleCreateFileInProject,
+    handleCreateFolderInProject,
+    handleOpenReference,
+    handleOpenInNewWindow,
+    handleCloseReference,
+    handleNavigate,
+    handleOutlineJump,
+    handleRename,
+    handleMoveItem,
+    handleDelete,
+    handleProjectReplace,
+    handleRenameProject,
+    handleMoveProject,
+    handleResumeProject,
+    handleCreateCard,
+  } = useProjectActions({
+    text,
+    setText,
+    projectHandle,
+    setProjectHandle,
+    fileTree,
+    setFileTree,
+    activeFileHandle,
+    setActiveFileHandle,
+    isProjectMode,
+    setIsProjectMode,
+    projectSettings,
+    setProjectSettings,
+    savedProjectHandle,
+    setSavedProjectHandle,
+    allMaterialFiles,
+    refreshMaterials,
+    showToast,
+    requestConfirm,
+    openInputModal,
+    handleOpenFile,
+    handlePopOutTab,
+    editorRef,
+    setActiveTab,
+    setShowReference,
+    setReferenceContent,
+    setReferenceFileName,
+  });
+
+  const {
+    handleSaveFile,
+    handleSaveFileRef,
+    handleUpdateFile,
+    handleLoadFile,
+    handleDuplicateFile,
+    handleBatchCopy,
+    handleBatchExport,
+  } = useFileOperations({
+    text,
+    setText,
+    activeFileHandle,
+    setActiveFileHandle,
+    projectHandle,
+    allMaterialFiles,
+    refreshMaterials,
+    setLastSaved,
+    lastSavedTextRef,
+    showToast,
+    setFileTree,
+    setActiveTab,
+    autoOrganizeFile,
+    handleOpenFile,
+    handleCreateFileInProject,
+    openInputModal,
+    settings,
+  });
+
+  useAutoSave({
+    text,
+    isProjectMode,
+    activeFileHandle,
+    projectHandle,
+    setLastSaved,
+    lastSavedTextRef,
+    showToast,
+    setProjectSettings,
+    setIsRapidMode,
+  });
 
 
   const handleTextChange = useCallback((newContent) => {
@@ -1257,28 +1311,6 @@ function App() {
   };
 
   // Batch Copy for AI
-  const handleBatchCopy = async (filesToCopy) => {
-    if (!filesToCopy || filesToCopy.length === 0) return;
-
-    let clipboardText = "以下の資料を参考にしてください:\n\n";
-
-    for (const file of filesToCopy) {
-      // filesToCopy contains { name, content, ... } or just handles?
-      // MaterialsPanel has full file data including content in allMaterialFiles
-      // We assume we get the full objects. 'body' is used in other places.
-      const body = file.body || file.content || "";
-
-      clipboardText += `## Filename: ${file.name} \n${body} \n\n-- -\n\n`;
-    }
-
-    try {
-      await navigator.clipboard.writeText(clipboardText);
-      showToast(`${filesToCopy.length} 件のファイルをクリップボードにコピーしました！`);
-    } catch (e) {
-      console.error("Copy failed", e);
-      showToast("コピーに失敗しました。");
-    }
-  };
 
 
 
@@ -1399,7 +1431,6 @@ function App() {
   };
 
   // Keyboard shortcuts (Cmd/Ctrl + F: search, Cmd+Shift+R: rapid mode, Cmd+S: save, Cmd+T: TODO)
-  const handleSaveFileRef = useRef(null);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -1468,1021 +1499,44 @@ function App() {
   };
 
 
-  const autoOrganizeFile = async (handle, metadata) => {
-    if (!handle || !projectHandle) return handle;
-
-    const type = metadata.種別 || "";
-    const tags = metadata.tags || [];
-    let targetFolder = "";
-
-    // Debug: Check if tags are detected
-    // console.log("AutoOrganize Check:", type, tags);
-
-
-
-
-    const isCharacter = type === '登場人物' || tags.includes('Character') || tags.includes('キャラ');
-    const isOrganization = type === '組織' || tags.includes('Organization') || tags.includes('組織');
-    const isWorld = type === '世界観' || tags.includes('World') || tags.includes('世界');
-    const isGadget = type === 'ガジェット' || tags.includes('Gadget');
-    const isItem = type === '用語' || type === 'アイテム' || tags.includes('Item') || tags.includes('アイテム');
-    const isLocation = type === '地理' || type === '場所' || tags.includes('Location') || tags.includes('地理') || tags.includes('場所');
-    const isEvent = type === '事件' || type === 'イベント' || tags.includes('Event') || tags.includes('事件') || tags.includes('イベント');
-    const isPlot = type === 'プロット' || tags.includes('Plot');
-    const isTimeline = type === '時系列' || tags.includes('Timeline') || tags.includes('History') || tags.includes('年表');
-    const isManuscript = type === '原稿' || tags.includes('Manuscript') || tags.includes('Draft');
-
-    if (isCharacter) targetFolder = 'characters';
-    else if (isOrganization) targetFolder = 'organizations';
-    else if (isWorld) targetFolder = 'world';
-    else if (isGadget) targetFolder = 'gadgets';
-    else if (isItem) targetFolder = 'items';
-    else if (isLocation) targetFolder = 'locations';
-    else if (isEvent) targetFolder = 'events';
-    else if (isPlot) targetFolder = 'plots';
-    else if (isTimeline) targetFolder = 'timelines';
-    else if (isManuscript) targetFolder = 'manuscripts';
-
-    if (targetFolder) {
-      try {
-        const pathParts = await fileSystem.resolvePath(projectHandle, handle);
-        if (pathParts) {
-          const currentRoot = pathParts[0]; // Top level folder
-
-          // Debug Check
-          // showToast(`PathParts: ${ JSON.stringify(pathParts) } \nTarget: ${ targetFolder } `);
-
-          let isInCorrectFolder = false;
-          if (pathParts.length > 1) {
-            isInCorrectFolder = (currentRoot === targetFolder);
-          }
-
-          if (!isInCorrectFolder) {
-            console.log(`Auto - organizing: Moving ${handle.name} to ${targetFolder} `);
-            // showToast(`移動を開始します: ${ handle.name } -> ${ targetFolder } `);
-
-            const targetDirHandle = await fileSystem.createFolder(projectHandle, targetFolder);
-
-            let sourceDirHandle = projectHandle;
-            if (pathParts.length > 1) {
-              const parentParts = pathParts.slice(0, -1);
-              sourceDirHandle = await fileSystem.getDirectoryHandleFromPath(projectHandle, parentParts);
-            }
-
-            const newHandle = await fileSystem.moveFileWithContext(handle, sourceDirHandle, targetDirHandle);
-            return newHandle;
-          }
-        } else {
-          console.warn("Path resolution failed");
-          // If strictly needed, alert user to re-open project
-          // showToast("自動移動エラー: ファイルパスがプロジェクト外か解決できません。");
-        }
-      } catch (e) {
-        console.error("Auto-organize failed", e);
-        showToast(`自動移動エラー: ${e.message} `);
-      }
-    }
-    return handle;
-  };
 
   // 一括結合エクスポート
-  const handleBatchExport = async () => {
-    if (!allMaterialFiles || allMaterialFiles.length === 0) {
-      showToast('プロジェクトファイルがありません。');
-      return;
-    }
-    try {
-      const { parseNote } = await import('./utils/metadataParser');
-      // 原稿ファイルを収集（種別が原稿、またはmanuscriptsフォルダ内のファイル）
-      const manuscriptFiles = allMaterialFiles.filter(f => {
-        const type = f.metadata?.種別 || '';
-        const name = f.name || '';
-        const isManuscript = type === '原稿' || name.includes('原稿') || name.includes('本原稿');
-        return isManuscript && name.endsWith('.txt');
-      });
-      const targetFiles = manuscriptFiles.length > 0 ? manuscriptFiles : allMaterialFiles.filter(f => (f.name || '').endsWith('.txt'));
-      if (targetFiles.length === 0) {
-        showToast('書き出し対象のファイルが見つかりません。');
-        return;
-      }
-      // ファイル名順にソート
-      targetFiles.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
-      // 結合
-      const parts = [];
-      for (const file of targetFiles) {
-        const content = file.body || file.content || '';
-        if (content.trim()) {
-          parts.push(content);
-        }
-      }
-      const merged = parts.join('\n\n［＃改ページ］\n\n');
-      // 保存
-      if (isElectron) {
-        const defaultPath = (projectHandle?.handle || projectHandle || '') + '/exported.txt';
-        const savePath = await window.api.fs.saveFile(defaultPath);
-        if (savePath) {
-          await fileSystem.writeFile({ handle: savePath, name: 'exported.txt' }, merged);
-          showToast(`${targetFiles.length}ファイルを結合して書き出しました。`);
-        }
-      } else {
-        // ブラウザ: Blobでダウンロード
-        const blob = new Blob([merged], { type: 'text/plain;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'exported.txt';
-        a.click();
-        URL.revokeObjectURL(url);
-        showToast(`${targetFiles.length}ファイルを結合して書き出しました。`);
-      }
-    } catch (e) {
-      console.error('Batch export failed:', e);
-      showToast('一括書き出しに失敗しました: ' + e.message);
-    }
-  };
 
-  const handleSaveFile = async () => {
-    if (activeFileHandle && projectHandle) {
-      try {
-        // Import parser
-        const { parseNote } = await import('./utils/metadataParser');
-        const { metadata } = parseNote(text);
 
-        await fileSystem.writeFile(activeFileHandle, text);
 
-        // Trigger Auto-Organize
-        const newHandle = await autoOrganizeFile(activeFileHandle, metadata);
-        if (newHandle && (newHandle !== activeFileHandle)) {
-          setActiveFileHandle(newHandle);
-          await refreshMaterials();
-        }
-        setLastSaved(new Date());
-        lastSavedTextRef.current = text;
-        showToast('💾 保存しました');
-
-      } catch (error) {
-        console.error('Failed to save file:', error);
-        showToast('ファイルの保存に失敗しました。');
-      }
-    } else {
-      // Fallback to download
-      try {
-        saveTextFile(text);
-      } catch (error) {
-        console.error('Failed to save file:', error);
-        showToast('ファイルの保存に失敗しました。');
-      }
-    }
-  };
-  handleSaveFileRef.current = handleSaveFile;
-
-  const handleUpdateFile = async (handle, newContent) => {
-    try {
-      await fileSystem.writeFile(handle, newContent);
-      // Refresh to update graph and file list
-      await refreshMaterials();
-      // If updating active file, also update editor text
-      if (activeFileHandle && (activeFileHandle.handle === handle || activeFileHandle === handle)) {
-        setText(newContent);
-      }
-      return true;
-    } catch (e) {
-      console.error("Failed to update file:", e);
-      return false;
-    }
-  };
-
-  const handleLoadFile = async (file) => {
-    try {
-      const content = await loadTextFile(file);
-      setText(content);
-    } catch (error) {
-      console.error('Failed to load file:', error);
-      showToast('ファイルの読み込みに失敗しました。\n' + error.message);
-    }
-  };
 
   // Duplicate (Save As) handler
-  const handleDuplicateFile = async (handleToDup = activeFileHandle) => {
-    if (!handleToDup) return;
-
-    let contentToSave = text;
-    // If we are duplicating something that is NOT the active file, we should ideally read it.
-    // However, for "Save As", it usually means current editor content.
-    // Let's assume footer call uses current text, and tree call uses disk content.
-    if (handleToDup !== activeFileHandle) {
-      try {
-        contentToSave = await fileSystem.readFile(handleToDup);
-      } catch (err) {
-        console.error("Failed to read file for duplication", err);
-      }
-    }
-
-
-    // Default name generation
-    const currentName = typeof handleToDup === 'string'
-      ? handleToDup.split(/[/\\]/).pop()
-      : handleToDup.name;
-    const extIndex = currentName.lastIndexOf('.');
-    const baseName = extIndex !== -1 ? currentName.substring(0, extIndex) : currentName;
-    const ext = extIndex !== -1 ? currentName.substring(extIndex) : '.txt';
-    const defaultNewName = `${baseName}_copy${ext} `;
-
-    try {
-      if (isElectron) {
-        // Native Save Dialog
-        // Use current file path as base for default path
-        const currentPath = typeof handleToDup === 'string' ? handleToDup : null;
-        let defaultPath = defaultNewName;
-        if (currentPath) {
-          const sep = currentPath.includes('\\') ? '\\' : '/';
-          const parentDir = currentPath.substring(0, currentPath.lastIndexOf(sep));
-          defaultPath = `${parentDir}${sep}${defaultNewName} `;
-        }
-
-        const newPath = await window.api.fs.saveFile(defaultPath);
-        if (!newPath) return; // Cancelled
-
-        // Write content
-        await fileSystem.writeFile(newPath, contentToSave);
-
-        // If inside project, refresh tree
-        // We can check if newPath starts with projectHandle (path)
-        const projectPath = typeof projectHandle === 'string' ? projectHandle : projectHandle?.handle;
-
-        if (projectPath) {
-          await refreshMaterials();
-        }
-
-        // Open the new file
-        await handleFileSelect(newPath);
-        showToast(`「${newPath.split(/[/\\]/).pop()}」として保存しました。`);
-
-      } else if (window.showSaveFilePicker) {
-        // Chrome / Edge Native File System API
-        const handle = await window.showSaveFilePicker({
-          suggestedName: defaultNewName,
-          types: [{
-            description: 'Text Files',
-            accept: { 'text/plain': ['.txt'] },
-          }],
-        });
-        const writable = await handle.createWritable();
-        await writable.write(text);
-        await writable.close();
-
-        // Cannot easily refresh tree or open file unless it's inside project and we rescan
-        // But we can open it as active file
-        setActiveFileHandle(handle); // This handles the view
-        // Refreshing tree might not show it if we picked outside, but that's expected
-        if (projectHandle) await refreshMaterials();
-
-        showToast('保存しました。');
-      } else {
-        if (openInputModal) {
-          openInputModal('保存', '新しいファイル名を入力してください:', defaultNewName, async (newName) => {
-            if (!newName) return;
-            await handleCreateFileInProject(null, newName, text);
-            showToast('プロジェクトルートに保存しました（ブラウザ制限のため場所指定不可）。');
-          });
-          return;
-        }
-        // Fallback for Firefox/others
-        const newName = window.prompt('新しいファイル名を入力してください:', defaultNewName);
-        if (!newName) return;
-        // Fallback acts as "Branching in place"
-        await handleCreateFileInProject(null, newName, text);
-        showToast('プロジェクトルートに保存しました（ブラウザ制限のため場所指定不可）。');
-      }
-    } catch (e) {
-      if (e.name !== 'AbortError') {
-        console.error(e);
-        showToast('保存に失敗しました。');
-      }
-    }
-  };
 
   // Project management handlers
-  const handleOpenProject = async () => {
-    // Check support only if not Electron
-    if (!isElectron && !window.showDirectoryPicker) {
-      showToast('お使いのブラウザはフォルダ機能に対応していません。\nChrome、Edge、Operaをお使いください。');
-      return;
-    }
 
-    try {
-      const dirHandle = await fileSystem.openProjectDialog();
-      if (!dirHandle) return; // User cancelled
 
-      setProjectHandle(dirHandle);
-
-      // Save handle to IndexedDB (Works for both Serialized Handle and Path String)
-      try {
-        await saveProjectHandle(dirHandle);
-      } catch (e) { console.warn("Could not save project handle to DB", e); }
-
-      // The file tree and project mode will be set by the useMaterials hook and its effects
-    } catch (error) {
-      console.error('Failed to open project:', error);
-      showToast('プロジェクトフォルダを開けませんでした。');
-    }
-  };
-
-  const handleFileSelect = async (fileHandle) => {
-    try {
-      const fileName = (typeof fileHandle === 'string')
-        ? fileHandle.split(/[/\\]/).pop()
-        : fileHandle.name;
-
-      await handleOpenFile(fileHandle, fileName);
-    } catch (error) {
-      console.error('Failed to select file:', error);
-    }
-  };
-
-  // Auto-save to active file in project mode
-  useEffect(() => {
-    if (isProjectMode && activeFileHandle && text !== undefined) {
-      const saveTimeout = setTimeout(async () => {
-        try {
-          await fileSystem.writeFile(activeFileHandle, text);
-          setLastSaved(new Date());
-          lastSavedTextRef.current = text;
-        } catch (error) {
-          console.error('Failed to auto-save:', error);
-          showToast('⚠️ 自動保存に失敗しました');
-        }
-      }, 1000); // Debounce 1 second
-
-      return () => clearTimeout(saveTimeout);
-    }
-  }, [text, isProjectMode, activeFileHandle]);
 
   // Auto-snapshot: 5分間隔 or 500文字以上の変更で自動スナップショット
-  const lastSnapshotRef = useRef({ text: '', time: 0 });
-  useEffect(() => {
-    if (!isProjectMode || !activeFileHandle || !text) return;
-
-    const filePath = typeof activeFileHandle === 'string'
-      ? activeFileHandle
-      : (activeFileHandle.handle || activeFileHandle.name || 'unknown');
-
-    const INTERVAL = 5 * 60 * 1000; // 5分
-    const CHAR_THRESHOLD = 500;
-
-    const timer = setInterval(() => {
-      const now = Date.now();
-      const lastText = lastSnapshotRef.current.text;
-      const lastTime = lastSnapshotRef.current.time;
-      const charDiff = Math.abs(text.length - lastText.length);
-      const timeDiff = now - lastTime;
-
-      if (timeDiff >= INTERVAL || charDiff >= CHAR_THRESHOLD) {
-        if (text !== lastText) {
-          saveSnapshot(filePath, text, text.length).catch(e =>
-            console.warn('Snapshot save failed:', e)
-          );
-          lastSnapshotRef.current = { text, time: now };
-        }
-      }
-    }, 30000); // 30秒ごとにチェック
-
-    return () => clearInterval(timer);
-  }, [text, isProjectMode, activeFileHandle]);
-
-  // ファイル切替時にスナップショットの基準をリセット＋初回保存
-  useEffect(() => {
-    lastSnapshotRef.current = { text: text || '', time: Date.now() };
-    // ファイルを開いた時に初回スナップショットを保存
-    if (isProjectMode && activeFileHandle && text) {
-      const fp = typeof activeFileHandle === 'string'
-        ? activeFileHandle
-        : (activeFileHandle.handle || activeFileHandle.name || '');
-      if (fp) {
-        saveSnapshot(fp, text, text.length).catch(e =>
-          console.warn('Initial snapshot failed:', e)
-        );
-      }
-    }
-  }, [activeFileHandle]);
-
-  // Load nexus-project.json when project opens
-  useEffect(() => {
-    if (!projectHandle) return;
-    (async () => {
-      try {
-        const settingsHandle = await fileSystem.getFile(projectHandle, 'nexus-project.json');
-        if (settingsHandle) {
-          const content = await fileSystem.readFile(settingsHandle);
-          const parsed = JSON.parse(content);
-          setProjectSettings(prev => ({ ...prev, ...parsed }));
-          // Apply rapidModeDefault
-          if (parsed.rapidModeDefault) setIsRapidMode(true);
-        }
-      } catch {
-        // File doesn't exist yet — create with defaults on first save
-        console.log('nexus-project.json not found, will create on first settings save');
-      }
-    })();
-  }, [projectHandle]);
-
-  // Save project settings helper
-  const saveProjectSettings = useCallback(async (newSettings) => {
-    const updated = { ...projectSettings, ...newSettings };
-    setProjectSettings(updated);
-    if (projectHandle) {
-      try {
-        const handle = await fileSystem.getOrCreateFile(projectHandle, 'nexus-project.json');
-        await fileSystem.writeFile(handle, JSON.stringify(updated, null, 2));
-      } catch (e) {
-        console.warn('Could not save nexus-project.json:', e);
-      }
-    }
-  }, [projectHandle, projectSettings]);
-
-  const handleCreateNewProject = async () => {
-    if (!isElectron && !window.showDirectoryPicker) {
-      showToast('お使いのブラウザはフォルダ機能に対応していません。\nChrome、Edge、Operaをお使いください。');
-      return;
-    }
-
-    const confirmed = await requestConfirm(
-      '新規プロジェクト作成',
-      '新規プロジェクトを作成します。\n\n' +
-      '手順:\n' +
-      '1. Finderで新しいフォルダを作成してください\n' +
-      '2. 「OK」を押すと、そのフォルダを選択する画面が開きます\n' +
-      '3. 作成したフォルダを選択してください\n' +
-      '4. アプリが自動的に初期ファイルを作成します\n\n' +
-      '続けますか？'
-    );
-
-    if (!confirmed) return;
-
-    try {
-      const dirHandle = await fileSystem.openProjectDialog();
-      if (!dirHandle) return;
-
-      // Create initial project structure
-      // Create welcome file
-      const welcomeContent =
-        '# 新規プロジェクトへようこそ\n\n' +
-        'このフォルダがあなたの小説プロジェクトです。\n' +
-        'サブフォルダを作成して章ごとに整理したり、\n' +
-        '複数のテキストファイルを自由に管理できます。\n\n' +
-        '左のファイルツリーから編集したいファイルを選択してください。\n' +
-        'すべてのファイルは自動的に保存されます。';
-
-      // fileSystem.createFile returns the new handle
-      const welcomeFile = await fileSystem.createFile(dirHandle, 'はじめに.txt', welcomeContent);
-
-      setProjectHandle(dirHandle);
-      try {
-        await saveProjectHandle(dirHandle);
-      } catch (err) {
-        console.warn("Could not save project handle to DB", err);
-      }
-
-      // Open the welcome file
-      setActiveFileHandle(welcomeFile);
-      setText(welcomeContent);
-
-      showToast('プロジェクトを作成しました！\n「はじめに.txt」を開いています。');
-    } catch (error) {
-      console.error('Failed to create project:', error);
-      showToast('プロジェクトの作成に失敗しました。');
-    }
-  };
 
 
-  const handleCreateFileInProject = async (parentHandleArg, fileName, initialContent = null) => {
-    console.log('handleCreateFileInProject CALLED', { parentHandleArg, fileName });
-    // Default to project root if parentHandleArg is null/undefined
-    const parentHandle = parentHandleArg || projectHandle;
 
-    // DEBUG LOG
-    console.log("Create File Request:", { parentHandleArg, projectHandle, parentHandle, fileName });
 
-    if (!projectHandle) {
-      showToast("プロジェクトフォルダが開かれていません。");
-      return;
-    }
 
-    // DEBUG: Verify inputs
-    // showToast(`DEBUG Create File: Parent = ${ parentHandle } \nName = ${ fileName } `);
 
-    try {
-      let contentToWrite = '';
-      if (initialContent !== null) {
-        contentToWrite = initialContent;
-      } else {
-        // Auto-tag logic
-        try {
-          // For Electron, parentHandle is string path, projectHandle is string path.
-          // For Browser, they are objects.
-          // We need a uniform way to check equality or root status.
-          const isRoot = (typeof projectHandle === 'string')
-            ? (parentHandle === projectHandle || (parentHandle.handle && parentHandle.handle === projectHandle.handle))
-            : (parentHandle === projectHandle || (parentHandle.isSameEntry && await parentHandle.isSameEntry(projectHandle)));
 
-          if (!isRoot) {
-            const folderName = parentHandle.name || (typeof parentHandle === 'string' ? parentHandle.split(/[/\\]/).pop() : '');
-            const metadata = {
-              tags: [folderName],
-              種別: '',
-              概要: '',
-              importance: 3,
-            };
-            contentToWrite = serializeNote(metadata, `\n# ${fileName.replace(/\.txt$/, '')} \n\n`);
-          } else {
-            contentToWrite = ''; // No default header
-          }
-        } catch (e) {
-          console.warn("Folder tag auto-detect failed", e);
-          contentToWrite = ''; // No default header
-        }
-      }
 
-      // Use fileSystem adapter
-      const newFile = await fileSystem.createFile(parentHandle, fileName, contentToWrite);
 
-      // Refresh
-      const tree = await fileSystem.readDirectory(projectHandle);
-      setFileTree(tree);
-
-      // Return consistency check
-      if (isElectron && newFile && newFile.handle) {
-        return newFile.handle;
-      }
-      return newFile;
-    } catch (error) {
-      console.error('Failed to create file:', error);
-      showToast(`ファイルの作成に失敗しました: ${error.message} `);
-    }
-  };
-
-  const handleCreateFolderInProject = async (parentHandleArg, folderName) => {
-    const parentHandle = parentHandleArg || projectHandle;
-    try {
-      await fileSystem.createFolder(parentHandle, folderName);
-
-      // Refresh tree
-      const tree = await fileSystem.readDirectory(projectHandle);
-      setFileTree(tree);
-    } catch (error) {
-      console.error('Failed to create folder:', error);
-      showToast('フォルダの作成に失敗しました。');
-    }
-  };
-
-  const handleOpenReference = async (fileHandle) => {
-    try {
-      const content = await fileSystem.readFile(fileHandle);
-      setReferenceContent(content);
-      setReferenceFileName(fileHandle.name);
-      setShowReference(true);
-      // setActiveTab('reference'); // Don't switch tab, allow split view
-    } catch (error) {
-      console.error('Failed to read reference file:', error);
-      showToast('参照ファイルの読み込みに失敗しました。');
-    }
-  };
-
-  const handleOpenInNewWindow = async (fileHandle) => {
-    // Unify: Use the same dynamic window mode as the "Window" button
-    handlePopOutTab('editor', fileHandle);
-
-  };
-
-  const handleCloseReference = () => {
-    setShowReference(false);
-    setReferenceContent('');
-    setReferenceFileName('');
-  };
 
 
   // Handle pending navigation
-  const [pendingNavigation, setPendingNavigation] = useState(null);
-  useEffect(() => {
-    if (pendingNavigation && editorRef.current && text.includes(pendingNavigation.tag)) {
-      const idx = text.indexOf(pendingNavigation.tag);
-      if (idx !== -1) {
-        editorRef.current.jumpToPosition(idx, idx + pendingNavigation.tag.length);
-        setPendingNavigation(null); // Clear
-      }
-    }
-  }, [text, pendingNavigation]);
 
-  const handleNavigate = async (tag) => {
-    if (!tag) return;
-
-    // 1. Search in current file
-    const currentIdx = text.indexOf(tag);
-    if (currentIdx !== -1) {
-      if (editorRef.current) {
-        // Focus and scroll
-        setActiveTab('editor');
-        editorRef.current.jumpToPosition(currentIdx, currentIdx + tag.length);
-      }
-      return;
-    }
-
-    // 2. Search in all files
-    if (!allMaterialFiles) return;
-
-    const foundFile = allMaterialFiles.find(f => f.body && f.body.includes(tag));
-
-    if (foundFile) {
-      // Open file
-      await handleOpenFile(foundFile);
-      setPendingNavigation({ tag: tag, timestamp: Date.now() });
-      setActiveTab('editor');
-    } else {
-      showToast(`タグ "${tag}" が見つかりませんでした。`);
-    }
-  };
 
   // File/Folder Handlers
-  const handleRename = async (handle, newName, itemType) => {
-    console.log('handleRename called', { handle, newName, itemType, projectHandle });
-    try {
-      if (isElectron) {
-        // Check if renaming project root
-        // projectHandle is object { handle: path, ... } in Electron
-        // handle passed from FileTree could be object (root) or string (child)
-        const projectPath = typeof projectHandle === 'string' ? projectHandle : projectHandle.handle;
-        const targetPath = typeof handle === 'string' ? handle : handle.handle;
-
-        console.log('Checking root rename:', { projectPath, targetPath, match: projectPath === targetPath });
-
-        if (targetPath === projectPath) {
-          const newHandle = await fileSystem.rename(projectHandle, newName);
-          console.log('Renamed root result:', newHandle);
-          if (newHandle) {
-            setProjectHandle(newHandle);
-            await saveProjectHandle(newHandle);
-            showToast('プロジェクト名を変更しました。');
-            return;
-          }
-        }
-
-        await fileSystem.rename(handle, newName);
-        await refreshMaterials(); // or re-read tree
-      } else {
-        showToast(
-          'ファイル名の変更は技術的な制約により、現在サポートされていません。\n\n' +
-          'デスクトップ版アプリをお使いください。'
-        );
-      }
-    } catch (error) {
-      console.error('Failed to rename:', error);
-      showToast('名前の変更に失敗しました。');
-    }
-  };
-
-  const handleMoveItem = async (source, target) => {
-    console.log('handleMoveItem CALLED', { source, target });
-    try {
-      if (!projectHandle) return;
-
-      // 1. Resolve Source Handle
-      let sourceHandle = source;
-      const sourceName = (typeof source === 'string') ? source : source.name;
-
-      if (typeof source === 'string') { // DnD passes string name
-        // allMaterialFiles is available in scope (from useMaterials hook)
-        const fileObj = allMaterialFiles.find(f => f.name === sourceName);
-        if (fileObj) sourceHandle = fileObj.handle;
-        else {
-          console.error("Source file not found in registry:", sourceName);
-          return;
-        }
-      }
-
-      const targetHandle = target;
-
-      // 2. Resolve Source Parent (Required for Browser move logic)
-      // Use abstraction to avoid .values() crash in Electron
-      const pathParts = await fileSystem.resolvePath(projectHandle, sourceHandle);
-      let sourceParentHandle = projectHandle;
-
-      if (pathParts && pathParts.length > 1) {
-        const parentParts = pathParts.slice(0, -1);
-        sourceParentHandle = await fileSystem.getDirectoryHandleFromPath(projectHandle, parentParts);
-      }
-
-      // 3. Execute Move
-      await fileSystem.moveFileWithContext(sourceHandle, sourceParentHandle, targetHandle);
-
-      // Refresh
-      await refreshMaterials();
-
-    } catch (e) {
-      console.error("Move failed", e);
-      showToast("移動に失敗しました: " + e.message);
-    }
-  };
-
-  const handleDelete = async (handle, itemType, parentHandle) => {
-    try {
-      // Handle can be object (Browser) or string (Electron)
-      const itemName = (typeof handle === 'string')
-        ? handle.split(/[/\\\\]/).pop()
-        : handle.name;
-
-      // Check if root
-      if (isElectron && handle === projectHandle) {
-        showToast('プロジェクトルート自体は削除できません。Finder/Explorerから削除してください。');
-        return;
-      }
-
-      const confirmed = await requestConfirm("確認", `「${itemName}」を削除しますか？\nこの操作は取り消せません。`);
-      if (!confirmed) return;
-
-      if (isElectron) {
-        await fileSystem.deleteEntry(handle);
-      } else {
-        // Browser needs parent.
-        if (parentHandle) {
-          await fileSystem.deleteEntryWithParent(handle, parentHandle);
-        } else {
-          showToast("ブラウザ版では親フォルダのコンテキストが必要です。");
-          return;
-        }
-      }
-
-      await refreshMaterials();
-    } catch (error) {
-      console.error('Failed to delete:', error);
-      showToast('削除に失敗しました。');
-    }
-  };
-
-  const handleProjectReplace = async (changes) => {
-    console.log("handleProjectReplace called with", changes);
-    if (!changes || changes.length === 0) {
-      showToast("変更対象がありません。");
-      return;
-    }
-
-    // 1. Group changes by fileName
-    const uniqueFiles = new Map(); // Map<FileName, { handle, changes[] }>
-
-    for (const change of changes) {
-      if (!uniqueFiles.has(change.fileName)) {
-        uniqueFiles.set(change.fileName, { handle: change.fileHandle, changes: [] });
-      }
-      uniqueFiles.get(change.fileName).changes.push(change);
-    }
-
-    let successFileCount = 0;
-    let failFileCount = 0;
-    let skipLineCount = 0;
-    const errors = [];
-    const debugMismatches = [];
-    let firstMismatchDiff = '';
-
-    // 2. Process each file
-    for (const [fileName, fileData] of uniqueFiles) {
-      try {
-        const { handle, changes: fileChanges } = fileData;
-
-        // Read fresh content from disk to ensure safety
-        const fileObj = await fileSystem.readFile(handle);
-        // fileSystem.readFile returns string in Electron (fs.readFile with encoding) 
-        // or File object in Browser (requires .text()).
-        const content = (typeof fileObj === 'string') ? fileObj : await fileObj.text();
-        const lines = content.split('\n');
-
-        let modified = false;
-
-        // Apply changes (Reverse order to avoid index shift issues? No, we replace line content, indices are stable provided strict match)
-        // Check conflicts? If multiple replacements in same line? SearchPanel should handle?
-        // SearchPanel gives us line indices.
-
-        for (const change of fileChanges) {
-          const currentLine = lines[change.lineIndex];
-          const expectedLine = change.lineContent;
-
-          // Safety Check: Ensure the line hasn't changed since the search
-          // Relaxed Check: Trim '\r' to avoid CRLF mismatch if any
-          const cleanCurrent = currentLine ? currentLine.replace(/\r$/, '') : '';
-          const cleanExpected = expectedLine ? expectedLine.replace(/\r$/, '') : '';
-
-          if (cleanCurrent !== cleanExpected) {
-            // Check if already replaced (safe skip)
-            const cleanNew = change.newContent ? change.newContent.replace(/\r$/, '') : '';
-            if (cleanCurrent === cleanNew) {
-              continue;
-            }
-
-            console.warn(`Mismatch in ${fileName} line ${change.lineIndex + 1} `);
-            console.warn(`Exp: ${JSON.stringify(cleanExpected)} `);
-            console.warn(`Got: ${JSON.stringify(cleanCurrent)} `);
-            debugMismatches.push(`${fileName}:${change.lineIndex + 1} `);
-            if (!firstMismatchDiff) {
-              firstMismatchDiff = `\nFile: ${fileName}:${change.lineIndex + 1} \nExp: [${cleanExpected}]\nGot: [${cleanCurrent}]`;
-            }
-            skipLineCount++;
-            continue;
-          }
-
-          if (lines[change.lineIndex] !== change.newContent) {
-            lines[change.lineIndex] = change.newContent;
-            modified = true;
-          }
-        }
-
-        if (modified) {
-          const newContent = lines.join('\n');
-          await fileSystem.writeFile(handle, newContent);
-          successFileCount++;
-
-          // 3. Sync Active State
-          if (activeFileHandle && activeFileHandle.name === fileName) {
-            setText(newContent);
-          }
-        }
-
-      } catch (err) {
-        console.error(`Failed to replace in ${fileName}: `, err);
-        failFileCount++;
-        errors.push(`${fileName}: ${err.message} `);
-      }
-    }
-
-    // Report result
-    let msg = `置換完了: ${successFileCount} ファイルを更新しました。`;
-    if (skipLineCount > 0) {
-      msg += `\n⚠ 安全のため ${skipLineCount} 箇所の変更がスキップされました。`;
-      msg += `\n(詳細: ${debugMismatches.join(', ')})`;
-    }
-    if (failFileCount > 0) msg += `\n❌ ${failFileCount} ファイルでエラーが発生しました。`;
-
-    showToast(msg);
-  };
-
-  const handleRenameProject = async () => {
-    if (!projectHandle) return;
-
-    const currentName = typeof projectHandle === 'string'
-      ? projectHandle.split(/[/\\]/).pop()
-      : projectHandle.name;
-
-    if (openInputModal) {
-      openInputModal('プロジェクト名変更', 'プロジェクト名（フォルダ名）を変更しますか？', currentName, async (newName) => {
-        if (!newName || newName === currentName) return;
-
-        if (isElectron) {
-          try {
-            // Rename directory
-            const newHandle = await fileSystem.rename(projectHandle, newName);
-            if (newHandle) {
-              setProjectHandle(newHandle);
-              await saveProjectHandle(newHandle);
-              // setProjectHandle triggers useMaterials useEffect, so no need to call refreshMaterials manually
-              showToast('プロジェクト名を変更しました。');
-            }
-          } catch (e) {
-            console.error(e);
-            showToast('プロジェクト名の変更に失敗しました。');
-          }
-        } else {
-          showToast('ブラウザ版ではプロジェクトフォルダのリネームはサポートされていません。', 'error');
-        }
-      });
-      return;
-    }
 
 
 
-    const newName = window.prompt('プロジェクト名（フォルダ名）を変更しますか？', currentName);
-    if (!newName || newName === currentName) return;
-
-    if (isElectron) {
-      try {
-        // Rename directory
-        const newHandle = await fileSystem.rename(projectHandle, newName);
-        if (newHandle) {
-          setProjectHandle(newHandle);
-          await saveProjectHandle(newHandle);
-          // setProjectHandle triggers useMaterials useEffect, so no need to call refreshMaterials manually
-          showToast('プロジェクト名を変更しました。');
-        }
-      } catch (e) {
-        console.error(e);
-        showToast('名前の変更に失敗しました。');
-      }
-    } else {
-      showToast('ブラウザ版ではプロジェクト（ルートフォルダ）の名前変更はサポートされていません。Finder/Explorerで直接変更して、再度開いてください。');
-    }
-  };
-
-  const handleMoveProject = async () => {
-    if (!isElectron) {
-      showToast('プロジェクトの移動はデスクトップ版のみ対応しています。');
-      return;
-    }
-    if (!projectHandle) return;
-
-    const currentPath = typeof projectHandle === 'string' ? projectHandle : projectHandle.handle;
-    const currentName = typeof projectHandle === 'string' ? projectHandle.split(/[/\\]/).pop() : projectHandle.name;
-
-    // Select destination folder
-    showToast('移動先のフォルダを選択してください。');
-    const newParentPath = await fileSystem.openProjectDialog(); // Returns handle object or null
-    if (!newParentPath) return;
-    // openProjectDialog returns object { handle, name, ... }. We need the path string (handle.handle).
-    const newParentDir = typeof newParentPath === 'string' ? newParentPath : newParentPath.handle;
-
-    if (isElectron) {
-      try {
-        // Construct new full path
-        const sep = currentPath.includes('\\') ? '\\' : '/';
-        const newPath = newParentDir + sep + currentName;
-
-        if (newPath === currentPath) {
-          showToast('同じ場所には移動できません。');
-          return;
-        }
-
-        const confirmMove = await requestConfirm("確認", `「${currentName}」\nを\n「${newPath}」\nへ移動しますか？`);
-        if (!confirmMove) return;
-
-        // Rename (Move)
-        // fileSystem.rename expects handle (object or string) and NEW NAME (just name) or NEW FULL PATH?
-        // Wait, fileSystem.rename implementation:
-        // window.api.fs.rename(handle.handle || handle, newName);
-        // And electron main.cjs:
-        // ipcMain.handle('fs:rename', async (event, oldPath, newName) => {
-        //    const directory = path.dirname(oldPath);
-        //    const newPath = path.join(directory, newName);
-
-        // It ONLY renames within the SAME directory! It DOES NOT support moving.
-
-        showToast("現在、移動機能は実装中のため使用できません。（フォルダをFinder/Explorerで移動させてください）");
-        return;
-
-      } catch (e) {
-        console.error(e);
-        showToast('移動に失敗しました。');
-      }
-    }
-  };
 
 
 
-  const handleOutlineJump = (lineIndex) => {
-    if (!editorRef.current) return;
-    const lines = text.split('\n');
-    let pos = 0;
-    for (let i = 0; i < lineIndex && i < lines.length; i++) {
-      pos += lines[i].length + 1;
-    }
-    editorRef.current.setCursorPosition(pos);
-    // Also insure focus? setCursorPosition does focus.
-  };
+
+
 
   // Card Creator Handler
-  const handleCreateCard = async (filename, content) => {
-    // Create file in root or specific folder?
-    // For now, let's create in root, and let AutoOrganize move it.
-    // AutoOrganize is triggered on SAVE, or we can reuse `handleCreateFileInProject` logic?
-    // handleCreateFileInProject takes (folderHandle, name).
-    // We want to write specific CONTENT (with metadata).
-    // So:
-    // 1. Create file.
-    // 2. Write content.
-    // 3. Auto Organize.
-
-    if (!projectHandle) {
-      showToast('プロジェクトが開かれていません');
-      return;
-    }
-
-    try {
-      const newHandle = await fileSystem.createFile(projectHandle, filename);
-      await fileSystem.writeFile(newHandle, content);
-
-      // Trigger Auto-Organize
-      // Parse metadata again strictly? Or just pass what we know?
-      // autoOrganizeFile takes (handle, metadata).
-      // We can parse the content we just generated.
-      const { parseNote } = await import('./utils/metadataParser');
-      const { metadata } = parseNote(content);
-
-      const organizedHandle = await autoOrganizeFile(newHandle, metadata);
-
-      await refreshMaterials();
-      setActiveFileHandle(organizedHandle);
-      setText(content);
-      showToast(`カード「${filename}」を作成しました`);
-
-    } catch (e) {
-      console.error("Card creation failed", e);
-      showToast("作成に失敗しました: " + e.message);
-    }
-  };
 
 
 
