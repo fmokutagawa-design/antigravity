@@ -464,11 +464,6 @@ function App() {
     rapidModeDefault: false,
     todoCategories: ['背景', '人物', '心理', '描写', '設定', '伏線', '調査', 'その他'],
   });
-  /* Fix for Stale Closure: Use Ref to track projectHandle */
-  const projectHandleRef = React.useRef(projectHandle);
-  React.useEffect(() => {
-    projectHandleRef.current = projectHandle;
-  }, [projectHandle]);
 
   // Reference Panel (hook)
   const { showReference, setShowReference, referenceContent, setReferenceContent, referenceFileName, setReferenceFileName, referenceWidth, startResizing } = useReferencePanel();
@@ -1073,7 +1068,6 @@ function App() {
   }, [showMetadata]);
 
 
-  /* Removed duplicate projectHandleRef (now at line 580) */
 
 
 
