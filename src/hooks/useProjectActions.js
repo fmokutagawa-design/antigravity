@@ -662,6 +662,164 @@ export function useProjectActions({
     editorRef.current.setCursorPosition(pos);
   }, [text, editorRef]);
 
+  // --- Open Link (auto-create if not found) ---
+  const handleOpenLink = useCallback(async (linkTarget) => {
+    try {
+      if (!allMaterialFiles) {
+        console.warn('allMaterialFiles is not available');
+        return;
+      }
+
+      const normalizedTarget = linkTarget.trim();
+
+      const targetFile = allMaterialFiles.find(f => {
+        const nameWithoutExt = f.name.replace(/\.[^/.]+$/, "");
+        return (
+          f.name === normalizedTarget ||
+          f.name === `${normalizedTarget}.txt` ||
+          nameWithoutExt === normalizedTarget
+        );
+      });
+
+      if (targetFile) {
+        await handleOpenFile(targetFile.handle, targetFile.name);
+      } else {
+        if (await requestConfirm("確認", `「${linkTarget}」という資料は見つかりませんでした。\n新規作成して開きますか？`)) {
+          try {
+            let currentHandle = projectHandle;
+
+            if (!currentHandle) {
+              try {
+                let sourcePath = null;
+                if (activeFileHandle) {
+                  sourcePath = typeof activeFileHandle === 'string' ? activeFileHandle : (activeFileHandle.handle || null);
+                } else if (allMaterialFiles && allMaterialFiles.length > 0) {
+                  const sample = allMaterialFiles[0];
+                  sourcePath = typeof sample.handle === 'string' ? sample.handle : (sample.handle?.handle || null);
+                }
+
+                if (sourcePath) {
+                  const pathSeparator = sourcePath.includes('\\') ? '\\' : '/';
+                  const lastSepIndex = sourcePath.lastIndexOf(pathSeparator);
+                  if (lastSepIndex > 0) {
+                    const inferredPath = sourcePath.substring(0, lastSepIndex);
+                    console.warn("ProjectHandle auto-recovered:", inferredPath);
+                    currentHandle = inferredPath;
+                    setProjectHandle(inferredPath);
+                  }
+                }
+              } catch (e) {
+                console.error("ProjectHandle recovery failed", e);
+              }
+            }
+
+            if (!currentHandle) {
+              console.error("ProjectHandle missing in handleOpenLink");
+              showToast("リンク先のファイルを作成できませんでした。\n\n原因: プロジェクトフォルダが認識できていません。\n\n対策: サイドバーの「ファイル」タブからプロジェクトフォルダを開き直すか、現在のファイルを保存（Ctrl+S）した状態でリロードをお試しください。");
+              return;
+            }
+
+            const fileName = normalizedTarget.endsWith('.txt') ? normalizedTarget : `${normalizedTarget}.txt`;
+            const initialContent = `# ${normalizedTarget}\n\n`;
+            const fileHandle = await fileSystem.createFile(currentHandle, fileName, initialContent);
+
+            await refreshMaterials();
+            await handleOpenFile(fileHandle, fileName);
+            setActiveTab('editor');
+
+          } catch (createError) {
+            console.error("Failed to auto-create file:", createError);
+            showToast("ファイルの作成に失敗しました: " + createError.message);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error in handleOpenLink:', error);
+      showToast('リンクを開く際にエラーが発生しました。');
+    }
+  }, [allMaterialFiles, activeFileHandle, projectHandle, setProjectHandle, handleOpenFile, requestConfirm, refreshMaterials, setActiveTab, showToast]);
+
+  // --- Create File With Tag ---
+  const handleCreateFileWithTag = useCallback(async (tagName) => {
+    if (!projectHandle) return;
+
+    const createTaggedFile = async (finalName) => {
+      try {
+        const tagLower = tagName.toLowerCase();
+        let rootFolderName = 'materials';
+        let subfolderName = '';
+
+        if (['プロット', 'Plot'].some(t => tagLower.includes(t.toLowerCase()))) {
+          rootFolderName = 'plots';
+        } else {
+          if (['登場人物', 'Character', 'キャラ'].some(t => tagLower.includes(t.toLowerCase()))) subfolderName = 'characters';
+          else if (['世界観', 'World', '世界'].some(t => tagLower.includes(t.toLowerCase()))) subfolderName = 'world';
+          else if (['舞台', 'Location', '場所'].some(t => tagLower.includes(t.toLowerCase()))) subfolderName = 'locations';
+          else if (['アイテム', 'Item', '道具'].some(t => tagLower.includes(t.toLowerCase()))) subfolderName = 'items';
+          else if (['魔法', 'Magic', 'スキル'].some(t => tagLower.includes(t.toLowerCase()))) subfolderName = 'magic';
+        }
+
+        let targetDirHandle;
+        try {
+          targetDirHandle = await fileSystem.createFolder(projectHandle, rootFolderName);
+          if (subfolderName) {
+            targetDirHandle = await fileSystem.createFolder(targetDirHandle, subfolderName);
+          }
+        } catch (e) {
+          console.warn("Could not navigate/create folder, using project root", e);
+          targetDirHandle = projectHandle;
+        }
+
+        const content = `# ${finalName.replace('.txt', '')}\n\n#${tagName}\n`;
+        const fileHandle = await fileSystem.createFile(targetDirHandle, finalName, content);
+
+        await refreshMaterials();
+        await handleFileSelect(fileHandle);
+        showToast(`「${tagName}」のファイルを自動振り分けで作成しました`);
+      } catch (e) {
+        console.error(e);
+        showToast('ファイルの作成に失敗しました: ' + e.message);
+      }
+    };
+
+    if (openInputModal) {
+      openInputModal('新規ファイル作成', `タグ「${tagName}」を持つ新規ファイルを作成します。\nファイル名を入力してください:`, '', (fileName) => {
+        if (!fileName) return;
+        const finalName = fileName.trim().endsWith('.txt') ? fileName.trim() : `${fileName.trim()}.txt`;
+        createTaggedFile(finalName);
+      });
+      return;
+    }
+
+    const fileNamePrompt = window.prompt(`タグ「${tagName}」を持つ新規ファイルを作成します。\nファイル名を入力してください:`);
+    if (!fileNamePrompt) return;
+    const finalName = fileNamePrompt.trim().endsWith('.txt') ? fileNamePrompt.trim() : `${fileNamePrompt.trim()}.txt`;
+    await createTaggedFile(finalName);
+  }, [projectHandle, openInputModal, refreshMaterials, handleFileSelect, showToast]);
+
+  // --- Metadata Update ---
+  const handleMetadataUpdate = useCallback(async (newMetadata) => {
+    if (!activeFileHandle) return;
+
+    try {
+      const { body } = parseNote(text);
+      const newContent = serializeNote(body, newMetadata);
+
+      await fileSystem.writeFile(activeFileHandle, newContent);
+
+      const newHandle = await autoOrganizeFile(activeFileHandle, newMetadata);
+      if (newHandle && newHandle !== activeFileHandle) {
+        setActiveFileHandle(newHandle);
+      }
+
+      setText(newContent);
+      await refreshMaterials();
+    } catch (e) {
+      console.error("Metadata update failed:", e);
+      showToast(`メタデータの更新に失敗しました: ${e.message}`);
+    }
+  }, [text, activeFileHandle, setActiveFileHandle, setText, autoOrganizeFile, refreshMaterials, showToast]);
+
   return {
     // Project settings
     saveProjectSettings,
@@ -692,5 +850,10 @@ export function useProjectActions({
     handleResumeProject,
     // Card
     handleCreateCard,
+    // Links & tags
+    handleOpenLink,
+    handleCreateFileWithTag,
+    // Metadata
+    handleMetadataUpdate,
   };
 }
