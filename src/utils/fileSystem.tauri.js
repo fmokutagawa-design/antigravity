@@ -32,11 +32,17 @@ function extractName(p) {
 
 export const tauriFileSystem = {
   async openProjectDialog() {
-    const inv = await getInvoke();
-    // Expects Rust command: open_project_dialog() -> Option<String>
-    const path = await inv('open_project_dialog');
-    if (!path) return null;
-    return { handle: path, name: extractName(path), kind: 'directory' };
+    try {
+      // Use Tauri dialog plugin directly for native folder picker
+      const dialogPkg = '@tauri-apps/plugin-dialog';
+      const { open } = await import(/* @vite-ignore */ dialogPkg);
+      const path = await open({ directory: true, multiple: false });
+      if (!path) return null;
+      return { handle: path, name: extractName(path), kind: 'directory' };
+    } catch (e) {
+      console.error('Failed to open project dialog:', e);
+      return null;
+    }
   },
 
   async readDirectory(dirHandle) {
@@ -157,7 +163,13 @@ export const tauriFileSystem = {
   },
 
   async saveFile(defaultPath) {
-    const inv = await getInvoke();
-    return await inv('save_file_dialog', { defaultPath });
+    try {
+      const dialogPkg = '@tauri-apps/plugin-dialog';
+      const { save } = await import(/* @vite-ignore */ dialogPkg);
+      return await save({ defaultPath });
+    } catch (e) {
+      console.error('Failed to open save dialog:', e);
+      return null;
+    }
   },
 };
