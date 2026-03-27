@@ -1,4 +1,4 @@
-import { fileSystem, isElectron } from './fileSystem';
+import { fileSystem, isNative } from './fileSystem';
 import { parseNote } from './metadataParser';
 
 /**

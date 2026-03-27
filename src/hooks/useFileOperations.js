@@ -1,6 +1,6 @@
 import { useRef, useCallback } from 'react';
 import { saveTextFile, loadTextFile } from '../utils/fileUtils';
-import { fileSystem, isElectron } from '../utils/fileSystem';
+import { fileSystem, isNative } from '../utils/fileSystem';
 import { parseNote } from '../utils/metadataParser';
 
 /**
@@ -110,7 +110,7 @@ export function useFileOperations({
     const defaultNewName = `${baseName}_copy${ext}`;
 
     try {
-      if (isElectron) {
+      if (isNative) {
         const currentPath = typeof handleToDup === 'string' ? handleToDup : null;
         let defaultPath = defaultNewName;
         if (currentPath) {
@@ -119,7 +119,7 @@ export function useFileOperations({
           defaultPath = `${parentDir}${sep}${defaultNewName} `;
         }
 
-        const newPath = await window.api.fs.saveFile(defaultPath);
+        const newPath = await fileSystem.saveFile(defaultPath);
         if (!newPath) return; // Cancelled
 
         await fileSystem.writeFile(newPath, contentToSave);
@@ -220,9 +220,9 @@ export function useFileOperations({
       }
       const merged = parts.join('\n\n［＃改ページ］\n\n');
       // 保存
-      if (isElectron) {
+      if (isNative) {
         const defaultPath = (projectHandle?.handle || projectHandle || '') + '/exported.txt';
-        const savePath = await window.api.fs.saveFile(defaultPath);
+        const savePath = await fileSystem.saveFile(defaultPath);
         if (savePath) {
           await fileSystem.writeFile({ handle: savePath, name: 'exported.txt' }, merged);
           showToast(`${targetFiles.length}ファイルを結合して書き出しました。`);

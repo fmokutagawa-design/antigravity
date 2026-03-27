@@ -40,7 +40,7 @@ import './components/MaterialsPanel.css';
 import './components/LinkPanel.css';
 
 import { saveTextFile, loadTextFile } from './utils/fileUtils';
-import { fileSystem, isElectron } from './utils/fileSystem';
+import { fileSystem, isElectron, isNative } from './utils/fileSystem';
 import { generateEpub, downloadBlob } from './utils/epubExporter'; // EPUB Exporter
 import { generateDocx, downloadBlob as downloadDocxBlob } from './utils/docxExporter'; // DOCX Exporter
 // import {
@@ -844,9 +844,9 @@ function App() {
       const targetTab = params.get('tab');
       if (targetTab) setActiveTab(targetTab);
 
-      // Electron: filepath パラメータがあればファイルを直接読み込む
+      // Native: filepath パラメータがあればファイルを直接読み込む
       const filePath = params.get('filepath');
-      if (filePath && isElectron) {
+      if (filePath && isNative) {
         (async () => {
           try {
             const content = await fileSystem.readFile(filePath);
@@ -945,8 +945,8 @@ function App() {
         url.searchParams.set('file', fileHandle.name);
       }
     }
-    // Electron: pass project path so new window can auto-load
-    if (isElectron && projectHandle) {
+    // Native: pass project path so new window can auto-load
+    if (isNative && projectHandle) {
       url.searchParams.set('project', typeof projectHandle === 'string' ? projectHandle : '');
     }
     window.open(url.toString(), '_blank', 'width=1000,height=800,menubar=no,toolbar=no');
@@ -2084,7 +2084,7 @@ function App() {
                 <span style={{ marginRight: '8px', fontWeight: 'bold' }}>
                   {activeFileHandle ? (typeof activeFileHandle === 'string' ? activeFileHandle.split(/[/\\]/).pop() : activeFileHandle.name) : '無題'}
                 </span>
-                {isElectron && activeFileHandle && (
+                {isNative && activeFileHandle && (
                   <button
                     onClick={() => fileSystem.showInExplorer(activeFileHandle)}
                     className="footer-btn"

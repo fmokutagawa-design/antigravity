@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fileSystem, isElectron } from '../utils/fileSystem';
+import { fileSystem, isNative } from '../utils/fileSystem';
 import { saveProjectHandle, clearProjectHandle } from '../utils/indexedDBUtils';
 import { parseNote, serializeNote } from '../utils/metadataParser';
 
@@ -119,7 +119,7 @@ export function useProjectActions({
 
   // --- Project open/create ---
   const handleOpenProject = useCallback(async () => {
-    if (!isElectron && !window.showDirectoryPicker) {
+    if (!isNative && !window.showDirectoryPicker) {
       showToast('お使いのブラウザはフォルダ機能に対応していません。\nChrome、Edge、Operaをお使いください。');
       return;
     }
@@ -152,7 +152,7 @@ export function useProjectActions({
   }, [handleOpenFile]);
 
   const handleCreateNewProject = useCallback(async () => {
-    if (!isElectron && !window.showDirectoryPicker) {
+    if (!isNative && !window.showDirectoryPicker) {
       showToast('お使いのブラウザはフォルダ機能に対応していません。\nChrome、Edge、Operaをお使いください。');
       return;
     }
@@ -245,7 +245,7 @@ export function useProjectActions({
       const tree = await fileSystem.readDirectory(projectHandle);
       setFileTree(tree);
 
-      if (isElectron && newFile && newFile.handle) {
+      if (isNative && newFile && newFile.handle) {
         return newFile.handle;
       }
       return newFile;
@@ -332,7 +332,7 @@ export function useProjectActions({
   const handleRename = useCallback(async (handle, newName, itemType) => {
     console.log('handleRename called', { handle, newName, itemType, projectHandle });
     try {
-      if (isElectron) {
+      if (isNative) {
         const projectPath = typeof projectHandle === 'string' ? projectHandle : projectHandle.handle;
         const targetPath = typeof handle === 'string' ? handle : handle.handle;
 
@@ -405,7 +405,7 @@ export function useProjectActions({
         ? handle.split(/[/\\]/).pop()
         : handle.name;
 
-      if (isElectron && handle === projectHandle) {
+      if (isNative && handle === projectHandle) {
         showToast('プロジェクトルート自体は削除できません。Finder/Explorerから削除してください。');
         return;
       }
@@ -413,7 +413,7 @@ export function useProjectActions({
       const confirmed = await requestConfirm("確認", `「${itemName}」を削除しますか？\nこの操作は取り消せません。`);
       if (!confirmed) return;
 
-      if (isElectron) {
+      if (isNative) {
         await fileSystem.deleteEntry(handle);
       } else {
         if (parentHandle) {
@@ -534,7 +534,7 @@ export function useProjectActions({
       openInputModal('プロジェクト名変更', 'プロジェクト名（フォルダ名）を変更しますか？', currentName, async (newName) => {
         if (!newName || newName === currentName) return;
 
-        if (isElectron) {
+        if (isNative) {
           try {
             const newHandle = await fileSystem.rename(projectHandle, newName);
             if (newHandle) {
@@ -556,7 +556,7 @@ export function useProjectActions({
     const newName = window.prompt('プロジェクト名（フォルダ名）を変更しますか？', currentName);
     if (!newName || newName === currentName) return;
 
-    if (isElectron) {
+    if (isNative) {
       try {
         const newHandle = await fileSystem.rename(projectHandle, newName);
         if (newHandle) {
@@ -574,7 +574,7 @@ export function useProjectActions({
   }, [projectHandle, setProjectHandle, openInputModal, showToast]);
 
   const handleMoveProject = useCallback(async () => {
-    if (!isElectron) {
+    if (!isNative) {
       showToast('プロジェクトの移動はデスクトップ版のみ対応しています。');
       return;
     }
@@ -592,7 +592,7 @@ export function useProjectActions({
     if (!savedProjectHandle) return;
 
     try {
-      if (isElectron) {
+      if (isNative) {
         const projectPath = savedProjectHandle;
 
         setProjectHandle(projectPath);

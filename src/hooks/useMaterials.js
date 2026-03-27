@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fileSystem, isElectron } from '../utils/fileSystem';
+import { fileSystem, isNative } from '../utils/fileSystem';
 import { parseNote } from '../utils/metadataParser';
 import { buildLinkGraph } from '../utils/linkAnalyzer';
 
@@ -45,7 +45,7 @@ export const useMaterials = (projectHandle) => {
                             let content = '';
                             let lastModified = 0;
 
-                            if (isElectron) {
+                            if (isNative) {
                                 content = await fileSystem.readFile(item.handle);
                                 // No cache usage for Electron v1 for simplicity (local is fast)
                             } else {
@@ -77,7 +77,7 @@ export const useMaterials = (projectHandle) => {
                                 path: filePath
                             };
 
-                            if (!isElectron) {
+                            if (!isNative) {
                                 newCache.set(filePath, { lastModified, data: fileData });
                                 cacheUpdated = true;
                             }
