@@ -10,6 +10,7 @@ import { saveSnapshot } from '../utils/snapshotStore';
  */
 export function useAutoSave({
   text,
+  debouncedText,
   isProjectMode,
   activeFileHandle,
   projectHandle,
@@ -21,12 +22,12 @@ export function useAutoSave({
 }) {
   // Auto-save to active file in project mode
   useEffect(() => {
-    if (isProjectMode && activeFileHandle && text !== undefined) {
+    if (isProjectMode && activeFileHandle && debouncedText !== undefined) {
       const saveTimeout = setTimeout(async () => {
         try {
-          await fileSystem.writeFile(activeFileHandle, text);
+          await fileSystem.writeFile(activeFileHandle, debouncedText);
           setLastSaved(new Date());
-          lastSavedTextRef.current = text;
+          lastSavedTextRef.current = debouncedText;
         } catch (error) {
           console.error('Failed to auto-save:', error);
           showToast('⚠️ 自動保存に失敗しました');
@@ -35,13 +36,13 @@ export function useAutoSave({
 
       return () => clearTimeout(saveTimeout);
     }
-  }, [text, isProjectMode, activeFileHandle, setLastSaved, lastSavedTextRef, showToast]);
+  }, [debouncedText, isProjectMode, activeFileHandle, setLastSaved, lastSavedTextRef, showToast]);
 
   // Auto-snapshot: 5分間隔 or 500文字以上の変更で自動スナップショット
   const lastSnapshotRef = useRef({ text: '', time: 0 });
 
   useEffect(() => {
-    if (!isProjectMode || !activeFileHandle || !text) return;
+    if (!isProjectMode || !activeFileHandle || !debouncedText) return;
 
     const filePath = typeof activeFileHandle === 'string'
       ? activeFileHandle
@@ -54,21 +55,21 @@ export function useAutoSave({
       const now = Date.now();
       const lastText = lastSnapshotRef.current.text;
       const lastTime = lastSnapshotRef.current.time;
-      const charDiff = Math.abs(text.length - lastText.length);
+      const charDiff = Math.abs(debouncedText.length - lastText.length);
       const timeDiff = now - lastTime;
 
       if (timeDiff >= INTERVAL || charDiff >= CHAR_THRESHOLD) {
-        if (text !== lastText) {
-          saveSnapshot(filePath, text, text.length).catch(e =>
+        if (debouncedText !== lastText) {
+          saveSnapshot(filePath, debouncedText, debouncedText.length).catch(e =>
             console.warn('Snapshot save failed:', e)
           );
-          lastSnapshotRef.current = { text, time: now };
+          lastSnapshotRef.current = { text: debouncedText, time: now };
         }
       }
     }, 30000); // 30秒ごとにチェック
 
     return () => clearInterval(timer);
-  }, [text, isProjectMode, activeFileHandle]);
+  }, [debouncedText, isProjectMode, activeFileHandle]);
 
   // ファイル切替時にスナップショットの基準をリセット＋初回保存
   useEffect(() => {

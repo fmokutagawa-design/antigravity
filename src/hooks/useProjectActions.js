@@ -22,6 +22,7 @@ export function useProjectActions({
   setIsProjectMode,
   projectSettings,
   setProjectSettings,
+  debouncedText,
   savedProjectHandle,
   setSavedProjectHandle,
   allMaterialFiles,
@@ -294,14 +295,14 @@ export function useProjectActions({
   const [pendingNavigation, setPendingNavigation] = useState(null);
 
   useEffect(() => {
-    if (pendingNavigation && editorRef.current && text.includes(pendingNavigation.tag)) {
-      const idx = text.indexOf(pendingNavigation.tag);
+    if (pendingNavigation && editorRef.current && debouncedText.includes(pendingNavigation.tag)) {
+      const idx = debouncedText.indexOf(pendingNavigation.tag);
       if (idx !== -1) {
         editorRef.current.jumpToPosition(idx, idx + pendingNavigation.tag.length);
         setPendingNavigation(null);
       }
     }
-  }, [text, pendingNavigation, editorRef]);
+  }, [debouncedText, pendingNavigation, editorRef]);
 
   const handleNavigate = useCallback(async (tag) => {
     if (!tag) return;
@@ -820,6 +821,17 @@ export function useProjectActions({
     }
   }, [text, activeFileHandle, setActiveFileHandle, setText, autoOrganizeFile, refreshMaterials, showToast]);
 
+  const handleRefreshTree = useCallback(async () => {
+    if (!projectHandle) return;
+    try {
+      const tree = await fileSystem.readDirectory(projectHandle);
+      setFileTree(tree);
+      await refreshMaterials();
+    } catch (e) {
+      console.error("Tree refresh failed:", e);
+    }
+  }, [projectHandle, setFileTree, refreshMaterials]);
+
   return {
     // Project settings
     saveProjectSettings,
@@ -855,5 +867,7 @@ export function useProjectActions({
     handleCreateFileWithTag,
     // Metadata
     handleMetadataUpdate,
+    // Refresh
+    handleRefreshTree,
   };
 }

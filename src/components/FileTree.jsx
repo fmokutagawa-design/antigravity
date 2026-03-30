@@ -95,7 +95,7 @@ const countFiles = (items) => {
     return count;
 };
 
-const FileTree = ({ tree, activeFile, onFileSelect, onCreateFile, onCreateFolder, onRequestCreateFile, onRequestCreateFolder, onOpenReference, onOpenInNewWindow, onRename, onDelete, onDuplicate, onMergeFile, onMove }) => {
+const FileTree = ({ tree, activeFile, onFileSelect, onCreateFile, onCreateFolder, onRequestCreateFile, onRequestCreateFolder, onOpenReference, onOpenInNewWindow, onShowInFinder, onRename, onDelete, onDuplicate, onMergeFile, onMove }) => {
     const [contextMenu, setContextMenu] = useState(null);
     const [showRenameDialog, setShowRenameDialog] = useState(false);
     const [renameValue, setRenameValue] = useState('');
@@ -103,24 +103,32 @@ const FileTree = ({ tree, activeFile, onFileSelect, onCreateFile, onCreateFolder
 
     const handleContextMenu = (e, itemType, itemHandle, parentHandle, itemName) => {
         e.preventDefault();
-        e.stopPropagation(); // Stop bubbling to background handler
+        e.stopPropagation();
 
-        // Adjust position to prevent overflow
+        const menuWidth = 220;
+        const menuHeight = 320;
+
         let x = e.clientX;
         let y = e.clientY;
-        const menuHeight = 320; // Estimated max height
 
+        // 右端からはみ出す場合、左側に表示
+        if (x + menuWidth > window.innerWidth) {
+            x = window.innerWidth - menuWidth - 10;
+        }
+        // 下端からはみ出す場合、上に詰める
         if (y + menuHeight > window.innerHeight) {
             y = window.innerHeight - menuHeight - 10;
         }
+        // 上端を超えないように
+        if (y < 10) y = 10;
 
         setContextMenu({
-            x: x,
-            y: y,
+            x,
+            y,
             itemType,
             itemHandle,
             parentHandle,
-            itemName // Store name explicitly
+            itemName
         });
     };
 
@@ -337,7 +345,9 @@ const FileTree = ({ tree, activeFile, onFileSelect, onCreateFile, onCreateFolder
                         position: 'fixed',
                         top: contextMenu.y,
                         left: contextMenu.x,
-                        zIndex: 99999
+                        zIndex: 99999,
+                        minWidth: '200px',
+                        maxWidth: '280px'
                     }}
                     onClick={(e) => e.stopPropagation()}
                 >
@@ -354,6 +364,14 @@ const FileTree = ({ tree, activeFile, onFileSelect, onCreateFile, onCreateFolder
 
                     {contextMenu.itemType === 'directory' && (
                         <>
+                            {onShowInFinder && (
+                                <div className="context-menu-item" onClick={() => {
+                                    onShowInFinder(contextMenu.itemHandle);
+                                    handleCloseContextMenu();
+                                }}>
+                                    📂 Finderで表示
+                                </div>
+                            )}
                             <div className="context-menu-item" onClick={handleRename}>
                                 ✏️ 名前を変更
                             </div>
@@ -391,6 +409,14 @@ const FileTree = ({ tree, activeFile, onFileSelect, onCreateFile, onCreateFolder
                             <div className="context-menu-item" onClick={handleOpenNewWindow}>
                                 🪟 新しいウィンドウで開く
                             </div>
+                            {onShowInFinder && (
+                                <div className="context-menu-item" onClick={() => {
+                                    onShowInFinder(contextMenu.itemHandle);
+                                    handleCloseContextMenu();
+                                }}>
+                                    📂 Finderで表示
+                                </div>
+                            )}
                             <div className="context-menu-item" onClick={handleRename}>
                                 ✏️ 名前を変更
                             </div>

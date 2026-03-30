@@ -742,12 +742,16 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       : '"palt" 0, "halt" 0, "kern" 0, "vkrn" 0, "chws" 0, "liga" 0, "clig" 0, "calt" 0, "vert" 0, "vrt2" 0',
   };
 
-  // --- メモ化: シンタックスハイライト要素（数百〜数千のdivを毎キー入力で再生成しない） ---
+  // --- メモ化: シンタックスハイライト要素（件数上限付き — DOM爆発防止） ---
+  const MAX_HIGHLIGHT_ELEMENTS = 2000;
   const highlightElements = useMemo(() => {
     if (settings.editorSyntaxColors === false || !highlights.length) return null;
     const cell = baseMetrics.cell;
     const isVert = settings.isVertical;
-    return highlights.map((h) => (
+    const limited = highlights.length > MAX_HIGHLIGHT_ELEMENTS
+      ? highlights.slice(0, MAX_HIGHLIGHT_ELEMENTS)
+      : highlights;
+    return limited.map((h) => (
       <div key={h.key} style={{
         position: 'absolute',
         right: isVert ? `${-h.x}px` : 'auto',

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { parseNote } from '../utils/metadataParser';
 
-export function useSessionStats(allMaterialFiles, activeFileHandle, text) {
+export function useSessionStats(allMaterialFiles, activeFileHandle, editorValue) {
   const [sessionStartTotal, setSessionStartTotal] = useState(null);
   const [currentSessionChars, setCurrentSessionChars] = useState(0);
 
@@ -16,13 +16,13 @@ export function useSessionStats(allMaterialFiles, activeFileHandle, text) {
         (file.name && activeFileHandle.name && file.name === activeFileHandle.name)
       );
       if (isActiveFile) {
-        total += (parseNote(text).body?.length || 0);
+        total += (editorValue?.length || 0);
       } else {
         total += (file.body?.length || 0);
       }
     }
     return total;
-  }, [allMaterialFiles, activeFileHandle, text]);
+  }, [allMaterialFiles, activeFileHandle, editorValue]);
 
   // Initialize session start total
   useEffect(() => {

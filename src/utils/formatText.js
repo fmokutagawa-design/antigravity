@@ -32,13 +32,21 @@ export function applyFormat(text, type) {
     newBody = newBody.replace(/\.{3,}/g, '……').replace(/…{1,}/g, (m) => '……'.repeat(Math.max(1, Math.round(m.length / 2))));
     changed = true;
   } else if (type === 'dash') {
-    newBody = newBody.replace(/--+/g, '――').replace(/—+/g, '――').replace(/―{3,}/g, '――');
+    newBody = newBody.replace(/--+/g, '――')
+      .replace(/—+/g, '――')
+      .replace(/─+/g, '――')
+      .replace(/―{3,}/g, '――');
     changed = true;
   } else if (type === 'exclamation-space') {
     newBody = newBody.replace(/([！？])(?![！？\s\n　」』）])/g, '$1　');
     changed = true;
   } else if (type === 'remove-blank-lines') {
+    // 1. 3行以上の空行を1行空きに圧縮
     newBody = newBody.replace(/\n{3,}/g, '\n\n');
+    // 2. 「」『』会話行の直前の空行を除去
+    newBody = newBody.replace(/\n\n([ 　]*[「『])/g, '\n$1');
+    // 3. 会話行の閉じ（」』）の直後 → 地の文（全角スペース始まり）への空行を除去
+    newBody = newBody.replace(/([」』])\n\n([ 　])/g, '$1\n$2');
     changed = true;
   } else if (type === 'indent') {
     newBody = newBody.split('\n').map(line => {

@@ -126,11 +126,17 @@ function App() {
   const [aiOptions, setAiOptions] = useState({}); // New: options for AI (selectedText, etc)
   const [corrections, setCorrections] = useState([]); // AI proofreading markers
 
+  // Memoize editor value to avoid re-parsing on every render and stabilize reference for React.memo
+  const editorValue = useMemo(() => {
+    if (showMetadata) return text;
+    return parseNote(text).body;
+  }, [text, showMetadata]);
+
   // AI Connection (hook)
   const { aiModel, setAiModel, localModels, selectedLocalModel, setSelectedLocalModel, isLocalConnected, checkLocalConnection } = useAIConnection();
 
   // Ghost Text (hook)
-  const { ghostText, handleCursorStats } = useGhostText(text, settings.enableGhostText, selectedLocalModel);
+  const { ghostText, setGhostText, handleCursorStats } = useGhostText(text, debouncedText, settings.enableGhostText, selectedLocalModel);
 
 
   // Custom UI Management
@@ -498,7 +504,7 @@ function App() {
   }, [materialsTree, projectHandle]);
 
   // Session Stats (hook)
-  const { currentSessionChars, handleResetSession } = useSessionStats(allMaterialFiles, activeFileHandle, text);
+  const { currentSessionChars, handleResetSession } = useSessionStats(allMaterialFiles, activeFileHandle, editorValue);
 
   const handleOpenFile = useCallback(async (fileHandle, fileName, options = {}) => {
     try {
@@ -985,6 +991,7 @@ function App() {
     handleOpenLink,
     handleCreateFileWithTag,
     handleMetadataUpdate,
+    handleRefreshTree,
   } = useProjectActions({
     text,
     setText,
@@ -998,6 +1005,8 @@ function App() {
     setIsProjectMode,
     projectSettings,
     setProjectSettings,
+    debouncedText,
+    setDebouncedText,
     savedProjectHandle,
     setSavedProjectHandle,
     allMaterialFiles,
@@ -1044,6 +1053,7 @@ function App() {
 
   useAutoSave({
     text,
+    debouncedText,
     isProjectMode,
     activeFileHandle,
     projectHandle,
@@ -1096,9 +1106,9 @@ function App() {
 
   // Save to local storage on change (Web fallback)
   useEffect(() => {
-    localStorage.setItem('novel-editor-text', text);
+    localStorage.setItem('novel-editor-text', debouncedText);
     setLastSaved(new Date());
-  }, [text]);
+  }, [debouncedText]);
 
   useEffect(() => {
     const settingsKey = isWindowMode ? 'novel-editor-settings-window' : 'novel-editor-settings';
@@ -1525,11 +1535,11 @@ function App() {
 
                       {sidebarTab === 'files' && (
                         <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                          <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--border-color)' }}>
+                          <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--border-color)', display: 'flex', gap: '5px' }}>
                             <button
                               onClick={() => setShowCardCreator(true)}
                               style={{
-                                width: '100%',
+                                flex: 1,
                                 padding: '6px',
                                 background: 'var(--accent-color)',
                                 color: 'white',
@@ -1546,6 +1556,25 @@ function App() {
                             >
                               cards 🃏 新規カード作成
                             </button>
+                            {projectHandle && (
+                              <button
+                                onClick={handleRefreshTree}
+                                title="ファイルツリーを更新"
+                                style={{
+                                  padding: '6px 10px',
+                                  background: 'transparent',
+                                  border: '1px solid var(--border-color)',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '14px'
+                                }}
+                              >
+                                🔄
+                              </button>
+                            )}
                           </div>
                           <div style={{ flex: 1, overflow: 'auto' }}>
                             {projectHandle ? (
@@ -1574,6 +1603,12 @@ function App() {
                                   }}
                                   onOpenReference={handleOpenReference}
                                   onOpenInNewWindow={handleOpenInNewWindow}
+                                  onShowInFinder={(handle) => {
+                                    if (window.api?.fs?.showInExplorer) {
+                                      const filePath = typeof handle === 'string' ? handle : handle.name;
+                                      window.api.fs.showInExplorer(filePath);
+                                    }
+                                  }}
                                   onRename={handleRename}
                                   onDelete={handleDelete}
                                   onDuplicate={handleDuplicateFile}
@@ -1976,7 +2011,7 @@ function App() {
               <div style={{ flex: 1, display: activeTab === 'editor' ? 'flex' : 'none', flexDirection: 'column', minHeight: 0 }}>
                 <Editor
                   ref={editorRef}
-                  value={showMetadata ? text : parseNote(text).body}
+                  value={editorValue}
                   onChange={handleTextChange}
                   settings={effectiveSettings}
                   onSave={handleSaveFile}
