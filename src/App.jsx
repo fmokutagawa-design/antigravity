@@ -1928,6 +1928,7 @@ function App() {
                   ) : sidebarTab === 'prizes' ? (
                     <PrizePanel
                       projectSettings={projectSettings}
+                      editorText={text}
                       onApplyPrize={(prizeData) => {
                         setProjectSettings(prev => ({
                           ...prev,
@@ -1936,18 +1937,20 @@ function App() {
                           prizeName: prizeData.prizeName,
                           prizeId: prizeData.prizeId,
                           prizeCharsPerLine: prizeData.editorFormat?.charsPerLine || 0,
-                          prizeLinesPerPage: prizeData.editorFormat?.linesPerPage || 0
+                          prizeLinesPerPage: prizeData.editorFormat?.linesPerPage || 0,
+                          pageCountBasis: prizeData.pageCountBasis || '400-page',
+                          targetChars: prizeData.targetChars || 0
                         }));
-                        // 賞の原稿形式に合わせてエディタ設定を自動変更
-                        if (prizeData.editorFormat && (prizeData.editorFormat.charsPerLine > 0 || prizeData.editorFormat.linesPerPage > 0)) {
-                          setSettings(prev => ({
-                            ...prev,
-                            charsPerLine: prizeData.editorFormat.charsPerLine || prev.charsPerLine,
-                            linesPerPage: prizeData.editorFormat.linesPerPage || prev.linesPerPage,
-                            paperStyle: 'manuscript',  // 原稿用紙モードに切替
-                          }));
-                        }
+                        // エディタ設定は変更しない（印刷準備時に別途変更）
                       }}
+                      onApplyFormat={(formatData) => {
+                        setSettings(prev => ({
+                          ...prev,
+                          charsPerLine: formatData.charsPerLine || prev.charsPerLine,
+                          linesPerPage: formatData.linesPerPage || prev.linesPerPage,
+                        }));
+                      }}
+                      showToast={showToast}
                     />
                   ) : sidebarTab === 'snapshots' ? (
                     <SnapshotPanel
@@ -2151,10 +2154,18 @@ function App() {
                     <span style={{ margin: '0 8px', opacity: 0.2 }}>|</span>
                     <span style={{ opacity: 0.8, color: '#8e44ad' }}>
                       🏆 {projectSettings.prizeName}: {(() => {
-                        const cpl = projectSettings.prizeCharsPerLine || 20;
-                        const lpp = projectSettings.prizeLinesPerPage || 20;
-                        return Math.ceil(text.length / (cpl * lpp));
-                      })()}枚 / {projectSettings.targetPages}枚
+                        const basis = projectSettings.pageCountBasis || '400-page';
+                        if (basis === 'char-count') {
+                          const target = projectSettings.targetChars || 0;
+                          return `${text.length.toLocaleString()}字${target ? ` / ${target.toLocaleString()}字` : ''}`;
+                        } else if (basis === 'format-page') {
+                          const cpl = projectSettings.prizeCharsPerLine || 20;
+                          const lpp = projectSettings.prizeLinesPerPage || 20;
+                          return `${Math.ceil(text.length / (cpl * lpp))}枚 / ${projectSettings.targetPages}枚`;
+                        } else {
+                          return `${Math.ceil(text.length / 400)}枚 / ${projectSettings.targetPages}枚`;
+                        }
+                      })()}
                     </span>
                   </>
                 )}

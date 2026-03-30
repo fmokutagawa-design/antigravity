@@ -148,7 +148,7 @@ const literaryPrizes = [
         name: '小説すばる新人賞',
         organizer: '集英社',
         genre: 'エンタメ',
-        pageLimit: { min: 200, max: 500 },
+        pageLimit: { min: 66, max: 167 },
         charLimit: null,
         formatNote: 'A4判 40字×30行 縦書き66〜167ページ（400字詰換算200〜500枚）Web応募のみ(.docx)',
         editorFormat: { charsPerLine: 40, linesPerPage: 30 },
@@ -173,7 +173,7 @@ const literaryPrizes = [
         formatNote: '400字詰換算300〜500枚（A4判40字×30行縦書き・梗概2000字添付）',
         editorFormat: { charsPerLine: 40, linesPerPage: 30 },
         deadlineMonth: 6,
-        deadlineNote: '例年7月末日消印有効',
+        deadlineNote: '2026年6月1日〜30日（当日消印有効）',
         prize: '賞金100万円',
         url: 'https://www.google.com/search?q=%E6%97%A5%E6%9C%AC%E3%83%95%E3%82%A1%E3%83%B3%E3%82%BF%E3%82%B8%E3%83%BC%E3%83%8E%E3%83%99%E3%83%AB%E5%A4%A7%E8%B3%9E%20%E5%BF%9C%E5%8B%9F%E8%A6%81%E9%A0%85',
         recentWinners: [
@@ -188,7 +188,7 @@ const literaryPrizes = [
         name: 'メフィスト賞',
         organizer: '講談社',
         genre: 'ミステリー/SF/エンタメ',
-        pageLimit: { min: 300, max: 0 },
+        pageLimit: { min: 50, max: 0 },
         charLimit: null,
         formatNote: '40字×40行 縦書き50枚以上（上限なし/5万字以上）PDF応募のみ',
         editorFormat: { charsPerLine: 40, linesPerPage: 40 },
@@ -208,7 +208,7 @@ const literaryPrizes = [
         name: '江戸川乱歩賞',
         organizer: '日本推理作家協会/講談社',
         genre: 'ミステリー',
-        pageLimit: { min: 350, max: 550 },
+        pageLimit: { min: 115, max: 185 },
         charLimit: null,
         formatNote: '1行30字×40行 115〜185枚（400字詰換算350〜550枚）Word/txt/PDF可',
         editorFormat: { charsPerLine: 30, linesPerPage: 40 },
@@ -228,7 +228,7 @@ const literaryPrizes = [
         name: '横溝正史ミステリ&ホラー大賞',
         organizer: 'KADOKAWA',
         genre: 'ミステリー/ホラー',
-        pageLimit: { min: 300, max: 600 },
+        pageLimit: { min: 75, max: 150 },
         charLimit: null,
         formatNote: '40字×40行 75〜150枚（400字詰換算300〜600枚/カクヨム:10万〜20万字）',
         editorFormat: { charsPerLine: 40, linesPerPage: 40 },
@@ -307,7 +307,7 @@ const literaryPrizes = [
         name: 'このミステリーがすごい！大賞',
         organizer: '宝島社',
         genre: 'ミステリー',
-        pageLimit: { min: 300, max: 600 },
+        pageLimit: { min: 100, max: 163 },
         charLimit: null,
         formatNote: '40字×40行 縦組 100〜163枚（厳守）片面A4横使い',
         editorFormat: { charsPerLine: 40, linesPerPage: 40 },
@@ -347,7 +347,7 @@ const literaryPrizes = [
         name: '鮎川哲也賞',
         organizer: '東京創元社',
         genre: 'ミステリー',
-        pageLimit: { min: 360, max: 650 },
+        pageLimit: { min: 90, max: 162 },
         charLimit: null,
         formatNote: '40字×40行 90〜162枚（400字詰換算360〜650枚）梗概添付・AI使用時は要記載',
         editorFormat: { charsPerLine: 40, linesPerPage: 40 },
@@ -367,7 +367,7 @@ const literaryPrizes = [
         name: '創元SF短編賞',
         organizer: '東京創元社',
         genre: 'SF',
-        pageLimit: { min: 10, max: 40 },
+        pageLimit: { min: 10, max: 20 },
         charLimit: null,
         formatNote: '40字×40行 10〜20枚（400字詰換算40〜80枚）+ 梗概1枚',
         editorFormat: { charsPerLine: 40, linesPerPage: 40 },
@@ -550,7 +550,7 @@ const literaryPrizes = [
         pageLimit: { min: 80, max: 130 },
         charLimit: null,
         formatNote: '長編:10万〜15万字 短編:1万〜3万字（txt/Word/PDF等可・Web応募のみ）',
-        editorFormat: { charsPerLine: 40, linesPerPage: 34 },
+        editorFormat: { charsPerLine: 42, linesPerPage: 34 },
         deadlineMonth: 4,
         deadlineNote: '例年4月10日必着',
         prize: '大賞300万円',
@@ -647,7 +647,7 @@ const literaryPrizes = [
         name: '富士見ファンタジア大賞',
         organizer: 'KADOKAWA/富士見書房',
         genre: 'ライトノベル',
-        pageLimit: { min: 80, max: 130 },
+        pageLimit: { min: 200, max: 270 },
         charLimit: null,
         formatNote: '40字×16行 200〜270枚（あらすじ5枚添付）',
         editorFormat: { charsPerLine: 40, linesPerPage: 16 },
@@ -1357,6 +1357,30 @@ const literaryPrizes = [
         analysis: 'テーマ部門あり（2025年は「SNS」）。恋愛、ミステリー、ファンタジー、コメディなどジャンル不問。比較的新しい賞だが注目度上昇中。'
     }
 ];
+
+// 枚数計算基準の自動分類
+// '400-page': 400字詰原稿用紙換算（大半の文学賞）
+// 'format-page': 指定レイアウトでのページ数（ラノベ系、一部エンタメ系）
+// 'char-count': 文字数指定（Web小説系、ショートショート系）
+const FORMAT_PAGE_PRIZES = new Set([
+    'matsumoto', 'subaru_novel', 'mephisto', 'edogawa', 'yokomizo',
+    'shosetsu_gendai', 'konomys', 'ayukawa', 'sogen_sf',
+    'dengeki', 'ga_bunko', 'mf_bunko', 'fantasia', 'sneaker',
+    'gagaga', 'hj_novel', 'overlap', 'shueisha_ln', 'jump_novel',
+    'shueisha_ln_king', 'kodansha_ln', 'jump_horror', 'bslog',
+    'beans', 'ruby', 'tsubasa', 'kodansha_child', 'shogakukan_bunko',
+    'chiyoda'
+]);
+
+literaryPrizes.forEach(p => {
+    if (p.charLimit && p.pageLimit && p.pageLimit.min === 0 && p.pageLimit.max === 0) {
+        p.pageCountBasis = 'char-count';
+    } else if (FORMAT_PAGE_PRIZES.has(p.id)) {
+        p.pageCountBasis = 'format-page';
+    } else {
+        p.pageCountBasis = '400-page';
+    }
+});
 
 // ジャンル一覧を自動生成
 export const GENRES = [...new Set(literaryPrizes.map(p => p.genre))];

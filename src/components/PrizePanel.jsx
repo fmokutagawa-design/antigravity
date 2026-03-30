@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import literaryPrizes, { GENRES, getNextDeadline, getDaysUntilDeadline } from '../data/literaryPrizes';
 
-const PrizePanel = ({ onApplyPrize, projectSettings }) => {
+const PrizePanel = ({ onApplyPrize, onApplyFormat, projectSettings, editorText, showToast }) => {
     const [selectedPrize, setSelectedPrize] = useState(null);
     const [genreFilter, setGenreFilter] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
@@ -28,8 +28,39 @@ const PrizePanel = ({ onApplyPrize, projectSettings }) => {
             deadline: deadline ? deadline.toISOString().split('T')[0] : null,
             prizeName: prize.name,
             prizeId: prize.id,
-            editorFormat: prize.editorFormat || null
+            editorFormat: prize.editorFormat || null,
+            pageCountBasis: prize.pageCountBasis || '400-page',
+            targetChars: prize.charLimit?.max || 0
         });
+    };
+
+    const handleApplyFormat = (prize) => {
+        if (!onApplyFormat || !prize.editorFormat) return;
+        const { charsPerLine, linesPerPage } = prize.editorFormat;
+        if (!charsPerLine || !linesPerPage) {
+            showToast?.('この賞には指定フォーマットがありません');
+            return;
+        }
+        if (window.confirm(`エディタの設定を ${charsPerLine}字×${linesPerPage}行 に変更しますか？\n（現在の設定は上書きされます）`)) {
+            onApplyFormat({ charsPerLine, linesPerPage });
+            showToast?.(`📄 ${charsPerLine}字×${linesPerPage}行 に変更しました`);
+        }
+    };
+
+    const getCurrentProgress = (prize) => {
+        if (!editorText) return null;
+        const basis = prize.pageCountBasis || '400-page';
+        const target = prize.pageLimit.max || prize.pageLimit.min;
+        if (basis === 'char-count') {
+            const charTarget = prize.charLimit?.max || 0;
+            return { current: editorText.length, target: charTarget, unit: '字' };
+        } else if (basis === 'format-page') {
+            const cpl = prize.editorFormat?.charsPerLine || 20;
+            const lpp = prize.editorFormat?.linesPerPage || 20;
+            return { current: Math.ceil(editorText.length / (cpl * lpp)), target, unit: '枚' };
+        } else {
+            return { current: Math.ceil(editorText.length / 400), target, unit: '枚' };
+        }
     };
 
     const renderDeadlineBadge = (prize) => {
@@ -110,11 +141,44 @@ const PrizePanel = ({ onApplyPrize, projectSettings }) => {
                             fontWeight: 'bold', fontSize: '13px'
                         }}
                     >
-                        🎯 この賞に応募する（設定に反映）
+                        🎯 この賞に応募する（目標設定）
                     </button>
+                    {prize.editorFormat && prize.editorFormat.charsPerLine > 0 && (
+                        <button
+                            onClick={() => handleApplyFormat(prize)}
+                            style={{
+                                padding: '8px', background: 'transparent', color: '#8e44ad',
+                                border: '1px solid #8e44ad', borderRadius: '8px', cursor: 'pointer',
+                                fontSize: '12px'
+                            }}
+                        >
+                            📄 印刷用にフォーマット変更（{prize.editorFormat.charsPerLine}字×{prize.editorFormat.linesPerPage}行）
+                        </button>
+                    )}
                     {projectSettings?.prizeName === prize.name && (
                         <div style={{ fontSize: '10px', color: '#27ae60', textAlign: 'center' }}>✓ 現在この賞が設定されています</div>
                     )}
+
+                    {/* Progress */}
+                    {(() => {
+                        const progress = getCurrentProgress(prize);
+                        if (!progress) return null;
+                        const pct = progress.target > 0 ? Math.min(100, Math.round(progress.current / progress.target * 100)) : 0;
+                        return (
+                            <div style={{ background: '#f0ebf5', borderRadius: '8px', padding: '10px' }}>
+                                <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '6px', color: '#555' }}>📊 現在の進捗</div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
+                                    <span>{progress.current.toLocaleString()}{progress.unit}</span>
+                                    <span style={{ color: '#888' }}>{progress.target > 0 ? `${progress.target.toLocaleString()}${progress.unit}` : '上限なし'}</span>
+                                </div>
+                                {progress.target > 0 && (
+                                    <div style={{ background: '#ddd', borderRadius: '4px', height: '6px', overflow: 'hidden' }}>
+                                        <div style={{ background: pct >= 100 ? '#27ae60' : '#8e44ad', width: `${pct}%`, height: '100%', borderRadius: '4px', transition: 'width 0.3s' }} />
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
 
                     {/* Analysis */}
                     <div style={{ background: '#f8f9fa', borderRadius: '8px', padding: '12px' }}>
