@@ -74,7 +74,8 @@ function createWindow() {
                 webPreferences: {
                     nodeIntegration: false,
                     contextIsolation: true,
-                    preload: path.join(__dirname, 'preload.cjs'), // preload必須: window.api を新ウィンドウでも使えるように
+                    preload: path.join(__dirname, 'preload.cjs'),
+                    zoomFactor: 1.1 // match main window 110% zoom
                 }
             }
         };

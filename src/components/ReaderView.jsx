@@ -21,10 +21,15 @@ const ReaderView = ({ text, settings, onClose }) => {
     const jumpToChapter = useCallback((index) => {
         const el = document.getElementById(`reader-block-${index}`);
         if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            el.scrollIntoView({
+                behavior: 'smooth',
+                ...(settings.isVertical
+                    ? { inline: 'start' }
+                    : { block: 'start' })
+            });
             setShowTOC(false);
         }
-    }, []);
+    }, [settings.isVertical]);
 
     // 縦書き時ホイール変換
     useEffect(() => {

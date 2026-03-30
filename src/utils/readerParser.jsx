@@ -195,11 +195,23 @@ function parseInlineTokens(text, startKey = 0) {
 
         if (match[1] != null) {
             // 標準ルビ: ｜Base《Ruby》
-            elements.push(
-                <ruby key={`ruby-${key++}`}>
-                    {match[1]}<rt>{match[2]}</rt>
-                </ruby>
-            );
+            const base = match[1];
+            const ruby = match[2];
+            // 傍点判定: 読みが「・」の繰り返し or 「●」の繰り返し等
+            if (/^[・●○◉]+$/.test(ruby) && ruby.length <= base.length * 2) {
+                const dots = Array.from(base).map((char, ci) => (
+                    <ruby key={`boten-${key++}-${ci}`} className="reader-boten">
+                        {char}<rt>{'・'}</rt>
+                    </ruby>
+                ));
+                elements.push(...dots);
+            } else {
+                elements.push(
+                    <ruby key={`ruby-${key++}`}>
+                        {base}<rt>{ruby}</rt>
+                    </ruby>
+                );
+            }
         } else if (match[3] != null) {
             // 簡易ルビ: Kanji《Ruby》
             // 傍点判定: 読みが「・」の繰り返し or 「●」の繰り返し
