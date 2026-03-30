@@ -73,6 +73,39 @@ function App() {
   const [text, setText] = useState('');
   const [debouncedText, setDebouncedText] = useState('');
 
+  // UI / Project State (Moved here to fix ReferenceError initialization order)
+  const [showMetadata, setShowMetadata] = useState(false); // Default to hiding metadata
+  const [isSidebarVisible, setIsSidebarVisible] = useState(true); // Focus Mode Toggle
+  const [isWindowMode] = useState(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('mode') === 'window';
+  }); // Window Mode State
+
+  const [sidebarTab, setSidebarTab] = useState('settings'); // 'files', 'tags', 'links', or 'settings'
+  const [projectHandle, setProjectHandle] = useState(null);
+  const [savedProjectHandle, setSavedProjectHandle] = useState(null); // For resuming session
+  const [fileTree, setFileTree] = useState([]);
+  const [activeFileHandle, setActiveFileHandle] = useState(null);
+  const [isProjectMode, setIsProjectMode] = useState(false);
+  const [projectSettings, setProjectSettings] = useState({
+    targetPages: 300,     // 目録枚数 (400字詰め)
+    chapters: 0,         // 章数 (0 = 自動)
+    deadline: null,      // 締切日
+    rapidModeDefault: false,
+    todoCategories: ['背景', '人物', '心理', '描写', '設定', '伏線', '調査', 'その他'],
+  });
+
+  const [activeTab, setActiveTab] = useState('editor'); // 'editor' or 'preview'
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [showOutline, setShowOutline] = useState(false); // Outline Panel State
+  const [lastSaved, setLastSaved] = useState(null);
+  const lastSavedTextRef = useRef('');
+  const editorRef = React.useRef(null);
+  const fileInputRef = useRef(null);
+  const [projectContextMenu, setProjectContextMenu] = useState(null); // { x, y }
+  const [usageStats, setUsageStats] = useState({}); // Track file access frequency
+
+
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedText(text), 300);
     return () => clearTimeout(timer);
@@ -452,42 +485,10 @@ function App() {
   };
 
   // Handlers
-  const [showMetadata, setShowMetadata] = useState(false); // Default to hiding metadata
-  const [isSidebarVisible, setIsSidebarVisible] = useState(true); // Focus Mode Toggle
-  const [isWindowMode] = useState(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get('mode') === 'window';
-  }); // Window Mode State
 
-  // Project management state
-  const [sidebarTab, setSidebarTab] = useState('settings'); // 'files', 'tags', 'links', or 'settings'
-  const [projectHandle, setProjectHandle] = useState(null);
-  const [savedProjectHandle, setSavedProjectHandle] = useState(null); // For resuming session
-  const [fileTree, setFileTree] = useState([]);
-  const [activeFileHandle, setActiveFileHandle] = useState(null);
-  const [isProjectMode, setIsProjectMode] = useState(false);
-  const [projectSettings, setProjectSettings] = useState({
-    targetPages: 300,     // 目標枚数 (400字詰め)
-    chapters: 0,         // 章数 (0 = 自動)
-    deadline: null,      // 締切日
-    rapidModeDefault: false,
-    todoCategories: ['背景', '人物', '心理', '描写', '設定', '伏線', '調査', 'その他'],
-  });
 
   // Reference Panel (hook)
   const { showReference, setShowReference, referenceContent, setReferenceContent, referenceFileName, setReferenceFileName, referenceWidth, startResizing, isResizing } = useReferencePanel();
-  const [usageStats, setUsageStats] = useState({}); // Track file access frequency
-
-  const [activeTab, setActiveTab] = useState('editor'); // 'editor' or 'preview'
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [showOutline, setShowOutline] = useState(false); // Outline Panel State
-
-  const [lastSaved, setLastSaved] = useState(null);
-  const lastSavedTextRef = useRef('');
-
-  const editorRef = React.useRef(null);
-  const fileInputRef = useRef(null);
-  const [projectContextMenu, setProjectContextMenu] = useState(null); // { x, y }
 
   const {
     materialsTree,
