@@ -5,33 +5,34 @@ import './ReaderView.css';
 const ReaderView = ({ text, settings, onClose }) => {
     const containerRef = useRef(null);
 
-    // 記法の除去（リンク、フォントタグ、注記、強調など）
-    const processLine = (line) => {
-        if (!line) return '';
-        let processed = line;
-        
-        // [[リンク]] → リンクテキストだけ表示
-        processed = processed.replace(/\[\[(.*?)\]\]/g, '$1');
-        
-        // {font:...}...{/font} → 中身だけ
-        processed = processed.replace(/\{font[:：].*?\}/g, '');
-        processed = processed.replace(/\{\/font\}/g, '');
-        
-        // ［＃...］ 青空文庫注記は非表示
-        processed = processed.replace(/［＃.*?］/g, '');
-        
-        // **強調** → 中身だけ
-        processed = processed.replace(/\*\*(.*?)\*\*/g, '$1');
-        
-        return processed;
-    };
-
     // テキストを段落単位で分割
     const paragraphs = useMemo(() => {
         if (!text) return [];
+        
+        const processLine = (line) => {
+            if (!line) return '';
+            let processed = line;
+            
+            // [[リンク]] → リンクテキストだけ
+            processed = processed.replace(/\[\[(.*?)\]\]/g, '$1');
+            processed = processed.replace(/［［(.*?)］］/g, '$1');
+            
+            // {font:...}...{/font} → 中身だけ
+            processed = processed.replace(/\{font[:：].*?\}/g, '');
+            processed = processed.replace(/\{\/font\}/g, '');
+            
+            // ［＃...］ 青空文庫注記 → 削除
+            processed = processed.replace(/［＃.*?］/g, '');
+            
+            // **強調** → テキストだけ
+            processed = processed.replace(/\*\*(.*?)\*\*/g, '$1');
+            
+            return processed;
+        };
+        
         return text.split('\n').map((line, i) => ({
             key: i,
-            content: processLine(line) || '\u00A0' // 空行は高さ確保のため非破壊スペース
+            content: processLine(line) || '\u00A0'
         }));
     }, [text]);
 
