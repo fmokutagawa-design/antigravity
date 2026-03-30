@@ -667,6 +667,12 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         if (!settings.isVertical) {
           ta.focus();
           ta.setSelectionRange(position, position);
+          
+          // --- 修正: IMEをリセットしないように scrollTop を直接操作する ---
+          const lineHeight = parseFloat(getComputedStyle(ta).lineHeight) || (parseInt(getComputedStyle(ta).fontSize) * 1.5);
+          const linesAbove = ta.value.substring(0, position).split('\n').length - 1;
+          const targetTop = linesAbove * lineHeight;
+          ta.scrollTop = targetTop - (ta.clientHeight / 2);
           return;
         }
 

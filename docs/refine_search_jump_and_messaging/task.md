@@ -1,5 +1,8 @@
+- [x] `Editor.jsx` の `scrollToCaretPosition` / `jumpToPosition` を修正（`scrollTop` 計算方式に変更）
+- [x] `Editor.jsx` の `setCursorPosition` を修正（横書きクリーンモードでのスクロール追従を追加）
 - [x] `App.jsx` の `message` リスナーを修正（`start`, `end` による直接ジャンプに対応）
-- [x] `App.jsx` の Electron IPC リスナーを修正（`start`, `end` に対応）
-- [x] `Editor.jsx` の `scrollTop` 計算が `ta.clientHeight / 2` で中央寄せになっていることを確認
+- [x] `useProjectActions.js` に `window.opener` フォールバック（Electron IPC）を追加
+- [x] `App.jsx` に Electron IPC リスナーを追加
+- [x] 動作確認（IME消滅の有無、IPC経由のジャンプ動作）
 - [x] `useProjectActions.js` のメッセージ形式を `{ type, linkTarget? }` の形に整理
 - [x] 最終動作確認
