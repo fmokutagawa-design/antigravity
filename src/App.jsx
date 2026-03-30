@@ -35,7 +35,7 @@ import ProgressPanel from './components/ProgressPanel';
 import NotesPanel from './components/NotesPanel';
 import TodoPanel from './components/TodoPanel';
 import SnapshotPanel from './components/SnapshotPanel';
-import ReaderView from './components/ReaderView';
+const ReaderView = React.lazy(() => import('./components/ReaderView'));
 import { saveSnapshot } from './utils/snapshotStore';
 import './components/MaterialsPanel.css';
 import './components/LinkPanel.css';
@@ -2417,11 +2417,13 @@ function App() {
       />
 
       {showReader && (
-        <ReaderView
-          text={editorValue}
-          settings={settings}
-          onClose={() => setShowReader(false)}
-        />
+        <React.Suspense fallback={null}>
+          <ReaderView
+            text={editorValue}
+            settings={settings}
+            onClose={() => setShowReader(false)}
+          />
+        </React.Suspense>
       )}
 
     </div >
