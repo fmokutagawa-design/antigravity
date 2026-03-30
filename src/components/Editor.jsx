@@ -532,38 +532,33 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   }, [settings.isVertical]);
 
   const scrollToCaretPosition = useCallback((charIndex) => {
-    console.log('[JUMP DEBUG] scrollToCaretPosition called, charIndex=', charIndex);
-    
     const ta = textareaRef.current;
     const container = ta?.closest('.editor-container');
-    
-    console.log('[JUMP DEBUG] ta=', !!ta, 'container=', !!container);
     if (!ta || !container) return;
 
     const isClean = settings.paperStyle === 'clean';
 
     if (isClean) {
-      // クリーンモード: プロポーショナルフォントのため座標計算不能
-      // textarea のネイティブスクロールを利用してコンテナと同期する
+      if (!settings.isVertical) {
+        // 横書きクリーンモード: textarea 自身がスクロールコンテナなのでシンプルに
+        ta.focus();
+        ta.setSelectionRange(charIndex, charIndex);
+        return;
+      }
+      
+      // 縦書きクリーンモード: コンテナと同期が必要
       const origOverflowY = ta.style.overflowY;
       const origOverflowX = ta.style.overflowX;
 
-      // textarea 自身に一時的にスクロールを許可
       ta.style.overflowY = 'auto';
       ta.style.overflowX = 'auto';
       ta.focus();
       ta.setSelectionRange(charIndex, charIndex);
 
-      // ブラウザが内部的にスクロールした値をコンテナに転写
       requestAnimationFrame(() => {
         if (container) {
-          if (settings.isVertical) {
-            container.scrollLeft = ta.scrollLeft;
-          } else {
-            container.scrollTop = ta.scrollTop;
-          }
+          container.scrollLeft = ta.scrollLeft;
         }
-        // textarea の内部スクロール位置をリセットして同期を保つ
         ta.scrollTop = 0;
         ta.scrollLeft = 0;
         ta.style.overflowY = origOverflowY;
@@ -576,8 +571,6 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
 
     const { maxPerLine, cell, padding } = baseMetrics;
     const text = settings.isVertical ? toVerticalDisplay(value) : value;
-    
-    console.log('[JUMP DEBUG] textLen=', text.length, 'maxPerLine=', maxPerLine, 'cell=', cell, 'isVertical=', settings.isVertical);
 
     let line = 0;
     let pos = 0;
@@ -594,8 +587,6 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       }
     }
 
-    console.log('[JUMP DEBUG] computed line=', line, 'pos=', pos);
-
     if (settings.isVertical) {
       // vertical-rl コンテナの scrollLeft は右端=0、左方向=負
       // line=0 が右端、line が増えるほど左（負の方向）
@@ -607,21 +598,11 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       const minScrollLeft = -(container.scrollWidth - container.clientWidth);
       const clampedScrollLeft = Math.max(minScrollLeft, Math.min(0, targetScrollLeft));
 
-      console.log('[JUMP DEBUG] VERTICAL: caretOffsetFromRight=', caretOffsetFromRight,
-        'minScrollLeft=', minScrollLeft,
-        'targetScrollLeft=', targetScrollLeft,
-        'clampedScrollLeft=', clampedScrollLeft,
-        'BEFORE scrollLeft=', container.scrollLeft);
-
       container.scrollLeft = clampedScrollLeft;
-
-      console.log('[JUMP DEBUG] AFTER scrollLeft=', container.scrollLeft);
     } else {
       const caretY = line * cell + padding;
       const viewCenter = container.clientHeight / 2;
       const targetScrollTop = Math.max(0, caretY - viewCenter);
-      
-      console.log('[JUMP DEBUG] HORIZONTAL: caretY=', caretY, 'targetScrollTop=', targetScrollTop);
       
       container.scrollTop = targetScrollTop;
     }
@@ -676,6 +657,12 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       if (!ta) return;
 
       if (settings.paperStyle === 'clean') {
+        if (!settings.isVertical) {
+          ta.focus();
+          ta.setSelectionRange(position, position);
+          return;
+        }
+
         const container = ta.closest('.editor-container');
         const origOverflowY = ta.style.overflowY;
         const origOverflowX = ta.style.overflowX;
@@ -687,11 +674,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
 
         requestAnimationFrame(() => {
           if (container) {
-            if (settings.isVertical) {
-              container.scrollLeft = ta.scrollLeft;
-            } else {
-              container.scrollTop = ta.scrollTop;
-            }
+            container.scrollLeft = ta.scrollLeft;
           }
           ta.scrollTop = 0;
           ta.scrollLeft = 0;
@@ -714,12 +697,17 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       });
     },
     jumpToPosition: (start, end) => {
-      console.log('[JUMP DEBUG] jumpToPosition called, start=', start, 'end=', end);
       const ta = textareaRef.current;
-      if (!ta) { console.log('[JUMP DEBUG] textarea is null!'); return; }
+      if (!ta) return;
       const selEnd = end != null ? end : start;
 
       if (settings.paperStyle === 'clean') {
+        if (!settings.isVertical) {
+          ta.focus();
+          ta.setSelectionRange(start, selEnd);
+          return;
+        }
+
         const container = ta.closest('.editor-container');
         const origOverflowY = ta.style.overflowY;
         const origOverflowX = ta.style.overflowX;
@@ -731,11 +719,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
 
         requestAnimationFrame(() => {
           if (container) {
-            if (settings.isVertical) {
-              container.scrollLeft = ta.scrollLeft;
-            } else {
-              container.scrollTop = ta.scrollTop;
-            }
+            container.scrollLeft = ta.scrollLeft;
           }
           ta.scrollTop = 0;
           ta.scrollLeft = 0;
@@ -753,7 +737,6 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         if (!el) return;
         el.focus();
         el.setSelectionRange(start, selEnd);
-        console.log('[JUMP DEBUG] rAF: focus + setSelectionRange done');
       });
     }
   }));
