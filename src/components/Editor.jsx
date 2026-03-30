@@ -543,40 +543,34 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     const isClean = settings.paperStyle === 'clean';
 
     if (isClean) {
-      // クリーンモード: プロポーショナルフォントのため行計算不可
-      // textarea を一時的に 1x1 に縮小し、ブラウザの内部スクロールを利用
-      const origWidth = ta.style.width;
-      const origHeight = ta.style.height;
-      const origOverflow = ta.style.overflow;
+      // クリーンモード: プロポーショナルフォントのため座標計算不能
+      // textarea のネイティブスクロールを利用してコンテナと同期する
+      const origOverflowY = ta.style.overflowY;
+      const origOverflowX = ta.style.overflowX;
 
-      ta.style.overflow = 'auto';
-      ta.style.width = '1px';
-      ta.style.height = '1px';
-
+      // textarea 自身に一時的にスクロールを許可
+      ta.style.overflowY = 'auto';
+      ta.style.overflowX = 'auto';
       ta.focus();
       ta.setSelectionRange(charIndex, charIndex);
 
-      // ブラウザが内部的にスクロールしたはず
-      const innerTop = ta.scrollTop;
-      const innerLeft = ta.scrollLeft;
-
-      console.log('[JUMP DEBUG] CLEAN MODE: innerTop=', innerTop, 'innerLeft=', innerLeft);
-
-      // container に転写
-      if (settings.isVertical) {
-        // vertical-rl: scrollLeft は負方向
-        container.scrollLeft = innerLeft;
-      } else {
-        container.scrollTop = innerTop;
-      }
-
-      // textarea を元に戻す
-      ta.scrollTop = 0;
-      ta.scrollLeft = 0;
-      ta.style.width = origWidth;
-      ta.style.height = origHeight;
-      ta.style.overflow = origOverflow;
-
+      // ブラウザが内部的にスクロールした値をコンテナに転写
+      requestAnimationFrame(() => {
+        if (container) {
+          if (settings.isVertical) {
+            container.scrollLeft = ta.scrollLeft;
+          } else {
+            container.scrollTop = ta.scrollTop;
+          }
+        }
+        // textarea の内部スクロール位置をリセットして同期を保つ
+        ta.scrollTop = 0;
+        ta.scrollLeft = 0;
+        ta.style.overflowY = origOverflowY;
+        ta.style.overflowX = origOverflowX;
+        ta.focus();
+        ta.setSelectionRange(charIndex, charIndex);
+      });
       return;
     }
 
@@ -680,6 +674,35 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     setCursorPosition: (position) => {
       const ta = textareaRef.current;
       if (!ta) return;
+
+      if (settings.paperStyle === 'clean') {
+        const container = ta.closest('.editor-container');
+        const origOverflowY = ta.style.overflowY;
+        const origOverflowX = ta.style.overflowX;
+
+        ta.style.overflowY = 'auto';
+        ta.style.overflowX = 'auto';
+        ta.focus();
+        ta.setSelectionRange(position, position);
+
+        requestAnimationFrame(() => {
+          if (container) {
+            if (settings.isVertical) {
+              container.scrollLeft = ta.scrollLeft;
+            } else {
+              container.scrollTop = ta.scrollTop;
+            }
+          }
+          ta.scrollTop = 0;
+          ta.scrollLeft = 0;
+          ta.style.overflowY = origOverflowY;
+          ta.style.overflowX = origOverflowX;
+          ta.focus();
+          ta.setSelectionRange(position, position);
+        });
+        return;
+      }
+
       // まずスクロール（focus前にやることで画面移動を確実に）
       scrollToCaretPosition(position);
       // 次フレームで focus + selection
@@ -695,6 +718,35 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       const ta = textareaRef.current;
       if (!ta) { console.log('[JUMP DEBUG] textarea is null!'); return; }
       const selEnd = end != null ? end : start;
+
+      if (settings.paperStyle === 'clean') {
+        const container = ta.closest('.editor-container');
+        const origOverflowY = ta.style.overflowY;
+        const origOverflowX = ta.style.overflowX;
+
+        ta.style.overflowY = 'auto';
+        ta.style.overflowX = 'auto';
+        ta.focus();
+        ta.setSelectionRange(start, selEnd);
+
+        requestAnimationFrame(() => {
+          if (container) {
+            if (settings.isVertical) {
+              container.scrollLeft = ta.scrollLeft;
+            } else {
+              container.scrollTop = ta.scrollTop;
+            }
+          }
+          ta.scrollTop = 0;
+          ta.scrollLeft = 0;
+          ta.style.overflowY = origOverflowY;
+          ta.style.overflowX = origOverflowX;
+          ta.focus();
+          ta.setSelectionRange(start, selEnd);
+        });
+        return;
+      }
+
       scrollToCaretPosition(start);
       requestAnimationFrame(() => {
         const el = textareaRef.current;
@@ -712,9 +764,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       settings.paperStyle === 'lined' ? 'paper-lined' : 'paper-plain';
 
   // フォントスタイル
-  const cleanFontFamily = settings.cleanFontFamily || 'var(--font-mincho)';
   const fontStyle = isCleanMode ? {
-    fontFamily: `${cleanFontFamily}, serif`,
+    fontFamily: `${settings.fontFamily || 'var(--font-mincho)'}, serif`,
     letterSpacing: '0em',
     lineHeight: settings.isVertical ? 'normal' : '2.0',
     fontVariantLigatures: 'common-ligatures',

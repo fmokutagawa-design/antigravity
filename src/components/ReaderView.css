@@ -1,0 +1,108 @@
+/* styles/ReaderView.css */
+.reader-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: var(--bg-paper, #fdfdfd);
+    display: flex;
+    flex-direction: column;
+    animation: readerScaleIn 0.3s ease-out;
+}
+
+@keyframes readerScaleIn {
+    from { opacity: 0; transform: scale(1.02); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.reader-overlay.dark {
+    background: #1a1a2e;
+    color: #eee;
+}
+
+.reader-overlay.blackboard {
+    background: #1e3a1e;
+    color: #fff9e6;
+}
+
+.reader-overlay.sakura {
+    background: #fff0f5;
+    color: #4a235a;
+}
+
+.reader-close {
+    position: fixed;
+    top: 16px;
+    right: 24px;
+    z-index: 10001;
+    background: rgba(0,0,0,0.06);
+    border: none;
+    border-radius: 24px;
+    padding: 8px 20px;
+    cursor: pointer;
+    font-size: 14px;
+    opacity: 0.5;
+    transition: all 0.2s;
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+    color: inherit;
+}
+.reader-close:hover { opacity: 1; background: rgba(0,0,0,0.1); transform: translateY(-1px); }
+
+.reader-container {
+    flex: 1;
+    overflow: auto;
+    padding: 60px 80px;
+    scroll-behavior: smooth;
+    display: flex;
+    justify-content: center;
+}
+
+/* 縦書き時: 横スクロールを許可 */
+.reader-container.vertical {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 40px 60px;
+    flex-direction: row-reverse; /* 右から左へ */
+}
+
+/* 横書き時: 縦スクロールのみ */
+.reader-container.horizontal {
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.reader-body {
+    height: auto;
+    max-width: 800px; /* 読みやすい幅 */
+    line-height: 2.2; /* リーダーらしくゆったりと */
+    letter-spacing: 0.1em;
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+.reader-container.vertical .reader-body {
+    max-width: none;
+    height: 100%;
+}
+
+.reader-paragraph {
+    margin: 0;
+    text-indent: 1em; /* 段落冒頭の1字下げ */
+    padding: 0;
+}
+
+/* 段落間の隙間（空行）もしっかり表現 */
+.reader-paragraph:empty::before {
+    content: '\00a0';
+}
+
+/* ルビの調整 */
+rt {
+    font-size: 0.45em;
+    font-weight: normal;
+    font-family: sans-serif; /* ルビはサンセリフの方が見やすい場合が多い */
+}
+
+.reader-overlay.dark rt, .reader-overlay.blackboard rt {
+    opacity: 0.7;
+}

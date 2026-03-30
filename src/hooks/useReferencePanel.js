@@ -42,5 +42,6 @@ export function useReferencePanel() {
     setReferenceFileName,
     referenceWidth,
     startResizing,
+    isResizing,
   };
 }

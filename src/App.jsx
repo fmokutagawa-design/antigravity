@@ -35,6 +35,7 @@ import ProgressPanel from './components/ProgressPanel';
 import NotesPanel from './components/NotesPanel';
 import TodoPanel from './components/TodoPanel';
 import SnapshotPanel from './components/SnapshotPanel';
+import ReaderView from './components/ReaderView';
 import { saveSnapshot } from './utils/snapshotStore';
 import './components/MaterialsPanel.css';
 import './components/LinkPanel.css';
@@ -138,6 +139,8 @@ function App() {
   // Ghost Text (hook)
   const { ghostText, setGhostText, handleCursorStats } = useGhostText(text, debouncedText, settings.enableGhostText, selectedLocalModel);
 
+
+  const [showReader, setShowReader] = useState(false);
 
   // Custom UI Management
   const { toasts, showToast, removeToast, confirmConfig, requestConfirm } = useToastConfirm();
@@ -472,7 +475,7 @@ function App() {
   });
 
   // Reference Panel (hook)
-  const { showReference, setShowReference, referenceContent, setReferenceContent, referenceFileName, setReferenceFileName, referenceWidth, startResizing } = useReferencePanel();
+  const { showReference, setShowReference, referenceContent, setReferenceContent, referenceFileName, setReferenceFileName, referenceWidth, startResizing, isResizing } = useReferencePanel();
   const [usageStats, setUsageStats] = useState({}); // Track file access frequency
 
   const [activeTab, setActiveTab] = useState('editor'); // 'editor' or 'preview'
@@ -1215,10 +1218,14 @@ function App() {
         e.preventDefault();
         if (handleSaveFileRef.current) handleSaveFileRef.current();
       }
-      // Cmd+Shift+R: Toggle rapid writing mode
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'R') {
         e.preventDefault();
         setIsRapidMode(prev => !prev);
+      }
+      // Alt+R: Reader Mode
+      if (e.altKey && e.code === 'KeyR') {
+        e.preventDefault();
+        setShowReader(prev => !prev);
       }
       // Cmd+T: Insert TODO
       if ((e.metaKey || e.ctrlKey) && e.key === 't') {
@@ -2218,48 +2225,46 @@ function App() {
                     <option value="lined">ノート</option>
                     <option value="clean">クリーン</option>
                   </select>
-                  {settings.paperStyle === 'clean' && (
-                    <select
-                      value={settings.cleanFontFamily || 'var(--font-mincho)'}
-                      onChange={(e) => setSettings(s => ({ ...s, cleanFontFamily: e.target.value }))}
-                      style={{
-                        fontSize: '11px',
-                        padding: '2px 4px',
-                        border: '1px solid #ccc',
-                        borderRadius: '4px',
-                        background: 'var(--bg-paper)',
-                        color: 'var(--text-main)',
-                        marginRight: '4px',
-                        maxWidth: '90px'
-                      }}
-                    >
-                      <option value="var(--font-mincho)">明朝</option>
-                      <option value="var(--font-gothic)">ゴシック</option>
-                      <option value="'Hiragino Mincho ProN', 'Hiragino Mincho Pro', 'ヒラギノ明朝 ProN', 'ヒラギノ明朝 Pro', serif">ヒラギノ明朝</option>
-                      <option value="'Hiragino Sans', '游ゴシック', sans-serif">ヒラギノ角ゴ</option>
-                      <option value="'FOT-筑紫Aオールド明朝 Pr6N', 'FOT-筑紫Aオールド明朝 Pr6', 'Tsukushi A Old Mincho', '筑紫Aオールド明朝', '筑紫Aオールド明朝 Pr6N', serif">筑紫Aオールド明朝</option>
-                      <option value="'FOT-筑紫Bオールド明朝 Pr6N', 'FOT-筑紫Bオールド明朝 Pr6', 'Tsukushi B Old Mincho', '筑紫Bオールド明朝', '筑紫Bオールド明朝 Pr6N', serif">筑紫Bオールド明朝</option>
-                      <option value="'FOT-筑紫Cオールド明朝 Pr6N', 'FOT-筑紫Cオールド明朝 Pr6', 'Tsukushi C Old Mincho', '筑紫Cオールド明朝', '筑紫Cオールド明朝 Pr6N', serif">筑紫Cオールド明朝</option>
-                      <option value="'Meiryo', sans-serif">メイリオ</option>
-                      <option value="var(--font-hand)">紅道</option>
-                      <option value="'Klee One', cursive">クレー</option>
-                      <option value="'A-OTF 黎ミン Pr6N', 'A-OTF 黎ミン Pro', '黎ミン', serif">モリサワ 黎ミン</option>
-                      <option value="'A P-OTF 秀英にじみ明朝 StdN', 'A P-OTF 秀英にじみ明朝 Std', '秀英にじみ明朝', serif">秀英にじみ明朝</option>
-                      <option value="'02うつくし明朝体', 'うつくし明朝体', serif">うつくし明朝体</option>
-                      <option value="'A-OTF 毎日新聞明朝 Pro', '毎日新聞明朝', serif">毎日新聞明朝</option>
-                      <option value="'A-OTF A1明朝 Std', 'A1明朝', serif">A1明朝</option>
-                      <option value="'BIZ UDMincho', serif">BIZ UD明朝</option>
-                      <option value="'Kiwi Maru', serif">キウイ丸</option>
-                      <option value="'Zen Old Mincho', serif">Zenオールド明朝</option>
-                      <option value="'Hina Mincho', serif">ひな明朝</option>
-                      <option value="'Kaisei Opti', serif">解星オプティ</option>
-                      <option value="'Kaisei Tokumin', serif">解星特ミン</option>
-                      <option value="'YuMincho', 'Yu Mincho', serif">游明朝</option>
-                      <option value="'Yuji Syuku', serif">Yuji Syuku</option>
-                      <option value="'Noto Serif JP', serif">Noto Serif</option>
-                      <option value="'Noto Sans JP', sans-serif">Noto Sans</option>
-                    </select>
-                  )}
+                  <select
+                    value={settings.fontFamily || 'var(--font-mincho)'}
+                    onChange={(e) => setSettings(s => ({ ...s, fontFamily: e.target.value }))}
+                    style={{
+                      fontSize: '11px',
+                      padding: '2px 4px',
+                      border: '1px solid #ccc',
+                      borderRadius: '4px',
+                      background: 'var(--bg-paper)',
+                      color: 'var(--text-main)',
+                      marginRight: '4px',
+                      maxWidth: '90px'
+                    }}
+                  >
+                    <option value="var(--font-mincho)">明朝</option>
+                    <option value="var(--font-gothic)">ゴシック</option>
+                    <option value="'Hiragino Mincho ProN', 'Hiragino Mincho Pro', 'ヒラギノ明朝 ProN', 'ヒラギノ明朝 Pro', serif">ヒラギノ明朝</option>
+                    <option value="'Hiragino Sans', '游ゴシック', sans-serif">ヒラギノ角ゴ</option>
+                    <option value="'FOT-筑紫Aオールド明朝 Pr6N', 'FOT-筑紫Aオールド明朝 Pr6', 'Tsukushi A Old Mincho', '筑紫Aオールド明朝', '筑紫Aオールド明朝 Pr6N', serif">筑紫Aオールド明朝</option>
+                    <option value="'FOT-筑紫Bオールド明朝 Pr6N', 'FOT-筑紫Bオールド明朝 Pr6', 'Tsukushi B Old Mincho', '筑紫Bオールド明朝', '筑紫Bオールド明朝 Pr6N', serif">筑紫Bオールド明朝</option>
+                    <option value="'FOT-筑紫Cオールド明朝 Pr6N', 'FOT-筑紫Cオールド明朝 Pr6', 'Tsukushi C Old Mincho', '筑紫Cオールド明朝', '筑紫Cオールド明朝 Pr6N', serif">筑紫Cオールド明朝</option>
+                    <option value="'Meiryo', sans-serif">メイリオ</option>
+                    <option value="var(--font-hand)">紅道</option>
+                    <option value="'Klee One', cursive">クレー</option>
+                    <option value="'A-OTF 黎ミン Pr6N', 'A-OTF 黎ミン Pro', '黎ミン', serif">モリサワ 黎ミン</option>
+                    <option value="'A P-OTF 秀英にじみ明朝 StdN', 'A P-OTF 秀英にじみ明朝 Std', '秀英にじみ明朝', serif">秀英にじみ明朝</option>
+                    <option value="'02うつくし明朝体', 'うつくし明朝体', serif">うつくし明朝体</option>
+                    <option value="'A-OTF 毎日新聞明朝 Pro', '毎日新聞明朝', serif">毎日新聞明朝</option>
+                    <option value="'A-OTF A1明朝 Std', 'A1明朝', serif">A1明朝</option>
+                    <option value="'BIZ UDMincho', serif">BIZ UD明朝</option>
+                    <option value="'Kiwi Maru', serif">キウイ丸</option>
+                    <option value="'Zen Old Mincho', serif">Zenオールド明朝</option>
+                    <option value="'Hina Mincho', serif">ひな明朝</option>
+                    <option value="'Kaisei Opti', serif">解星オプティ</option>
+                    <option value="'Kaisei Tokumin', serif">解星特ミン</option>
+                    <option value="'YuMincho', 'Yu Mincho', serif">游明朝</option>
+                    <option value="'Yuji Syuku', serif">Yuji Syuku</option>
+                    <option value="'Noto Serif JP', serif">Noto Serif</option>
+                    <option value="'Noto Sans JP', sans-serif">Noto Sans</option>
+                  </select>
 
                   <button
                     className="footer-btn"
@@ -2285,6 +2290,15 @@ function App() {
                     style={{ marginLeft: '4px' }}
                   >
                     ❐
+                  </button>
+
+                  <button
+                    className="footer-btn"
+                    onClick={() => setShowReader(true)}
+                    title="リーダーモードで表示 (Alt+R)"
+                    style={{ marginLeft: '4px', background: 'rgba(142,68,173,0.15)', borderColor: '#8e44ad' }}
+                  >
+                    📖 読
                   </button>
                 </div>
               </div>
@@ -2398,9 +2412,17 @@ function App() {
         title={confirmConfig.title}
         message={confirmConfig.message}
         onConfirm={confirmConfig.onConfirm}
-        onCancel={confirmConfig.onCancel}
+        onCancel={() => requestConfirm('', '', null)}
         isDanger={confirmConfig.isDanger}
       />
+
+      {showReader && (
+        <ReaderView
+          text={editorValue}
+          settings={settings}
+          onClose={() => setShowReader(false)}
+        />
+      )}
 
     </div >
   );
