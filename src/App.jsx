@@ -1104,8 +1104,9 @@ function App() {
     return () => clearTimeout(saveTimeout);
   }, [settings, activeFileHandle, projectHandle, isDarkMode]);
 
-  // Save to local storage on change (Web fallback)
+  // Save to local storage on change (Web fallback) — debounced to avoid sync I/O on every keystroke
   useEffect(() => {
+    if (!debouncedText && debouncedText !== '') return;
     localStorage.setItem('novel-editor-text', debouncedText);
     setLastSaved(new Date());
   }, [debouncedText]);
