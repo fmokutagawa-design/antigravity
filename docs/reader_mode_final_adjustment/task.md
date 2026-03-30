@@ -1,0 +1,5 @@
+- [x] `src/App.jsx` のボタンラベル変更（📖 読 → 📖 リーダー）
+- [x] `src/components/ReaderView.jsx` の内容を全面差し替え
+- [x] `src/components/ReaderView.css` の内容を全面差し替え
+- [x] `src/utils/readerParser.jsx` に空行保持ロジックを追加
+- [x] 最終ビルドと動作確認報告

@@ -3,14 +3,32 @@ import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import { parseBlocks, renderInline } from '../utils/readerParser';
 import './ReaderView.css';
 
+const FONT_OPTIONS = [
+    { label: '明朝', value: 'var(--font-mincho)' },
+    { label: 'ゴシック', value: 'var(--font-gothic)' },
+    { label: 'ヒラギノ明朝', value: "'Hiragino Mincho ProN', serif" },
+    { label: '游明朝', value: "'YuMincho', 'Yu Mincho', serif" },
+    { label: 'Noto Serif', value: "'Noto Serif JP', serif" },
+    { label: 'クレー', value: "'Klee One', cursive" },
+];
+
+const SIZE_OPTIONS = [14, 16, 18, 20, 22, 24, 28, 32];
+
 const ReaderView = ({ text, settings, onClose }) => {
     const containerRef = useRef(null);
     const [showTOC, setShowTOC] = useState(false);
+    const [showToolbar, setShowToolbar] = useState(true);
 
-    // ブロック解析（テキスト変更時のみ再計算）
+    // リーダー独自の表示設定（親の settings を初期値に使う）
+    const [readerFont, setReaderFont] = useState(settings.fontFamily || 'var(--font-mincho)');
+    const [readerSize, setReaderSize] = useState(settings.fontSize || 18);
+    const [readerVertical, setReaderVertical] = useState(settings.isVertical ?? true);
+    const [readerTheme, setReaderTheme] = useState(settings.colorTheme || 'light');
+
+    // ブロック解析
     const blocks = useMemo(() => parseBlocks(text), [text]);
 
-    // 目次（見出しブロックだけ抽出）
+    // 目次
     const toc = useMemo(() => {
         return blocks
             .map((b, i) => ({ ...b, index: i }))
@@ -20,21 +38,26 @@ const ReaderView = ({ text, settings, onClose }) => {
     // 章ジャンプ
     const jumpToChapter = useCallback((index) => {
         const el = document.getElementById(`reader-block-${index}`);
-        if (el) {
-            el.scrollIntoView({
-                behavior: 'smooth',
-                ...(settings.isVertical
-                    ? { inline: 'start' }
-                    : { block: 'start' })
-            });
-            setShowTOC(false);
+        if (!el) return;
+
+        if (readerVertical) {
+            const container = containerRef.current;
+            if (container) {
+                const containerRect = container.getBoundingClientRect();
+                const elRect = el.getBoundingClientRect();
+                const offset = elRect.right - containerRect.right;
+                container.scrollBy({ left: offset + 40, behavior: 'smooth' });
+            }
+        } else {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-    }, [settings.isVertical]);
+        setShowTOC(false);
+    }, [readerVertical]);
 
     // 縦書き時ホイール変換
     useEffect(() => {
         const el = containerRef.current;
-        if (!el || !settings.isVertical) return;
+        if (!el || !readerVertical) return;
         const handler = (e) => {
             if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
                 el.scrollLeft -= e.deltaY;
@@ -43,30 +66,97 @@ const ReaderView = ({ text, settings, onClose }) => {
         };
         el.addEventListener('wheel', handler, { passive: false });
         return () => el.removeEventListener('wheel', handler);
-    }, [settings.isVertical]);
+    }, [readerVertical]);
 
-    const fontFamily = settings.fontFamily || 'var(--font-mincho)';
-    const fontSize = settings.fontSize || 18;
+    // ツールバー自動非表示（3秒操作なしで隠す）
+    const hideTimerRef = useRef(null);
+    const handleMouseMove = useCallback(() => {
+        setShowToolbar(true);
+        if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+        hideTimerRef.current = setTimeout(() => setShowToolbar(false), 3000);
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+        };
+    }, []);
+
+    // Escキーで閉じる
+    useEffect(() => {
+        const handleKey = (e) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+    }, [onClose]);
 
     return (
-        <div className={`reader-overlay ${settings.colorTheme || 'light'}`}>
-            {/* ヘッダー */}
-            <div className="reader-header">
-                {toc.length > 0 && (
-                    <button
-                        className="reader-toc-btn"
-                        onClick={() => setShowTOC(!showTOC)}
-                        title="目次"
+        <div
+            className={`reader-overlay theme-${readerTheme}`}
+            onMouseMove={handleMouseMove}
+        >
+            {/* ===== ツールバー ===== */}
+            <div className={`reader-toolbar ${showToolbar ? 'visible' : 'hidden'}`}>
+                <div className="reader-toolbar-left">
+                    {toc.length > 0 && (
+                        <button
+                            className="reader-btn"
+                            onClick={() => setShowTOC(!showTOC)}
+                        >
+                            ☰ 目次
+                        </button>
+                    )}
+                </div>
+
+                <div className="reader-toolbar-center">
+                    <select
+                        className="reader-select"
+                        value={readerFont}
+                        onChange={(e) => setReaderFont(e.target.value)}
                     >
-                        ☰ 目次
+                        {FONT_OPTIONS.map(f => (
+                            <option key={f.value} value={f.value}>{f.label}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        className="reader-select"
+                        value={readerSize}
+                        onChange={(e) => setReaderSize(Number(e.target.value))}
+                    >
+                        {SIZE_OPTIONS.map(s => (
+                            <option key={s} value={s}>{s}px</option>
+                        ))}
+                    </select>
+
+                    <button
+                        className="reader-btn"
+                        onClick={() => setReaderVertical(v => !v)}
+                    >
+                        {readerVertical ? '横書き' : '縦書き'}
                     </button>
-                )}
-                <button className="reader-close" onClick={onClose} title="閉じる">
-                    ✕ 閉じる
-                </button>
+
+                    <button
+                        className="reader-btn"
+                        onClick={() => {
+                            const themes = ['light', 'dark', 'sakura'];
+                            const idx = themes.indexOf(readerTheme);
+                            setReaderTheme(themes[(idx + 1) % themes.length]);
+                        }}
+                    >
+                        {readerTheme === 'light' ? '☀ ライト' : readerTheme === 'dark' ? '🌙 ダーク' : '🌸 桜'}
+                    </button>
+                </div>
+
+                <div className="reader-toolbar-right">
+                    <button className="reader-btn reader-btn-close" onClick={onClose}>
+                        ✕ 閉じる
+                    </button>
+                </div>
             </div>
 
-            {/* 目次パネル */}
+            {/* ===== 目次パネル ===== */}
             {showTOC && (
                 <div className="reader-toc-panel">
                     <div className="reader-toc-title">目次</div>
@@ -82,14 +172,14 @@ const ReaderView = ({ text, settings, onClose }) => {
                 </div>
             )}
 
-            {/* 本文 */}
+            {/* ===== 本文 ===== */}
             <div
                 ref={containerRef}
-                className={`reader-container ${settings.isVertical ? 'vertical' : 'horizontal'}`}
+                className={`reader-container ${readerVertical ? 'vertical' : 'horizontal'}`}
                 style={{
-                    writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb',
-                    fontFamily: `${fontFamily}, serif`,
-                    fontSize: `${fontSize}px`,
+                    writingMode: readerVertical ? 'vertical-rl' : 'horizontal-tb',
+                    fontFamily: `${readerFont}, serif`,
+                    fontSize: `${readerSize}px`,
                 }}
             >
                 <div className="reader-body">
@@ -98,7 +188,6 @@ const ReaderView = ({ text, settings, onClose }) => {
                             return <hr key={i} className="reader-break" />;
                         }
 
-                        // タグ決定
                         const Tag = block.heading === 'large' || block.heading === 'chapter' ? 'h2'
                                   : block.heading === 'medium' ? 'h3'
                                   : block.heading === 'small' ? 'h4'

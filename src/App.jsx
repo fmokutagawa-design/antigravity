@@ -2299,7 +2299,7 @@ function App() {
                     title="リーダーモードで表示 (Alt+R)"
                     style={{ marginLeft: '4px', background: 'rgba(142,68,173,0.15)', borderColor: '#8e44ad' }}
                   >
-                    📖 読
+                    📖 リーダー
                   </button>
                 </div>
               </div>

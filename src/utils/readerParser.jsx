@@ -103,6 +103,20 @@ export function parseBlocks(text) {
         // 制御行だけだったらスキップ
         if (line.length === 0 && originalLen > 0) continue;
 
+        // 元々の空行は段落として保持（段落間の余白）
+        if (line.length === 0 && originalLen === 0) {
+            blocks.push({
+                type: 'paragraph',
+                content: '',
+                heading: null,
+                isHeader: false,
+                indent: blockIndent,
+                font: blockFont,
+                align: null,
+            });
+            continue;
+        }
+
         blocks.push({
             type: 'paragraph',
             content: line,
