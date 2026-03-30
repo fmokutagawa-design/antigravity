@@ -1,0 +1,4 @@
+- [x] `Editor.jsx` の `scrollToCaretPosition` と `jumpToPosition` を修正（横書きクリーンモード対応）
+- [x] `useProjectActions.js` の `handleOpenLink` を修正（`window.opener` へのメッセージ送信）
+- [x] `App.jsx` に `message` イベントリスナーを追加し、他ウィンドウからのジャンプ要求に対応
+- [x] 動作確認（横書きクリーンモードでのスクロール追従、新ウィンドウからのジャンプ動作）

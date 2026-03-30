@@ -541,9 +541,15 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
 
     if (isClean) {
       if (!settings.isVertical) {
-        // 横書きクリーンモード: textarea 自身がスクロールコンテナなのでシンプルに
+        // 横書きクリーンモード: textarea 自身がスクロールコンテナ
         ta.focus();
         ta.setSelectionRange(charIndex, charIndex);
+        
+        // --- 修正: IMEをリセットしないように scrollTop を直接操作する ---
+        const lineHeight = parseFloat(getComputedStyle(ta).lineHeight) || (parseInt(getComputedStyle(ta).fontSize) * 1.5);
+        const linesAbove = ta.value.substring(0, charIndex).split('\n').length - 1;
+        const targetTop = linesAbove * lineHeight;
+        ta.scrollTop = targetTop - (ta.clientHeight / 2);
         return;
       }
       
@@ -706,6 +712,12 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         if (!settings.isVertical) {
           ta.focus();
           ta.setSelectionRange(start, selEnd);
+          
+          // --- 修正: IMEをリセットしないように scrollTop を直接操作する ---
+          const lineHeight = parseFloat(getComputedStyle(ta).lineHeight) || (parseInt(getComputedStyle(ta).fontSize) * 1.5);
+          const linesAbove = ta.value.substring(0, start).split('\n').length - 1;
+          const targetTop = linesAbove * lineHeight;
+          ta.scrollTop = targetTop - (ta.clientHeight / 2);
           return;
         }
 

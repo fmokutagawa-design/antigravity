@@ -37,6 +37,7 @@ export function useProjectActions({
   setShowReference,
   setReferenceContent,
   setReferenceFileName,
+  isWindowMode,
 }) {
   // Save project settings helper
   const saveProjectSettings = useCallback(async (newSettings) => {
@@ -299,7 +300,7 @@ export function useProjectActions({
       const idx = debouncedText.indexOf(pendingNavigation.tag);
       if (idx !== -1) {
         editorRef.current.jumpToPosition(idx, idx + pendingNavigation.tag.length);
-        setPendingNavigation(null);
+        setTimeout(() => setPendingNavigation(null), 0);
       }
     }
   }, [debouncedText, pendingNavigation, editorRef]);
@@ -665,6 +666,22 @@ export function useProjectActions({
 
   // --- Open Link (auto-create if not found) ---
   const handleOpenLink = useCallback(async (linkTarget) => {
+    // If running in a separate window, notify the opener (main window)
+    if (isWindowMode) {
+      const message = {
+        type: 'EDITOR_JUMP',
+        linkTarget: linkTarget
+      };
+      if (window.opener) {
+        window.opener.postMessage(message, window.location.origin);
+        return;
+      } else if (window.api && window.api.invoke) {
+        // Fallback for Electron where window.opener might be null
+        window.api.invoke('app:editor-jump', message);
+        return;
+      }
+    }
+
     try {
       if (!allMaterialFiles) {
         console.warn('allMaterialFiles is not available');
@@ -738,7 +755,7 @@ export function useProjectActions({
       console.error('Error in handleOpenLink:', error);
       showToast('リンクを開く際にエラーが発生しました。');
     }
-  }, [allMaterialFiles, activeFileHandle, projectHandle, setProjectHandle, handleOpenFile, requestConfirm, refreshMaterials, setActiveTab, showToast]);
+  }, [allMaterialFiles, activeFileHandle, projectHandle, setProjectHandle, handleOpenFile, requestConfirm, refreshMaterials, setActiveTab, showToast, isWindowMode]);
 
   // --- Create File With Tag ---
   const handleCreateFileWithTag = useCallback(async (tagName) => {

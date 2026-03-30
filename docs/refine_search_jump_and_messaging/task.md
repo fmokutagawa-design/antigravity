@@ -1,0 +1,5 @@
+- [x] `App.jsx` の `message` リスナーを修正（`start`, `end` による直接ジャンプに対応）
+- [x] `App.jsx` の Electron IPC リスナーを修正（`start`, `end` に対応）
+- [x] `Editor.jsx` の `scrollTop` 計算が `ta.clientHeight / 2` で中央寄せになっていることを確認
+- [x] `useProjectActions.js` のメッセージ形式を `{ type, linkTarget? }` の形に整理
+- [x] 最終動作確認

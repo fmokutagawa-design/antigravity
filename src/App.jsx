@@ -353,7 +353,6 @@ function App() {
         editorRef.current?.insertText(insertedText);
       }
     } else if (mode === 'append') {
-      // Append content appropriately (used for continue)
       const insertion = typeof insertedText === 'string' ? insertedText : (insertedText.suggested || '');
       setText(prev => prev.trimEnd() + insertion);
     } else if (mode === 'jump') {
@@ -1025,6 +1024,7 @@ function App() {
     setShowReference,
     setReferenceContent,
     setReferenceFileName,
+    isWindowMode,
   });
 
   const {
@@ -1106,7 +1106,7 @@ function App() {
     }, 5500); // Debounce save slightly
 
     return () => clearTimeout(saveTimeout);
-  }, [settings, activeFileHandle, projectHandle, isDarkMode]);
+  }, [settings, activeFileHandle, projectHandle, isDarkMode, isWindowMode]);
 
   // Save to local storage on change (Web fallback) — debounced to avoid sync I/O on every keystroke
   useEffect(() => {
@@ -1140,6 +1140,42 @@ function App() {
     // Clean up old classes
     document.body.classList.remove('theme-blackboard', 'theme-notebook');
   }, [settings.colorTheme, settings.paperStyle]);
+
+  // Handle jump requests from pop-out windows
+  useEffect(() => {
+    const handleMessage = (event) => {
+      if (event.data?.type !== 'EDITOR_JUMP') return;
+      // security origin check
+      if (event.origin !== '' && event.origin !== 'file://' && event.origin !== window.location.origin) return;
+      
+      const { start, end, linkTarget } = event.data;
+      if (typeof start === 'number' && typeof end === 'number') {
+        editorRef.current?.jumpToPosition(start, end);
+      } else if (linkTarget) {
+        handleNavigate(linkTarget);
+      }
+    };
+
+    // Electron IPC listener (fallback)
+    let unsubscribe;
+    if (window.api && window.api.on) {
+      unsubscribe = window.api.on('app:editor-jump', (data) => {
+        if (!data) return;
+        const { start, end, linkTarget } = data;
+        if (typeof start === 'number' && typeof end === 'number') {
+          editorRef.current?.jumpToPosition(start, end);
+        } else if (linkTarget) {
+          handleNavigate(linkTarget);
+        }
+      });
+    }
+
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      if (unsubscribe) unsubscribe();
+    };
+  }, [handleNavigate]);
 
   // Load project handle from IndexedDB on mount
   useEffect(() => {
