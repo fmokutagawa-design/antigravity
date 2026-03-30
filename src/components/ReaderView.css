@@ -29,29 +29,104 @@
     color: #4a235a;
 }
 
-.reader-close {
+/* --- ヘッダー --- */
+.reader-header {
     position: fixed;
-    top: 16px;
-    right: 24px;
+    top: 0;
+    right: 0;
+    left: 0;
     z-index: 10001;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 24px;
+    pointer-events: none;
+    /* Mac titlebar分のオフセット */
+    padding-top: 36px;
+}
+.reader-header > * {
+    pointer-events: auto;
+}
+
+.reader-toc-btn, .reader-close {
     background: rgba(0,0,0,0.06);
     border: none;
     border-radius: 24px;
     padding: 8px 20px;
     cursor: pointer;
     font-size: 14px;
-    opacity: 0.5;
+    opacity: 0.4;
     transition: all 0.2s;
     -webkit-backdrop-filter: blur(4px);
     backdrop-filter: blur(4px);
     color: inherit;
 }
-.reader-close:hover { opacity: 1; background: rgba(0,0,0,0.1); transform: translateY(-1px); }
+.reader-toc-btn:hover, .reader-close:hover {
+    opacity: 1;
+    background: rgba(0,0,0,0.1);
+    transform: translateY(-1px);
+}
+
+/* --- 目次パネル --- */
+.reader-toc-panel {
+    position: fixed;
+    top: 90px;
+    left: 24px;
+    z-index: 10002;
+    background: var(--bg-paper, #fff);
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+    padding: 16px 0;
+    max-height: 65vh;
+    min-width: 240px;
+    max-width: 400px;
+    overflow-y: auto;
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    /* 縦書き時は横書きで目次を表示 */
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+}
+
+.reader-toc-title {
+    padding: 4px 20px 12px;
+    font-size: 12px;
+    font-weight: bold;
+    opacity: 0.5;
+    letter-spacing: 0.1em;
+}
+
+.reader-toc-item {
+    padding: 8px 20px;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1.6;
+    transition: background 0.15s;
+    border-left: 3px solid transparent;
+}
+.reader-toc-item:hover {
+    background: rgba(0,0,0,0.04);
+    border-left-color: var(--accent-color, #3498db);
+}
+.reader-toc-item.level-large,
+.reader-toc-item.level-chapter {
+    font-weight: bold;
+    font-size: 15px;
+}
+.reader-toc-item.level-medium {
+    padding-left: 32px;
+}
+.reader-toc-item.level-small {
+    padding-left: 44px;
+    font-size: 13px;
+    opacity: 0.8;
+}
 
 .reader-container {
     flex: 1;
     overflow: auto;
-    padding: 60px 80px;
+    padding: 80px 80px;
     scroll-behavior: smooth;
     display: flex;
     justify-content: center;
@@ -61,7 +136,7 @@
 .reader-container.vertical {
     overflow-x: auto;
     overflow-y: hidden;
-    padding: 60px 100px;
+    padding: 80px 100px;
     flex-direction: row-reverse; /* 右から左へ */
     min-height: 400px;
 }
@@ -98,7 +173,35 @@
     content: '\00a0';
 }
 
-/* ルビの調整 */
+/* --- 見出し --- */
+.reader-heading {
+    margin-top: 2em;
+    margin-bottom: 0.5em;
+    text-indent: 0; /* 見出しは字下げしない場合が多い */
+}
+h2.reader-paragraph { font-size: 1.6em; font-weight: 800; }
+h3.reader-paragraph { font-size: 1.3em; font-weight: 700; }
+h4.reader-paragraph { font-size: 1.1em; font-weight: 600; }
+
+/* --- 改ページ --- */
+.reader-break {
+    border: none;
+    margin: 3em 0;
+    /* 縦書きでも横書きでも効くように */
+    block-size: 0;
+    inline-size: 60%;
+    margin-inline: auto;
+    border-block-start: 1px solid rgba(0,0,0,0.15);
+}
+
+/* --- 傍点 --- */
+.reader-boten rt {
+    font-size: 0.5em;
+    text-align: center;
+    font-family: serif;
+}
+
+/* ルビの等調整 */
 rt {
     font-size: 0.45em;
     font-weight: normal;
@@ -107,4 +210,13 @@ rt {
 
 .reader-overlay.dark rt, .reader-overlay.blackboard rt {
     opacity: 0.7;
+}
+
+/* --- ダークモード対応 --- */
+.reader-overlay.dark .reader-toc-panel {
+    background: rgba(26,26,46,0.95);
+    border-color: rgba(255,255,255,0.1);
+}
+.reader-overlay.dark .reader-toc-item:hover {
+    background: rgba(255,255,255,0.05);
 }

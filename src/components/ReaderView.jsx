@@ -1,56 +1,43 @@
-import React, { useRef, useEffect, useMemo } from 'react';
-import { parseRuby } from '../utils/textUtils';
+// components/ReaderView.jsx
+import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
+import { parseBlocks, renderInline } from '../utils/readerParser';
 import './ReaderView.css';
 
 const ReaderView = ({ text, settings, onClose }) => {
     const containerRef = useRef(null);
+    const [showTOC, setShowTOC] = useState(false);
 
-    // テキストを段落単位で分割
-    const paragraphs = useMemo(() => {
-        if (!text) return [];
-        
-        const processLine = (line) => {
-            if (!line) return '';
-            let processed = line;
-            
-            // [[リンク]] → リンクテキストだけ
-            processed = processed.replace(/\[\[(.*?)\]\]/g, '$1');
-            processed = processed.replace(/［［(.*?)］］/g, '$1');
-            
-            // {font:...}...{/font} → 中身だけ
-            processed = processed.replace(/\{font[:：].*?\}/g, '');
-            processed = processed.replace(/\{\/font\}/g, '');
-            
-            // ［＃...］ 青空文庫注記 → 削除
-            processed = processed.replace(/［＃.*?］/g, '');
-            
-            // **強調** → テキストだけ
-            processed = processed.replace(/\*\*(.*?)\*\*/g, '$1');
-            
-            return processed;
-        };
-        
-        return text.split('\n').map((line, i) => ({
-            key: i,
-            content: processLine(line) || '\u00A0'
-        }));
-    }, [text]);
+    // ブロック解析（テキスト変更時のみ再計算）
+    const blocks = useMemo(() => parseBlocks(text), [text]);
 
-    // 縦書き時: ホイールスクロールを横スクロールに変換
+    // 目次（見出しブロックだけ抽出）
+    const toc = useMemo(() => {
+        return blocks
+            .map((b, i) => ({ ...b, index: i }))
+            .filter(b => b.isHeader);
+    }, [blocks]);
+
+    // 章ジャンプ
+    const jumpToChapter = useCallback((index) => {
+        const el = document.getElementById(`reader-block-${index}`);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            setShowTOC(false);
+        }
+    }, []);
+
+    // 縦書き時ホイール変換
     useEffect(() => {
         const el = containerRef.current;
         if (!el || !settings.isVertical) return;
-        
-        const handleWheel = (e) => {
-            // deltaY が支配的な場合に横スクロールへ（OSやデバイス設定に依存しすぎないよう調整）
+        const handler = (e) => {
             if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
                 el.scrollLeft -= e.deltaY;
                 e.preventDefault();
             }
         };
-        
-        el.addEventListener('wheel', handleWheel, { passive: false });
-        return () => el.removeEventListener('wheel', handleWheel);
+        el.addEventListener('wheel', handler, { passive: false });
+        return () => el.removeEventListener('wheel', handler);
     }, [settings.isVertical]);
 
     const fontFamily = settings.fontFamily || 'var(--font-mincho)';
@@ -58,10 +45,39 @@ const ReaderView = ({ text, settings, onClose }) => {
 
     return (
         <div className={`reader-overlay ${settings.colorTheme || 'light'}`}>
-            <button className="reader-close" onClick={onClose} title="エディタに戻る">
-                ✕ 閉じる
-            </button>
+            {/* ヘッダー */}
+            <div className="reader-header">
+                {toc.length > 0 && (
+                    <button
+                        className="reader-toc-btn"
+                        onClick={() => setShowTOC(!showTOC)}
+                        title="目次"
+                    >
+                        ☰ 目次
+                    </button>
+                )}
+                <button className="reader-close" onClick={onClose} title="閉じる">
+                    ✕ 閉じる
+                </button>
+            </div>
 
+            {/* 目次パネル */}
+            {showTOC && (
+                <div className="reader-toc-panel">
+                    <div className="reader-toc-title">目次</div>
+                    {toc.map((entry, i) => (
+                        <div
+                            key={i}
+                            className={`reader-toc-item level-${entry.heading}`}
+                            onClick={() => jumpToChapter(entry.index)}
+                        >
+                            {entry.content}
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* 本文 */}
             <div
                 ref={containerRef}
                 className={`reader-container ${settings.isVertical ? 'vertical' : 'horizontal'}`}
@@ -72,11 +88,41 @@ const ReaderView = ({ text, settings, onClose }) => {
                 }}
             >
                 <div className="reader-body">
-                    {paragraphs.map(p => (
-                        <p key={p.key} className="reader-paragraph">
-                            {parseRuby(p.content)}
-                        </p>
-                    ))}
+                    {blocks.map((block, i) => {
+                        if (block.type === 'break') {
+                            return <hr key={i} className="reader-break" />;
+                        }
+
+                        // タグ決定
+                        const Tag = block.heading === 'large' || block.heading === 'chapter' ? 'h2'
+                                  : block.heading === 'medium' ? 'h3'
+                                  : block.heading === 'small' ? 'h4'
+                                  : 'p';
+
+                        const style = {};
+                        if (block.indent) {
+                            style.paddingInlineStart = `${block.indent}em`;
+                        }
+                        if (block.font) {
+                            style.fontFamily = block.font;
+                        }
+                        if (block.align === 'center') {
+                            style.textAlign = 'center';
+                        }
+
+                        const content = block.content || '\u00A0';
+
+                        return (
+                            <Tag
+                                key={i}
+                                id={`reader-block-${i}`}
+                                className={`reader-paragraph ${block.isHeader ? 'reader-heading' : ''}`}
+                                style={style}
+                            >
+                                {renderInline(content)}
+                            </Tag>
+                        );
+                    })}
                 </div>
             </div>
         </div>

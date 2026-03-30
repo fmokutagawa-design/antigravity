@@ -130,7 +130,7 @@ function computeTotalLines(text, maxPerLine) {
 
 import ReactDOM from 'react-dom';
 
-const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertRuby, onInsertLink, onLaunchAI, ghostText, setGhostText, corrections = [] }, ref) => {
+const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertRuby, onInsertLink, ghostText, setGhostText, corrections = [] }, ref) => {
   const textareaRef = useRef(null);
   const [editorContextMenu, setEditorContextMenu] = React.useState(null);
 
@@ -189,14 +189,15 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   const debouncePrevLenRef = useRef(value.length);
 
   useEffect(() => {
-    // 大きな変更（ファイル切替等）は即座に反映
-    if (Math.abs(value.length - debouncePrevLenRef.current) > 100) {
-      setDebouncedValue(value);
-      debouncePrevLenRef.current = value.length;
-      return;
-    }
+    // 短期間の更新を無視（150ms デバウンス）
+    // 大幅な文字数変化（ファイル切替等）は最短での更新を試みる
+    const delay = Math.abs(value.length - debouncePrevLenRef.current) > 100 ? 0 : 150;
     debouncePrevLenRef.current = value.length;
-    const timer = setTimeout(() => setDebouncedValue(value), 150);
+
+    const timer = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
     return () => clearTimeout(timer);
   }, [value]);
 
@@ -401,7 +402,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
           try {
             e.clipboardData.setData('text/plain', original);
             e.preventDefault();
-          } catch (err) {
+          } catch {
             // 別ウィンドウ等で clipboardData が無効な場合、非同期APIにフォールバック
             e.preventDefault();
             navigator.clipboard.writeText(original).catch(() => {});
