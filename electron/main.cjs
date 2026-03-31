@@ -172,9 +172,14 @@ ipcMain.handle('fs:readFile', async (event, filePath) => {
     return fs.readFileSync(filePath, 'utf-8');
 });
 
-// Write File Content
+// Write File Content (Text)
 ipcMain.handle('fs:writeFile', async (event, filePath, content) => {
     return fs.writeFileSync(filePath, content, 'utf-8');
+});
+
+// Write File Content (Binary)
+ipcMain.handle('fs:writeFileBinary', async (event, filePath, buffer) => {
+    return fs.writeFileSync(filePath, Buffer.from(buffer));
 });
 
 // Create Folder

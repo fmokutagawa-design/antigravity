@@ -130,7 +130,7 @@ function computeTotalLines(text, maxPerLine) {
 
 import ReactDOM from 'react-dom';
 
-const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertRuby, onInsertLink, ghostText, setGhostText, corrections = [] }, ref) => {
+const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertRuby, onInsertLink, ghostText, setGhostText, corrections = [], onImageDrop }, ref) => {
   const textareaRef = useRef(null);
   const [editorContextMenu, setEditorContextMenu] = React.useState(null);
 
@@ -819,6 +819,39 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     ));
   }, [highlights, settings.isVertical, settings.editorSyntaxColors, baseMetrics.cell]);
 
+  // --- ドラッグ&ドロップでの画像挿入 ---
+  const handleDragOver = useCallback((e) => {
+    // 画像ファイルのドラッグのみ受け入れる
+    if (e.dataTransfer.types.includes('Files')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  }, []);
+
+  const handleDrop = useCallback(async (e) => {
+    const files = Array.from(e.dataTransfer.files);
+    const imageFile = files.find(f => f.type.startsWith('image/'));
+    if (!imageFile) return;
+
+    e.preventDefault();
+
+    // App.jsx から渡された onImageDrop で画像を保存
+    if (onImageDrop) {
+      const fileName = await onImageDrop(imageFile);
+      if (fileName) {
+        // カーソル位置に挿絵記法を挿入
+        const ta = textareaRef.current;
+        const pos = ta.selectionStart;
+        // 前後が改行されていない場合は改行で挟むなどの調整が可能（今回はシンプルに改行挟み）
+        const insertion = `\n［＃挿絵（${fileName}）入る］\n`;
+        const newValue = value.substring(0, pos) + insertion + value.substring(pos);
+        pushHistory(value, newValue, pos);
+        nextCursorPos.current = pos + insertion.length;
+        onChange(newValue);
+      }
+    }
+  }, [value, onChange, pushHistory, onImageDrop]);
+
   return (
     <div lang="ja" className={`editor-container ${settings.isVertical ? 'vertical' : 'horizontal'} ${paperClass}`}>
       {/* Underlay: skip in clean mode (proportional fonts can't align character-by-character) */}
@@ -879,6 +912,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         onChange={handleChange}
         onCopy={handleCopy}
         onCut={handleCut}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
         onKeyDown={(e) => {
           if (ghostText) {
             if (e.key === 'Tab') {

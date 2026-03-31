@@ -330,6 +330,54 @@ function App() {
   const [showSemanticGraph, setShowSemanticGraph] = useState(false);
   const [showMatrixOutliner, setShowMatrixOutliner] = useState(false);
 
+  const handleImageDrop = useCallback(async (imageFile) => {
+    if (!isProjectMode || !projectHandle) {
+      showToast('画像の挿入はプロジェクトモードでのみ使用できます。');
+      return null;
+    }
+    
+    try {
+      let imagesDir;
+      const isElectron = !!window.api;
+      
+      if (isElectron && typeof projectHandle === 'string') {
+        // Electron: パスベース
+        try {
+            await window.api.fs.createFolder(projectHandle, 'images');
+        } catch (e) {
+            // ignore if exists
+        }
+        imagesDir = projectHandle + '/images';
+        
+        const fileName = imageFile.name;
+        const arrayBuffer = await imageFile.arrayBuffer();
+        const buffer = new Uint8Array(arrayBuffer); // buffer compatibility
+
+        const filePath = imagesDir + '/' + fileName;
+        await window.api.fs.writeFileBinary(filePath, buffer);
+        showToast(`画像 "${fileName}" を保存しました。`);
+        return fileName;
+
+      } else {
+        // Browser: File System Access API
+        imagesDir = await projectHandle.getDirectoryHandle('images', { create: true });
+        
+        const fileName = imageFile.name;
+        const fileHandle = await imagesDir.getFileHandle(fileName, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(imageFile);
+        await writable.close();
+        
+        showToast(`画像 "${fileName}" を保存しました。`);
+        return fileName;
+      }
+    } catch (err) {
+      console.error('Image drop failed:', err);
+      showToast('画像の保存に失敗しました: ' + err.message);
+      return null;
+    }
+  }, [isProjectMode, projectHandle, showToast]);
+
   const handleAIInsert = async (insertedText, mode = 'current') => {
     if (mode === 'new-file') {
       if (!isProjectMode) {
@@ -2075,6 +2123,7 @@ function App() {
                   ghostText={ghostText}
                   setGhostText={setGhostText}
                   onCursorStats={handleCursorStats}
+                  onImageDrop={handleImageDrop}
 
                   onInsertRuby={() => editorRef.current?.insertRuby()}
                   onInsertLink={() => {
@@ -2119,6 +2168,7 @@ function App() {
                   settings={effectiveSettings}
                   mode={effectiveSettings.mode}
                   onOpenLink={handleOpenLink}
+                  projectHandle={projectHandle}
                 />
               ) : activeTab === 'reference' ? (
                 /* Full-screen Reference Panel */
