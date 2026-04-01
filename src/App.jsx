@@ -23,6 +23,7 @@ import LinkPanel from './components/LinkPanel';
 import SearchPanel from './components/SearchPanel';
 import ProgressTracker from './components/ProgressTracker';
 import ChecklistPanel from './components/ChecklistPanel';
+import ReaderView from './components/ReaderView';
 import { StoryBoard } from './components/StoryBoardMain';
 import SemanticGraph from './components/SemanticGraph';
 import MatrixOutliner from './components/MatrixOutliner';
@@ -140,6 +141,7 @@ function App() {
   const [fileTree, setFileTree] = useState([]);
   const [activeFileHandle, setActiveFileHandle] = useState(null);
   const [isProjectMode, setIsProjectMode] = useState(false);
+  const [showReader, setShowReader] = useState(false);
   const [projectSettings, setProjectSettings] = useState({
     targetPages: 300,     // 目標枚数 (400字詰め)
     chapters: 0,         // 章数 (0 = 自動)
@@ -524,7 +526,7 @@ function App() {
   // Handlers
 
   // Reference Panel (hook)
-  const { showReference, setShowReference, referenceContent, setReferenceContent, referenceFileName, setReferenceFileName, referenceWidth, startResizing } = useReferencePanel();
+  const { showReference, setShowReference, referenceContent, setReferenceContent, referenceFileName, setReferenceFileName, referenceWidth, startResizing, isResizing } = useReferencePanel();
   const [usageStats, setUsageStats] = useState({}); // Track file access frequency
 
   const [activeTab, setActiveTab] = useState('editor'); // 'editor' or 'preview'
@@ -1271,6 +1273,11 @@ function App() {
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'R') {
         e.preventDefault();
         setIsRapidMode(prev => !prev);
+      }
+      // Alt+R: Reader Mode
+      if (e.altKey && (e.code === 'KeyR' || e.key === 'r' || e.key === 'R')) {
+        e.preventDefault();
+        setShowReader(prev => !prev);
       }
       // Cmd+T: Insert TODO
       if ((e.metaKey || e.ctrlKey) && e.key === 't') {
@@ -2333,6 +2340,15 @@ function App() {
 
                   <button
                     className="footer-btn"
+                    onClick={() => setShowReader(true)}
+                    title="リーダーモードで表示 (Alt+R)"
+                    style={{ marginLeft: '4px', background: 'rgba(142,68,173,0.15)', borderColor: '#8e44ad' }}
+                  >
+                    📖 リーダー
+                  </button>
+
+                  <button
+                    className="footer-btn"
                     onClick={() => handlePopOutTab(activeTab)}
                     title="新しいウィンドウで開く"
                     style={{ marginLeft: '4px' }}
@@ -2455,6 +2471,13 @@ function App() {
         isDanger={confirmConfig.isDanger}
       />
 
+      {showReader && (
+        <ReaderView
+          text={editorValue}
+          settings={settings}
+          onClose={() => setShowReader(false)}
+        />
+      )}
     </div >
   );
 }

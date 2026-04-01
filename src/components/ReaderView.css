@@ -1,0 +1,271 @@
+/* ===== リーダーモード オーバーレイ ===== */
+.reader-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    animation: reader-fade-in 0.3s ease;
+}
+
+@keyframes reader-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* --- テーマ --- */
+.reader-overlay.theme-light {
+    background: #fdfbf7;
+    color: #1a1a1a;
+}
+.reader-overlay.theme-dark {
+    background: #1e1e1e;
+    color: #d4d4d4;
+}
+.reader-overlay.theme-sakura {
+    background: #fdf2f0;
+    color: #3a2a2a;
+}
+
+/* ===== ツールバー ===== */
+.reader-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    gap: 12px;
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    z-index: 10001;
+    flex-shrink: 0;
+}
+
+.theme-light .reader-toolbar {
+    background: rgba(255, 255, 255, 0.85);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+.theme-dark .reader-toolbar {
+    background: rgba(30, 30, 30, 0.9);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.theme-sakura .reader-toolbar {
+    background: rgba(253, 242, 240, 0.9);
+    border-bottom: 1px solid rgba(180, 120, 120, 0.15);
+}
+
+.reader-toolbar.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+.reader-toolbar.hidden {
+    opacity: 0;
+    transform: translateY(-100%);
+    pointer-events: none;
+}
+
+.reader-toolbar-left,
+.reader-toolbar-center,
+.reader-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.reader-toolbar-center {
+    flex: 1;
+    justify-content: center;
+}
+
+/* --- ボタン・セレクト共通 --- */
+.reader-btn {
+    padding: 6px 14px;
+    border: 1px solid rgba(128, 128, 128, 0.3);
+    border-radius: 6px;
+    background: transparent;
+    cursor: pointer;
+    font-size: 13px;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+
+.theme-light .reader-btn { color: #333; }
+.theme-dark .reader-btn { color: #ccc; }
+.theme-sakura .reader-btn { color: #5a3a3a; }
+
+.reader-btn:hover {
+    background: rgba(128, 128, 128, 0.15);
+}
+
+.reader-btn-close {
+    font-weight: bold;
+}
+
+.reader-select {
+    padding: 5px 8px;
+    border: 1px solid rgba(128, 128, 128, 0.3);
+    border-radius: 6px;
+    background: transparent;
+    font-size: 13px;
+    cursor: pointer;
+    outline: none;
+}
+
+.theme-light .reader-select { color: #333; }
+.theme-dark .reader-select { color: #ccc; background: #2a2a2a; }
+.theme-sakura .reader-select { color: #5a3a3a; }
+
+/* ===== 目次パネル ===== */
+.reader-toc-panel {
+    position: fixed;
+    top: 50px;
+    left: 16px;
+    width: 280px;
+    max-height: 70vh;
+    overflow-y: auto;
+    border-radius: 10px;
+    padding: 16px;
+    z-index: 10002;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.theme-light .reader-toc-panel { background: #fff; border: 1px solid #e0e0e0; }
+.theme-dark .reader-toc-panel { background: #2a2a2a; border: 1px solid #444; }
+.theme-sakura .reader-toc-panel { background: #fff5f3; border: 1px solid #e0c0c0; }
+
+.reader-toc-title {
+    font-weight: bold;
+    font-size: 14px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+}
+
+.reader-toc-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: background 0.15s;
+}
+
+.reader-toc-item:hover {
+    background: rgba(128, 128, 128, 0.1);
+}
+
+.reader-toc-item.level-chapter,
+.reader-toc-item.level-large {
+    font-weight: bold;
+    font-size: 15px;
+}
+
+.reader-toc-item.level-medium {
+    padding-left: 24px;
+}
+
+.reader-toc-item.level-small {
+    padding-left: 36px;
+    font-size: 13px;
+}
+
+/* ===== 本文コンテナ ===== */
+.reader-container {
+    flex: 1;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+}
+
+.reader-container.vertical {
+    overflow-x: auto;
+    overflow-y: hidden;
+    writing-mode: vertical-rl;
+}
+
+.reader-container.horizontal {
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+/* ===== 本文ボディ ===== */
+.reader-body {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px 32px 80px;
+    line-height: 2.0;
+    letter-spacing: 0.05em;
+    user-select: text;
+    -webkit-user-select: text;
+
+    /* 禁則処理 */
+    line-break: strict;
+    word-break: normal;
+    overflow-wrap: break-word;
+    hanging-punctuation: allow-end force-end;
+}
+
+.reader-container.vertical .reader-body {
+    max-width: none;
+    min-height: 100%;
+    padding: 40px 60px;
+    writing-mode: vertical-rl;
+}
+
+/* ===== 段落 ===== */
+.reader-paragraph {
+    text-indent: 0;
+    margin: 0;
+    padding: 0;
+}
+
+.reader-paragraph:empty::before {
+    content: '\00a0';
+}
+
+/* ===== 見出し ===== */
+.reader-heading {
+    text-indent: 0;
+}
+
+h2.reader-paragraph {
+    font-size: 1.4em;
+    font-weight: bold;
+    margin-block: 1.5em 0.8em;
+}
+
+h3.reader-paragraph {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-block: 1.2em 0.6em;
+}
+
+h4.reader-paragraph {
+    font-size: 1.05em;
+    font-weight: bold;
+    margin-block: 1em 0.5em;
+}
+
+/* ===== 改ページ ===== */
+.reader-break {
+    border: none;
+    margin: 2em 0;
+    height: 1px;
+}
+
+.theme-light .reader-break { background: rgba(0, 0, 0, 0.1); }
+.theme-dark .reader-break { background: rgba(255, 255, 255, 0.1); }
+.theme-sakura .reader-break { background: rgba(180, 120, 120, 0.2); }
+
+/* ===== ルビ ===== */
+.reader-body rt {
+    font-size: 0.5em;
+    font-family: 'Hiragino Sans', sans-serif;
+}
+
+.theme-dark .reader-body rt { opacity: 0.8; }
+
+/* ===== 傍点 ===== */
+.reader-boten rt {
+    font-size: 0.6em;
+    text-align: center;
+}
