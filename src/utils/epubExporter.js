@@ -40,6 +40,11 @@ function textToHtml(text) {
   html = html.replace(/\[\[([^\]]+)\]\]/g, '$1');
   // 強調 『...』 → <em>...</em>
   html = html.replace(/『([^』]+)』/g, '<em>$1</em>');
+  // 挿絵記法: ［＃挿絵（FILENAME）入る］ -> <div class="illustration"><img src="images/FILENAME" alt="FILENAME"/></div>
+  html = html.replace(/［＃挿絵（(.+?)）入る］/g, (match, fileName) => {
+    return `<div class="illustration"><img src="images/${fileName}" alt="${fileName}"/></div>`;
+  });
+  
   // HTMLエスケープ（タグ以外）
   // 行ごとに処理
   const lines = html.split('\n');
@@ -135,6 +140,17 @@ em {
 ruby rt {
   font-size: 0.5em;
 }
+
+.illustration {
+  text-align: center;
+  margin: 1em 0;
+  display: block;
+}
+
+.illustration img {
+  max-width: 100%;
+  max-height: 90vh;
+}
 `;
 }
 
@@ -147,6 +163,21 @@ function createContentOpf(bookTitle, author, chapters, isVertical = true) {
   const manifestItems = chapters.map((ch, i) =>
     `    <item id="chapter${i}" href="${ch.filename}" media-type="application/xhtml+xml"/>`
   ).join('\n');
+
+  // 画像ファイルのマニフェスト追加
+  const images = chapters.reduce((acc, ch) => {
+    const matches = ch.xhtml.matchAll(/src="images\/(.+?)"/g);
+    for (const match of matches) {
+      acc.add(match[1]);
+    }
+    return acc;
+  }, new Set());
+
+  const imageManifestItems = Array.from(images).map((img, i) => {
+    const ext = img.split('.').pop().toLowerCase();
+    const mediaType = ext === 'png' ? 'image/png' : (ext === 'jpg' || ext === 'jpeg') ? 'image/jpeg' : 'image/octet-stream';
+    return `    <item id="img${i}" href="images/${img}" media-type="${mediaType}"/>`;
+  }).join('\n');
 
   const spineItems = chapters.map((_, i) =>
     `    <itemref idref="chapter${i}"/>`
@@ -166,6 +197,7 @@ function createContentOpf(bookTitle, author, chapters, isVertical = true) {
     <item id="style" href="style.css" media-type="text/css"/>
     <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
 ${manifestItems}
+${imageManifestItems}
   </manifest>
   <spine page-progression-direction="${direction}">
 ${spineItems}
@@ -206,9 +238,10 @@ ${items}
  * @param {string} options.author - 著者名
  * @param {Array} options.files - [{name, content}] ファイル配列
  * @param {boolean} options.isVertical - 縦書きかどうか
+ * @param {any} options.projectHandle - プロジェクトハンドル (画像取得用)
  * @returns {Promise<Blob>} EPUBファイルのBlob
  */
-export async function generateEpub({ title = '無題', author = '著者不明', files = [], isVertical = true }) {
+export async function generateEpub({ title = '無題', author = '著者不明', files = [], isVertical = true, projectHandle = null }) {
   const zip = new JSZip();
 
   // 1. mimetype (圧縮なし、最初に追加)
@@ -235,7 +268,44 @@ export async function generateEpub({ title = '無題', author = '著者不明', 
     zip.file(`OEBPS/${ch.filename}`, ch.xhtml);
   });
 
-  // 5. ZIP生成
+  // 5. 画像をパッケージに追加
+  if (projectHandle) {
+    const images = new Set();
+    chapters.forEach(ch => {
+      const matches = ch.xhtml.matchAll(/src="images\/(.+?)"/g);
+      for (const match of matches) {
+        images.add(match[1]);
+      }
+    });
+
+    for (const fileName of images) {
+      try {
+        const isElectron = !!window.api;
+        let data;
+        if (isElectron && typeof projectHandle === 'string') {
+          // Electron: readFile (Buffer)
+          const filePath = `${projectHandle}/images/${fileName}`;
+          if (window.api.fs.readFileBinary) {
+            data = await window.api.fs.readFileBinary(filePath);
+          }
+        } else {
+          // Browser: File System Access API
+          const imagesDir = await projectHandle.getDirectoryHandle('images');
+          const fileHandle = await imagesDir.getFileHandle(fileName);
+          const file = await fileHandle.getFile();
+          data = await file.arrayBuffer();
+        }
+        
+        if (data) {
+          zip.file(`OEBPS/images/${fileName}`, data);
+        }
+      } catch (err) {
+        console.warn(`Failed to include image ${fileName} in EPUB:`, err);
+      }
+    }
+  }
+
+  // 6. ZIP生成
   const blob = await zip.generateAsync({
     type: 'blob',
     mimeType: 'application/epub+zip',

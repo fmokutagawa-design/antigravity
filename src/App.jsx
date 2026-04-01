@@ -126,6 +126,31 @@ function App() {
   const [aiOptions, setAiOptions] = useState({}); // New: options for AI (selectedText, etc)
   const [corrections, setCorrections] = useState([]); // AI proofreading markers
 
+  // Project management state
+  const [showMetadata, setShowMetadata] = useState(false); // Default to hiding metadata
+  const [isSidebarVisible, setIsSidebarVisible] = useState(true); // Focus Mode Toggle
+  const [isWindowMode] = useState(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('mode') === 'window';
+  }); // Window Mode State
+
+  const [sidebarTab, setSidebarTab] = useState('settings'); // 'files', 'tags', 'links', or 'settings'
+  const [projectHandle, setProjectHandle] = useState(null);
+  const [savedProjectHandle, setSavedProjectHandle] = useState(null); // For resuming session
+  const [fileTree, setFileTree] = useState([]);
+  const [activeFileHandle, setActiveFileHandle] = useState(null);
+  const [isProjectMode, setIsProjectMode] = useState(false);
+  const [projectSettings, setProjectSettings] = useState({
+    targetPages: 300,     // 目標枚数 (400字詰め)
+    chapters: 0,         // 章数 (0 = 自動)
+    deadline: null,      // 締切日
+    rapidModeDefault: false,
+    todoCategories: ['背景', '人物', '心理', '描写', '設定', '伏線', '調査', 'その他'],
+  });
+
+  const [showSemanticGraph, setShowSemanticGraph] = useState(false);
+  const [showMatrixOutliner, setShowMatrixOutliner] = useState(false);
+
   // Memoize editor value to avoid re-parsing on every render and stabilize reference for React.memo
   const editorValue = useMemo(() => {
     if (showMetadata) return text;
@@ -291,8 +316,55 @@ function App() {
     }
   };
 
-  const [showSemanticGraph, setShowSemanticGraph] = useState(false);
-  const [showMatrixOutliner, setShowMatrixOutliner] = useState(false);
+
+
+  const handleImageDrop = useCallback(async (imageFile) => {
+    if (!isProjectMode || !projectHandle) {
+      showToast('画像の挿入はプロジェクトモードでのみ使用できます。');
+      return null;
+    }
+    
+    try {
+      let imagesDir;
+      const isElectron = !!window.api;
+      
+      if (isElectron && typeof projectHandle === 'string') {
+        // Electron: パスベース
+        try {
+            await window.api.fs.createFolder(projectHandle, 'images');
+        } catch (e) {
+            // ignore if exists
+        }
+        imagesDir = projectHandle + '/images';
+        
+        const fileName = imageFile.name;
+        const arrayBuffer = await imageFile.arrayBuffer();
+        const buffer = new Uint8Array(arrayBuffer); // buffer compatibility
+
+        const filePath = imagesDir + '/' + fileName;
+        await window.api.fs.writeFileBinary(filePath, buffer);
+        showToast(`画像 "${fileName}" を保存しました。`);
+        return fileName;
+
+      } else {
+        // Browser: File System Access API
+        imagesDir = await projectHandle.getDirectoryHandle('images', { create: true });
+        
+        const fileName = imageFile.name;
+        const fileHandle = await imagesDir.getFileHandle(fileName, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(imageFile);
+        await writable.close();
+        
+        showToast(`画像 "${fileName}" を保存しました。`);
+        return fileName;
+      }
+    } catch (err) {
+      console.error('Image drop failed:', err);
+      showToast('画像の保存に失敗しました: ' + err.message);
+      return null;
+    }
+  }, [isProjectMode, projectHandle, showToast]);
 
   const handleAIInsert = async (insertedText, mode = 'current') => {
     if (mode === 'new-file') {
@@ -405,7 +477,8 @@ function App() {
         title,
         author,
         files: epubFiles,
-        isVertical: settings.isVertical !== false
+        isVertical: settings.isVertical !== false,
+        projectHandle
       });
       downloadBlob(blob, `${title}.epub`);
       if (showToast) showToast('EPUBを書き出しました');
@@ -449,27 +522,6 @@ function App() {
   };
 
   // Handlers
-  const [showMetadata, setShowMetadata] = useState(false); // Default to hiding metadata
-  const [isSidebarVisible, setIsSidebarVisible] = useState(true); // Focus Mode Toggle
-  const [isWindowMode] = useState(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get('mode') === 'window';
-  }); // Window Mode State
-
-  // Project management state
-  const [sidebarTab, setSidebarTab] = useState('settings'); // 'files', 'tags', 'links', or 'settings'
-  const [projectHandle, setProjectHandle] = useState(null);
-  const [savedProjectHandle, setSavedProjectHandle] = useState(null); // For resuming session
-  const [fileTree, setFileTree] = useState([]);
-  const [activeFileHandle, setActiveFileHandle] = useState(null);
-  const [isProjectMode, setIsProjectMode] = useState(false);
-  const [projectSettings, setProjectSettings] = useState({
-    targetPages: 300,     // 目標枚数 (400字詰め)
-    chapters: 0,         // 章数 (0 = 自動)
-    deadline: null,      // 締切日
-    rapidModeDefault: false,
-    todoCategories: ['背景', '人物', '心理', '描写', '設定', '伏線', '調査', 'その他'],
-  });
 
   // Reference Panel (hook)
   const { showReference, setShowReference, referenceContent, setReferenceContent, referenceFileName, setReferenceFileName, referenceWidth, startResizing } = useReferencePanel();
@@ -2031,6 +2083,7 @@ function App() {
                   ghostText={ghostText}
                   setGhostText={setGhostText}
                   onCursorStats={handleCursorStats}
+                  onImageDrop={handleImageDrop}
 
                   onInsertRuby={() => editorRef.current?.insertRuby()}
                   onInsertLink={() => {

@@ -1,12 +1,63 @@
-import React, { useMemo, useRef, useEffect } from 'react';
+import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { parseRuby } from '../utils/textUtils';
 import { preprocessText, composeLines, parseAozoraStructure } from '../utils/typesetting';
 import '../styles/Preview.css';
 
-const Preview = ({ text, settings, mode = 'manuscript', onOpenLink }) => {
+const Preview = ({ text, settings, mode = 'manuscript', onOpenLink, projectHandle }) => {
     // mode: 'manuscript' | 'plain'
     // Use global setting, default to true if undefined
     const showGrid = settings.showGrid !== false;
+
+    const [imageUrls, setImageUrls] = useState({});
+    const knownImages = useRef(new Set());
+
+    useEffect(() => {
+        if (!projectHandle) return;
+
+        // テキスト内の挿絵記法を全て検出
+        const matches = [...text.matchAll(/［＃挿絵（(.+?)）入る］/g)];
+        if (matches.length === 0) return;
+
+        const loadImages = async () => {
+            const urls = {};
+            let hasNew = false;
+            for (const match of matches) {
+                const fileName = match[1];
+                if (knownImages.current.has(fileName)) continue; // 既にロード済み
+                knownImages.current.add(fileName);
+                try {
+                    const isElectron = !!window.api;
+                    if (isElectron && typeof projectHandle === 'string') {
+                        // Electron: file:// URL
+                        urls[fileName] = `file://${projectHandle}/images/${fileName}`;
+                    } else {
+                        // Browser: File System Access API
+                        const imagesDir = await projectHandle.getDirectoryHandle('images');
+                        const fileHandle = await imagesDir.getFileHandle(fileName);
+                        const file = await fileHandle.getFile();
+                        urls[fileName] = URL.createObjectURL(file);
+                    }
+                    hasNew = true;
+                } catch (err) {
+                    console.warn(`Image not found: ${fileName}`, err);
+                }
+            }
+            if (hasNew) {
+                setImageUrls(prev => ({ ...prev, ...urls }));
+            }
+        };
+
+        loadImages();
+    }, [text, projectHandle]);
+
+    // クリーンアップ: コンポーネントのアンマウント時に revokeObjectURL を実行
+    useEffect(() => {
+        return () => {
+            Object.values(imageUrls).forEach(url => {
+                if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+            });
+        };
+    }, [imageUrls]);
 
     // Helper to parse text into segments (text, ruby, link)
     const parseContent = (line) => {
@@ -353,6 +404,32 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink }) => {
         return (
             <div className="plain-content">
                 {text.split('\n').map((line, i) => {
+                    // 挿絵記法の検出
+                    const illustMatch = line.match(/［＃挿絵（(.+?)）入る］/);
+                    if (illustMatch) {
+                        const fileName = illustMatch[1];
+                        return (
+                            <div key={i} className="illustration-container" style={{
+                                textAlign: 'center',
+                                margin: '1em 0',
+                                writingMode: 'horizontal-tb',
+                            }}>
+                                {imageUrls[fileName] ? (
+                                    <img
+                                        src={imageUrls[fileName]}
+                                        alt={fileName}
+                                        style={{ maxWidth: '100%', maxHeight: '80vh' }}
+                                        onError={(e) => { e.target.style.display = 'none'; }}
+                                    />
+                                ) : (
+                                    <div style={{ padding: '2em', border: '1px dashed #ccc', color: '#999' }}>
+                                        Image loading: {fileName}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    }
+
                     const segments = parseContent(line);
                     return (
                         <p key={i} style={{ fontFamily: settings.fontFamily, lineHeight: '1.8' }}>
