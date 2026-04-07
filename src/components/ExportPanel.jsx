@@ -93,6 +93,11 @@ const ExportPanel = ({
           onMouseLeave={e => e.target.style.background = 'none'}>
           ⬛ 行頭字下げ（会話文除外）
         </button>
+        <button onClick={() => onFormat('ruby')} style={btnStyle}
+          onMouseEnter={e => e.target.style.background = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}
+          onMouseLeave={e => e.target.style.background = 'none'}>
+          📖 《 》ルビ記法の一括変換
+        </button>
       </div>
 
       {/* 出力セクション */}

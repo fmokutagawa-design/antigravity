@@ -56,6 +56,11 @@ export function applyFormat(text, type) {
       return '　' + line;
     }).join('\n');
     changed = true;
+  } else if (type === 'ruby') {
+    // 漢字(読み) または 漢字（読み） を 漢字《読み》 に変換
+    // 漢字の範囲に加え、全角英数字（ＡＭＢＡＣなど）も対象に含める
+    newBody = newBody.replace(/([一-龠々〆ヵヶＡ-Ｚａ-ｚ０-９]+)[（(]([ぁ-んァ-ヶー]+)[）)]/g, '$1《$2》');
+    changed = true;
   }
 
   if (changed && newBody !== body) {
