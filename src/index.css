@@ -190,27 +190,6 @@ body {
   font-weight: 450;
 }
 
-/* ★ シンタックスハイライト有効時: テキストを透明にしてアンダーレイの色を見せる */
-.native-grid-editor.transparent-force {
-  color: transparent !important;
-  caret-color: var(--caret-color, #8e44ad) !important;
-  /* 選択テキストの視認性を確保 */
-  &::selection {
-    background: rgba(100, 100, 255, 0.3);
-    color: transparent;
-  }
-}
-
-/* ダークモード時のキャレット色 */
-body.dark-mode .native-grid-editor.transparent-force {
-  caret-color: #fff !important;
-}
-
-/* 黒板モード時のキャレット色 */
-body[data-color-theme="blackboard"] .native-grid-editor.transparent-force {
-  caret-color: #ffd700 !important;
-}
-
 /* =========================================
    Electron Title Bar (ドラッグ対応)
    ※ .app-container 直下に配置されるためトップレベルに定義
