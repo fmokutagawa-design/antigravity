@@ -134,6 +134,11 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   const textareaRef = useRef(null);
   const [editorContextMenu, setEditorContextMenu] = React.useState(null);
 
+  // ★ IME（日本語入力）変換中フラグ
+  // composition 中は React の state 更新をスキップし、IME バッファを破壊しない
+  const isComposingRef = useRef(false);
+  const compositionTextRef = useRef(null); // composition 開始前のテキストを保持
+
   // ★ パフォーマンス根治: ローカルテキスト状態
   // タイピング時は localText のみ更新（Editor 内部の再レンダリングだけ）
   // App への通知（onChange）は 500ms デバウンスで行い、App の再レンダリングを回避
@@ -179,7 +184,9 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   const nextCursorPos = useRef(null);
 
   // React再レンダリング直後にカーソル位置を復元（useLayoutEffectでペイント前に実行）
+  // ★ IME 変換中はカーソル復元をスキップ（変換カーソルを破壊しないため）
   useLayoutEffect(() => {
+    if (isComposingRef.current) return;
     // undo/redo後のカーソル復元
     if (pendingCursorRef && pendingCursorRef.current != null && textareaRef.current) {
       const pos = pendingCursorRef.current;
@@ -311,7 +318,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
 
   // --- 2. アンダーレイ（座標マップ）の生成（デバウンス） ---
   // ★ 大規模テキスト（20000文字超≒原稿用紙100枚超）ではハイライトを自動停止
-  const HIGHLIGHT_CHAR_LIMIT = 20000;
+  const HIGHLIGHT_CHAR_LIMIT = 200000;
   const highlights = useMemo(() => {
     if (settings.editorSyntaxColors === false) return [];
     if (!debouncedValue) return [];
@@ -422,6 +429,11 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   }, [localText, settings.isVertical]);
 
   const handleChange = useCallback((e) => {
+    // ★ IME 変換中は React の state 更新をスキップ
+    // ブラウザが textarea の DOM を直接操作するため、React が介入すると
+    // IME バッファを破壊して「文字が消える」「二重入力」の原因になる
+    if (isComposingRef.current) return;
+
     const ta = e.target;
     const raw = ta.value;
     const restored = settings.isVertical ? fromVerticalDisplay(raw) : raw;
@@ -432,6 +444,28 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     nextCursorPos.current = cursorPos;
     // ★ ローカル状態を即座に更新 + App への通知はデバウンス
     localOnChange(restored);
+  }, [localOnChange, settings.isVertical, localText, pushHistory, currentCursorRef]);
+
+  // ★ IME composition ハンドラ
+  const handleCompositionStart = useCallback(() => {
+    isComposingRef.current = true;
+    compositionTextRef.current = localText; // 変換開始前のテキストを保存
+  }, [localText]);
+
+  const handleCompositionEnd = useCallback((e) => {
+    isComposingRef.current = false;
+    // composition 終了時に最終テキストを確定
+    const ta = e.target;
+    const raw = ta.value;
+    const restored = settings.isVertical ? fromVerticalDisplay(raw) : raw;
+    const cursorPos = ta.selectionStart;
+    // 変換開始前のテキストから undo 履歴を記録（中間状態は記録しない）
+    const beforeComposition = compositionTextRef.current ?? localText;
+    pushHistory(beforeComposition, restored, cursorPos);
+    if (currentCursorRef) currentCursorRef.current = cursorPos;
+    nextCursorPos.current = cursorPos;
+    localOnChange(restored);
+    compositionTextRef.current = null;
   }, [localOnChange, settings.isVertical, localText, pushHistory, currentCursorRef]);
 
   const handleCopy = useCallback((e) => {
@@ -870,6 +904,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         className={`native-grid-editor ${paperClass}`}
         value={displayValue}
         onChange={handleChange}
+        onCompositionStart={handleCompositionStart}
+        onCompositionEnd={handleCompositionEnd}
         onCopy={handleCopy}
         onCut={handleCut}
         onDragOver={handleDragOver}
