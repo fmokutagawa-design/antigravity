@@ -147,24 +147,20 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   const localTextRef = useRef(localText); // ★ composition ハンドラ用（deps から localText を除外するため）
   localTextRef.current = localText;
 
-  // ★ 外部からの value 変更を検出するためのフラグ
-  //    問題: Editor → onChange → App → debouncedText → editorValue → value が戻ってくるとき、
-  //    parseNote(join('\n')) で毎回新しい文字列参照になるため === 比較では検出できない。
-  //    解決: 「自分が最後に送ったテキスト」の長さ+先頭128文字で簡易判定。
-  //    完全一致判定は重い（10万字）ので、長さが一致 かつ 先頭128文字が一致 ならローカル変更の往復とみなす。
-  const lastSentLenRef = useRef(value.length);
-  const lastSentPrefixRef = useRef(value.slice(0, 128));
-
-  // 外部からの value 変更（ファイル切替、フォーマット適用等）を同期
+  // ★ 外部からの value 変更（ファイル切替、フォーマット適用等）を同期
+  //    問題: Editor → App → Editor の往復で value が debounce 遅延つきで戻ってくるため、
+  //    localText を上書きするとカーソル位置がリセットされる。
+  //    解決: 大幅な変更（ファイル切替等）のみ同期し、通常の往復は無視する。
+  const prevValueRef2 = useRef(value);
   useEffect(() => {
-    // 長さが同じ かつ 先頭が同じ → 自分が送ったテキストの往復（debounce経由）→ 無視
-    if (value.length === lastSentLenRef.current && value.slice(0, 128) === lastSentPrefixRef.current) {
-      return;
+    const prev = prevValueRef2.current;
+    prevValueRef2.current = value;
+    // ★ 小さな差分（通常の入力→App→Editor の往復）は無視
+    //    大きな差分（ファイル切替、外部からのテキスト置換等）のみ同期
+    if (Math.abs(value.length - prev.length) > 100 || 
+        (value.length > 0 && prev.length > 0 && value.slice(0, 64) !== prev.slice(0, 64))) {
+      setLocalText(value);
     }
-    // 外部からの変更（ファイル切替、フォーマット適用、AI挿入等）→ 同期
-    setLocalText(value);
-    lastSentLenRef.current = value.length;
-    lastSentPrefixRef.current = value.slice(0, 128);
   }, [value]);
 
   // --- Undo/Redo スタック ---
@@ -174,9 +170,6 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     // App への通知はデバウンス（500ms）
     if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
     appNotifyTimerRef.current = setTimeout(() => {
-      // ★ 自分が送った値を記録（往復判定用）
-      lastSentLenRef.current = newText.length;
-      lastSentPrefixRef.current = newText.slice(0, 128);
       onChange(newText);
     }, 500);
   }, [onChange]);
