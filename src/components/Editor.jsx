@@ -905,7 +905,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       <textarea
         lang="ja"
         ref={textareaRef}
-        className={`native-grid-editor ${paperClass}`}
+        className={`native-grid-editor ${paperClass} ${settings.editorSyntaxColors !== false && !isCleanMode ? 'transparent-force' : ''}`}
         value={displayValue}
         onChange={handleChange}
         onCompositionStart={handleCompositionStart}
