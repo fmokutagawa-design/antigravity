@@ -441,12 +441,12 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     const restored = settings.isVertical ? fromVerticalDisplay(raw) : raw;
     // カーソル位置を保存（React再レンダリングでリセットされるため）
     const cursorPos = ta.selectionStart;
-    pushHistory(localText, restored, cursorPos);
+    pushHistory(localTextRef.current, restored, cursorPos);
     if (currentCursorRef) currentCursorRef.current = cursorPos;
     nextCursorPos.current = cursorPos;
     // ★ ローカル状態を即座に更新 + App への通知はデバウンス
     localOnChange(restored);
-  }, [localOnChange, settings.isVertical, localText, pushHistory, currentCursorRef]);
+  }, [localOnChange, settings.isVertical, pushHistory, currentCursorRef]);
 
   // ★ IME composition ハンドラ
   // localTextRef 経由で参照することで、useCallback の deps から localText を除外
@@ -515,12 +515,12 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         const before = textarea.value.substring(0, cursorPos);
         const after = textarea.value.substring(textarea.selectionEnd);
         const newValue = fromVerticalDisplay(before + after);
-        pushHistory(localText, newValue, cursorPos);
+        pushHistory(localTextRef.current, newValue, cursorPos);
         nextCursorPos.current = cursorPos;
         localOnChange(newValue);
       }
     }
-  }, [localOnChange, settings.isVertical, addToClipboard, localText, pushHistory]);
+  }, [localOnChange, settings.isVertical, addToClipboard, pushHistory]);
 
   // --- 4. ハンドラ ---
   const handleCursor = () => {
