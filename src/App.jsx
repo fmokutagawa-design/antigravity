@@ -72,9 +72,13 @@ import { useProjectActions } from './hooks/useProjectActions';
 function App() {
   const [text, setText] = useState('');
   const [debouncedText, setDebouncedText] = useState('');
+  const textRef = useRef(''); // ★ 最新テキストへの即時アクセス用
+
+  // textRef を常に同期
+  useEffect(() => { textRef.current = text; }, [text]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedText(text), 300);
+    const timer = setTimeout(() => setDebouncedText(text), 500);
     return () => clearTimeout(timer);
   }, [text]);
   const [settings, setSettings] = useState({
@@ -154,10 +158,11 @@ function App() {
   const [showMatrixOutliner, setShowMatrixOutliner] = useState(false);
 
   // Memoize editor value to avoid re-parsing on every render and stabilize reference for React.memo
+  // ★ debouncedText ベースでパース（毎キー入力での14万字パースを回避）
   const editorValue = useMemo(() => {
     if (showMetadata) return text;
     return parseNote(text).body;
-  }, [text, showMetadata]);
+  }, [debouncedText, showMetadata]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // AI Connection (hook)
   const { aiModel, setAiModel, localModels, selectedLocalModel, setSelectedLocalModel, isLocalConnected, checkLocalConnection } = useAIConnection();

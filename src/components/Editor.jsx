@@ -134,8 +134,34 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   const textareaRef = useRef(null);
   const [editorContextMenu, setEditorContextMenu] = React.useState(null);
 
+  // ★ パフォーマンス根治: ローカルテキスト状態
+  // タイピング時は localText のみ更新（Editor 内部の再レンダリングだけ）
+  // App への通知（onChange）は 500ms デバウンスで行い、App の再レンダリングを回避
+  const [localText, setLocalText] = useState(value);
+  const isLocalChangeRef = useRef(false);
+  const appNotifyTimerRef = useRef(null);
+
+  // 外部からの value 変更（ファイル切替、フォーマット適用等）を同期
+  useEffect(() => {
+    if (!isLocalChangeRef.current) {
+      setLocalText(value);
+    }
+    isLocalChangeRef.current = false;
+  }, [value]);
+
   // --- Undo/Redo スタック ---
-  const { initHistory, pushHistory, undo, redo, handleKeyDown: undoKeyDown, pendingCursor: pendingCursorRef, currentCursor: currentCursorRef } = useUndoHistory(onChange);
+  const localOnChange = useCallback((newText) => {
+    // ローカル状態を即座に更新
+    isLocalChangeRef.current = true;
+    setLocalText(newText);
+    // App への通知はデバウンス（500ms）
+    if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
+    appNotifyTimerRef.current = setTimeout(() => {
+      onChange(newText);
+    }, 500);
+  }, [onChange]);
+
+  const { initHistory, pushHistory, undo, redo, handleKeyDown: undoKeyDown, pendingCursor: pendingCursorRef, currentCursor: currentCursorRef } = useUndoHistory(localOnChange);
   // --- クリップボード履歴 ---
   const { clipboardHistory, addToClipboard } = useClipboardHistory();
 
@@ -178,27 +204,31 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     }
   }, [editorContextMenu]);
 
-
-
+  // cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
+    };
+  }, []);
 
 
   const splitString = (str) => Array.from(str || "");
 
-  // --- パフォーマンス最適化: ハイライト用デバウンス ---
-  const [debouncedValue, setDebouncedValue] = useState(value);
-  const debouncePrevLenRef = useRef(value.length);
+  // --- パフォーマンス最適化: ハイライト用デバウンス（ローカルテキストベース）---
+  const [debouncedValue, setDebouncedValue] = useState(localText);
+  const debouncePrevLenRef = useRef(localText.length);
 
   useEffect(() => {
     // 大きな変更（ファイル切替等）は即座に反映
-    if (Math.abs(value.length - debouncePrevLenRef.current) > 100) {
-      setDebouncedValue(value);
-      debouncePrevLenRef.current = value.length;
+    if (Math.abs(localText.length - debouncePrevLenRef.current) > 100) {
+      setDebouncedValue(localText);
+      debouncePrevLenRef.current = localText.length;
       return;
     }
-    debouncePrevLenRef.current = value.length;
-    const timer = setTimeout(() => setDebouncedValue(value), 150);
+    debouncePrevLenRef.current = localText.length;
+    const timer = setTimeout(() => setDebouncedValue(localText), 300);
     return () => clearTimeout(timer);
-  }, [value]);
+  }, [localText]);
 
   // --- 1a. ベース寸法（設定のみ依存、valueに依存しない） ---
   const baseMetrics = useMemo(() => {
@@ -226,10 +256,25 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     return { fontSize, cell, maxPerLine, padding: PADDING, letterSpacing: cell - fontSize };
   }, [settings.fontSize, settings.lineHeight, settings.isVertical, settings.charsPerLine, settings.paperStyle, settings.charSpacing]);
 
-  // --- 1b. グリッド寸法（valueに依存、ただし軽量な computeTotalLines を使用） ---
+  // --- 1b. グリッド寸法（デバウンス値に依存 — 毎キー入力での全文走査を回避） ---
+  const [debouncedLineCount, setDebouncedLineCount] = useState(() => computeTotalLines(localText, baseMetrics.maxPerLine));
+  const lineCountTimerRef = useRef(null);
+  useEffect(() => {
+    // 大きな変更は即座に反映
+    if (Math.abs(localText.length - (debouncePrevLenRef.current || 0)) > 50) {
+      setDebouncedLineCount(computeTotalLines(localText, baseMetrics.maxPerLine));
+      return;
+    }
+    if (lineCountTimerRef.current) clearTimeout(lineCountTimerRef.current);
+    lineCountTimerRef.current = setTimeout(() => {
+      setDebouncedLineCount(computeTotalLines(localText, baseMetrics.maxPerLine));
+    }, 300);
+    return () => { if (lineCountTimerRef.current) clearTimeout(lineCountTimerRef.current); };
+  }, [localText, baseMetrics.maxPerLine]);
+
   const metrics = useMemo(() => {
     const { fontSize, cell, maxPerLine, padding, letterSpacing } = baseMetrics;
-    const totalLines = computeTotalLines(value, maxPerLine);
+    const totalLines = debouncedLineCount;
 
     let cols, rows, gridW, gridH;
     if (settings.isVertical) {
@@ -245,7 +290,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     }
 
     return { fontSize, cell, cols, rows, gridW, gridH, padding, letterSpacing };
-  }, [value, baseMetrics, settings.isVertical, settings.linesPerPage]);
+  }, [debouncedLineCount, baseMetrics, settings.isVertical, settings.linesPerPage]);
 
   // --- 共有キャラクター座標キャッシュ（デバウンス値 + 安定した maxPerLine） ---
   const charPositionsCache = useMemo(() => {
@@ -265,9 +310,12 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   }, [debouncedValue, baseMetrics.maxPerLine]);
 
   // --- 2. アンダーレイ（座標マップ）の生成（デバウンス） ---
+  // ★ 大規模テキスト（20000文字超≒原稿用紙100枚超）ではハイライトを自動停止
+  const HIGHLIGHT_CHAR_LIMIT = 20000;
   const highlights = useMemo(() => {
     if (settings.editorSyntaxColors === false) return [];
     if (!debouncedValue) return [];
+    if (debouncedValue.length > HIGHLIGHT_CHAR_LIMIT) return []; // ★ 大規模テキスト時は省略
     const { cell } = baseMetrics;
     const { positions, utf16ToCharIdx } = charPositionsCache;
 
@@ -282,7 +330,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     const patterns = [
       { regex: /\[\[.*?\]\]|［［.*?］］/g, color: settings.syntaxColors?.link || '#2980b9' },
       { regex: /『.*?』/g, color: settings.syntaxColors?.emphasis || '#c0392b' },
-      { regex: /「.*?」/g, color: settings.syntaxColors?.conversation || '#27ae60' },
+      { regex: /「.*?」/g, color: settings.syntaxColors?.conversation || '#27ae60', isConversation: true },
       { regex: /《.*?》/g, color: settings.syntaxColors?.ruby || '#e67e22' },
       { regex: /［＃.*?］/g, color: settings.syntaxColors?.aozora || '#8e44ad' },
       { regex: /\{font[:：].*?\}|\{\/font\}/g, color: settings.syntaxColors?.aozora || '#8e44ad' },
@@ -290,7 +338,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     ];
 
     const list = [];
-    patterns.forEach(({ regex, color }) => {
+    patterns.forEach(({ regex, color, isConversation }) => {
       let match;
       while ((match = regex.exec(debouncedValue)) !== null) {
         const visualStart = utf16ToCharIdx.get(match.index) ?? splitString(debouncedValue.substring(0, match.index)).length;
@@ -298,7 +346,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         for (let i = 0; i < visualLen; i++) {
           const pos = charCoords[visualStart + i];
           if (pos) {
-            list.push({ key: `${visualStart + i}-${regex.source}`, x: pos.x, y: pos.y, color });
+            list.push({ key: `${visualStart + i}-${regex.source}`, x: pos.x, y: pos.y, color, isConversation: !!isConversation });
           }
         }
       }
@@ -372,8 +420,10 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
 
 
 
-  // --- 3. 約物フィルター (縦書き時のみ) ---
-  const displayValue = settings.isVertical ? toVerticalDisplay(value) : value;
+  // --- 3. 約物フィルター (縦書き時のみ — メモ化でローカルテキストベース) ---
+  const displayValue = useMemo(() => {
+    return settings.isVertical ? toVerticalDisplay(localText) : localText;
+  }, [localText, settings.isVertical]);
 
   const handleChange = useCallback((e) => {
     const ta = e.target;
@@ -381,11 +431,12 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     const restored = settings.isVertical ? fromVerticalDisplay(raw) : raw;
     // カーソル位置を保存（React再レンダリングでリセットされるため）
     const cursorPos = ta.selectionStart;
-    pushHistory(value, restored, cursorPos);
+    pushHistory(localText, restored, cursorPos);
     if (currentCursorRef) currentCursorRef.current = cursorPos;
     nextCursorPos.current = cursorPos;
-    onChange(restored);
-  }, [onChange, settings.isVertical, value, pushHistory, currentCursorRef]);
+    // ★ ローカル状態を即座に更新 + App への通知はデバウンス
+    localOnChange(restored);
+  }, [localOnChange, settings.isVertical, localText, pushHistory, currentCursorRef]);
 
   const handleCopy = useCallback((e) => {
     const textarea = textareaRef.current;
@@ -430,12 +481,12 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         const before = textarea.value.substring(0, cursorPos);
         const after = textarea.value.substring(textarea.selectionEnd);
         const newValue = fromVerticalDisplay(before + after);
-        pushHistory(value, newValue, cursorPos);
+        pushHistory(localText, newValue, cursorPos);
         nextCursorPos.current = cursorPos;
-        onChange(newValue);
+        localOnChange(newValue);
       }
     }
-  }, [onChange, settings.isVertical, addToClipboard, value, pushHistory]);
+  }, [localOnChange, settings.isVertical, addToClipboard, localText, pushHistory]);
 
   // --- 4. ハンドラ ---
   const handleCursor = () => {
@@ -443,7 +494,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       onCursorStats({
         start: textareaRef.current.selectionStart,
         end: textareaRef.current.selectionEnd,
-        total: value.length
+        total: localText.length
       });
     }
   };
@@ -631,7 +682,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       
       container.scrollTop = targetScrollTop;
     }
-  }, [value, settings.isVertical, settings.paperStyle, baseMetrics]);
+  }, [localText, settings.isVertical, settings.paperStyle, baseMetrics]);
 
   useImperativeHandle(ref, () => ({
     focus: () => textareaRef.current?.focus(),
@@ -650,9 +701,9 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       const currentVal = ta.value;
       const rawVal = settings.isVertical ? fromVerticalDisplay(currentVal) : currentVal;
       const newValue = rawVal.substring(0, start) + text + rawVal.substring(end);
-      pushHistory(value, newValue, start);
+      pushHistory(localText, newValue, start);
       nextCursorPos.current = start + text.length;
-      onChange(newValue);
+      localOnChange(newValue);
     },
     insertRuby: () => {
       const ta = textareaRef.current;
@@ -666,10 +717,10 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         ? `${selectedText}《》`
         : '《》';
       const newValue = rawValue.substring(0, start) + insertion + rawValue.substring(end);
-      pushHistory(value, newValue, start);
+      pushHistory(localText, newValue, start);
       // カーソルを《》の間に配置（読みを入力する位置）
       nextCursorPos.current = start + (selectedText ? selectedText.length + 1 : 1);
-      onChange(newValue);
+      localOnChange(newValue);
       // useLayoutEffect だけでは縦書き時に復元されないことがあるため、明示的にフォーカス
       setTimeout(() => {
         const pos = start + (selectedText ? selectedText.length + 1 : 1);
@@ -760,7 +811,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         width: `${cell}px`,
         height: `${cell}px`,
         backgroundColor: h.color,
-        opacity: 0.15,
+        opacity: h.isConversation ? 0.35 : 0.15,
         borderRadius: '2px'
       }} />
     ));
@@ -791,13 +842,13 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         const pos = ta.selectionStart;
         // 前後が改行されていない場合は改行で挟むなどの調整が可能（今回はシンプルに改行挟み）
         const insertion = `\n［＃挿絵（${fileName}）入る］\n`;
-        const newValue = value.substring(0, pos) + insertion + value.substring(pos);
-        pushHistory(value, newValue, pos);
+        const newValue = localText.substring(0, pos) + insertion + localText.substring(pos);
+        pushHistory(localText, newValue, pos);
         nextCursorPos.current = pos + insertion.length;
-        onChange(newValue);
+        localOnChange(newValue);
       }
     }
-  }, [value, onChange, pushHistory, onImageDrop]);
+  }, [localText, localOnChange, pushHistory, onImageDrop]);
 
   return (
     <div lang="ja" className={`editor-container ${settings.isVertical ? 'vertical' : 'horizontal'} ${paperClass}`}>
@@ -872,7 +923,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
               const newValue = val.slice(0, start) + ghostText + val.slice(start);
               pushHistory(val, newValue);
               nextCursorPos.current = start + ghostText.length;
-              onChange(newValue);
+              localOnChange(newValue);
               setGhostText('');
               return;
             }
@@ -1021,9 +1072,9 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
                       const selected = rawValue.substring(start, end);
                       const wrapped = `{font:${f.name}}${selected}{/font}`;
                       const newValue = rawValue.substring(0, start) + wrapped + rawValue.substring(end);
-                      pushHistory(value, newValue, start);
+                      pushHistory(localText, newValue, start);
                       nextCursorPos.current = start + wrapped.length;
-                      onChange(newValue);
+                      localOnChange(newValue);
                       setEditorContextMenu(null);
                     }}>
                       {f.label}
@@ -1040,9 +1091,9 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
                     // Remove font tags from selection
                     const cleaned = selected.replace(/\{font[:：][^}]*\}/g, '').replace(/\{\/font\}/g, '');
                     const newValue = rawValue.substring(0, start) + cleaned + rawValue.substring(end);
-                    pushHistory(value, newValue, start);
+                    pushHistory(localText, newValue, start);
                     nextCursorPos.current = start + cleaned.length;
-                    onChange(newValue);
+                    localOnChange(newValue);
                     setEditorContextMenu(null);
                   }}>
                     ❌ フォント解除
@@ -1062,8 +1113,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
                   const before = ta.value.substring(0, cursorPos);
                   const after = ta.value.substring(ta.selectionEnd);
                   const newValue = settings.isVertical ? fromVerticalDisplay(before + after) : (before + after);
-                  pushHistory(value, newValue, cursorPos);
-                  onChange(newValue);
+                  pushHistory(localText, newValue, cursorPos);
+                  localOnChange(newValue);
                 }
                 setEditorContextMenu(null);
               }}>
@@ -1095,9 +1146,9 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
               const currentVal = ta.value;
               const rawVal = settings.isVertical ? fromVerticalDisplay(currentVal) : currentVal;
               const newValue = rawVal.substring(0, start) + text + rawVal.substring(end);
-              pushHistory(value, newValue, start);
+              pushHistory(localText, newValue, start);
               nextCursorPos.current = start + text.length;
-              onChange(newValue);
+              localOnChange(newValue);
               addToClipboard(text);
               requestAnimationFrame(() => {
                 ta.focus();
