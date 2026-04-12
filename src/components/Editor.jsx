@@ -143,27 +143,40 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   // タイピング時は localText のみ更新（Editor 内部の再レンダリングだけ）
   // App への通知（onChange）は 500ms デバウンスで行い、App の再レンダリングを回避
   const [localText, setLocalText] = useState(value);
-  const isLocalChangeRef = useRef(false);
   const appNotifyTimerRef = useRef(null);
   const localTextRef = useRef(localText); // ★ composition ハンドラ用（deps から localText を除外するため）
   localTextRef.current = localText;
 
+  // ★ 外部からの value 変更を検出するためのフラグ
+  //    問題: Editor → onChange → App → debouncedText → editorValue → value が戻ってくるとき、
+  //    parseNote(join('\n')) で毎回新しい文字列参照になるため === 比較では検出できない。
+  //    解決: 「自分が最後に送ったテキスト」の長さ+先頭128文字で簡易判定。
+  //    完全一致判定は重い（10万字）ので、長さが一致 かつ 先頭128文字が一致 ならローカル変更の往復とみなす。
+  const lastSentLenRef = useRef(value.length);
+  const lastSentPrefixRef = useRef(value.slice(0, 128));
+
   // 外部からの value 変更（ファイル切替、フォーマット適用等）を同期
   useEffect(() => {
-    if (!isLocalChangeRef.current) {
-      setLocalText(value);
+    // 長さが同じ かつ 先頭が同じ → 自分が送ったテキストの往復（debounce経由）→ 無視
+    if (value.length === lastSentLenRef.current && value.slice(0, 128) === lastSentPrefixRef.current) {
+      return;
     }
-    isLocalChangeRef.current = false;
+    // 外部からの変更（ファイル切替、フォーマット適用、AI挿入等）→ 同期
+    setLocalText(value);
+    lastSentLenRef.current = value.length;
+    lastSentPrefixRef.current = value.slice(0, 128);
   }, [value]);
 
   // --- Undo/Redo スタック ---
   const localOnChange = useCallback((newText) => {
     // ローカル状態を即座に更新
-    isLocalChangeRef.current = true;
     setLocalText(newText);
     // App への通知はデバウンス（500ms）
     if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
     appNotifyTimerRef.current = setTimeout(() => {
+      // ★ 自分が送った値を記録（往復判定用）
+      lastSentLenRef.current = newText.length;
+      lastSentPrefixRef.current = newText.slice(0, 128);
       onChange(newText);
     }, 500);
   }, [onChange]);
