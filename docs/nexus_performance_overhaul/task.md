@@ -13,4 +13,8 @@
     - [x] `Editor` コンポーネントの `value` プロップを `editorValue` に変更
 - [x] Editor.jsx の最適化
     - [x] `MAX_HIGHLIGHT_ELEMENTS (2000)` の導入
+    - [x] `localText` によるエディタ内状態の完結
 - [x] 動作確認・検証 (コード整合性確認)
+- [x] ビルド・プッシュ
+    - [x] `npm run build` による検証
+    - [x] リモートリポジトリへの push

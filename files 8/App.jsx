@@ -977,7 +977,6 @@ function App() {
     };
   }, [isWindowMode]); // Removed handleOpenFile to avoid infinite loop (it's now stable anyway)
 
-
   // (colorTheme/paperStyle sync は下方の統合版に集約)
 
   // Determine effective settings for rendering
