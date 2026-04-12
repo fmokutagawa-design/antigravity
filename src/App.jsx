@@ -1166,11 +1166,14 @@ function App() {
   }, [settings, activeFileHandle, projectHandle, isDarkMode]);
 
   // Save to local storage on change (Web fallback) — debounced to avoid sync I/O on every keystroke
+  // ★ プロジェクトモードでは useAutoSave がファイル保存するので localStorage は不要
+  //    10万字(≒200KB) の同期書き込みがメインスレッドを 5-50ms ブロックするため、スキップ
   useEffect(() => {
+    if (isProjectMode && activeFileHandle) return; // ファイル保存で十分
     if (!debouncedText && debouncedText !== '') return;
     localStorage.setItem('novel-editor-text', debouncedText);
     setLastSaved(new Date());
-  }, [debouncedText]);
+  }, [debouncedText, isProjectMode, activeFileHandle]);
 
   useEffect(() => {
     const settingsKey = isWindowMode ? 'novel-editor-settings-window' : 'novel-editor-settings';

@@ -21,20 +21,35 @@ export function useAutoSave({
   setIsRapidMode,
 }) {
   // Auto-save to active file in project mode
+  // ★ debouncedText は Editor(500ms) + App(500ms) で既に約1秒遅延済み
+  //    さらに setTimeout(1000) を挟むと最大2秒の遅延になるため、
+  //    スロットル方式に変更: debouncedText 変更で即保存、ただし前回から1秒未満ならスキップ
+  const lastSaveTimeRef = useRef(0);
   useEffect(() => {
-    if (isProjectMode && activeFileHandle && debouncedText !== undefined) {
-      const saveTimeout = setTimeout(async () => {
-        try {
-          await fileSystem.writeFile(activeFileHandle, debouncedText);
-          setLastSaved(new Date());
-          lastSavedTextRef.current = debouncedText;
-        } catch (error) {
-          console.error('Failed to auto-save:', error);
-          showToast('⚠️ 自動保存に失敗しました');
-        }
-      }, 1000);
+    if (!isProjectMode || !activeFileHandle || debouncedText === undefined) return;
 
-      return () => clearTimeout(saveTimeout);
+    const now = Date.now();
+    const elapsed = now - lastSaveTimeRef.current;
+
+    const doSave = async () => {
+      try {
+        await fileSystem.writeFile(activeFileHandle, debouncedText);
+        setLastSaved(new Date());
+        lastSavedTextRef.current = debouncedText;
+        lastSaveTimeRef.current = Date.now();
+      } catch (error) {
+        console.error('Failed to auto-save:', error);
+        showToast('⚠️ 自動保存に失敗しました');
+      }
+    };
+
+    if (elapsed >= 1000) {
+      // 前回保存から1秒以上経過 → 即保存
+      doSave();
+    } else {
+      // 前回保存から1秒未満 → 残り時間後に保存
+      const timer = setTimeout(doSave, 1000 - elapsed);
+      return () => clearTimeout(timer);
     }
   }, [debouncedText, isProjectMode, activeFileHandle, setLastSaved, lastSavedTextRef, showToast]);
 

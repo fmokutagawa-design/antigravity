@@ -145,6 +145,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   const [localText, setLocalText] = useState(value);
   const isLocalChangeRef = useRef(false);
   const appNotifyTimerRef = useRef(null);
+  const localTextRef = useRef(localText); // ★ composition ハンドラ用（deps から localText を除外するため）
+  localTextRef.current = localText;
 
   // 外部からの value 変更（ファイル切替、フォーマット適用等）を同期
   useEffect(() => {
@@ -447,10 +449,12 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   }, [localOnChange, settings.isVertical, localText, pushHistory, currentCursorRef]);
 
   // ★ IME composition ハンドラ
+  // localTextRef 経由で参照することで、useCallback の deps から localText を除外
+  // → キー入力ごとのコールバック再生成を回避
   const handleCompositionStart = useCallback(() => {
     isComposingRef.current = true;
-    compositionTextRef.current = localText; // 変換開始前のテキストを保存
-  }, [localText]);
+    compositionTextRef.current = localTextRef.current;
+  }, []);
 
   const handleCompositionEnd = useCallback((e) => {
     isComposingRef.current = false;
@@ -460,13 +464,13 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     const restored = settings.isVertical ? fromVerticalDisplay(raw) : raw;
     const cursorPos = ta.selectionStart;
     // 変換開始前のテキストから undo 履歴を記録（中間状態は記録しない）
-    const beforeComposition = compositionTextRef.current ?? localText;
+    const beforeComposition = compositionTextRef.current ?? localTextRef.current;
     pushHistory(beforeComposition, restored, cursorPos);
     if (currentCursorRef) currentCursorRef.current = cursorPos;
     nextCursorPos.current = cursorPos;
     localOnChange(restored);
     compositionTextRef.current = null;
-  }, [localOnChange, settings.isVertical, localText, pushHistory, currentCursorRef]);
+  }, [localOnChange, settings.isVertical, pushHistory, currentCursorRef]);
 
   const handleCopy = useCallback((e) => {
     const textarea = textareaRef.current;
