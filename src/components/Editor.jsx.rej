@@ -1,9 +1,0 @@
-@@ -960,7 +963,7 @@
-         applyText(newValue, pos + insertion.length);
-       }
-     }
--  }, [localText, localOnChange, pushHistory, onImageDrop]);
-+  }, [applyText, pushHistory, onImageDrop]);
- EOF
- 
- 
