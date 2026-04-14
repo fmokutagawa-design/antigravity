@@ -144,6 +144,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   }, []); // 初回マウント時のみ
 
   const appNotifyTimerRef = useRef(null);
+  const highlightDebounceRef = useRef(null); // ハイライト用デバウンスタイマー
   const localTextRef = useRef(value); // 初期値を prop から取得
 
   /**
@@ -210,9 +211,11 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       setDebouncedLineCount(computeTotalLines(newText, baseMetrics.maxPerLine));
       debouncePrevLenRef.current = newText.length;
     } else {
-      const timer = setTimeout(() => {
+      if (highlightDebounceRef.current) clearTimeout(highlightDebounceRef.current);
+      highlightDebounceRef.current = setTimeout(() => {
         setDebouncedValue(newText);
         setDebouncedLineCount(computeTotalLines(newText, baseMetrics.maxPerLine));
+        debouncePrevLenRef.current = newText.length;
       }, 300);
     }
   }, [onChange, baseMetrics.maxPerLine]);
@@ -703,7 +706,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       const targetScrollTop = Math.max(0, caretY - viewCenter);
       container.scrollTop = targetScrollTop;
     }
-  }, [localText, settings.isVertical, settings.paperStyle, baseMetrics]);
+  }, [settings.isVertical, settings.paperStyle, baseMetrics]);
 
   useImperativeHandle(ref, () => ({
     focus: () => textareaRef.current?.focus(),
@@ -960,7 +963,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         applyText(newValue, pos + insertion.length);
       }
     }
-  }, [localText, localOnChange, pushHistory, onImageDrop]);
+  }, [applyText, pushHistory, onImageDrop]);
 
   return (
     <div lang="ja" className={`editor-container ${settings.isVertical ? 'vertical' : 'horizontal'} ${paperClass}`}>
