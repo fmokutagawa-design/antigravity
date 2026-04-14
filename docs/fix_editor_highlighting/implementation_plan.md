@@ -1,28 +1,36 @@
-# エディタ着色（シンタックスハイライト）の復旧計画
+# シンタックスハイライト表示修正 実装計画
 
-ハイライト計算の制限値が低すぎたため、大規模文書で着色が一切行われなくなっていた問題を修正します。
+縦書きモードにおいて、シンタックスハイライト（会話文、強調、ルビなど）の背景色が表示されない問題を修正します。
 
-## ユーザー確認事項
-- 今回の問題は「14万字」などの大規模文書で発生している認識で相違ないでしょうか？
-- もし数千字程度の短い文書でも着色されない場合は、別のロジックエラーの可能性があるため、その旨お知らせください。
+## ユーザーレビューが必要な事項
+特にありません。指示書に従い、特定のロジックのみを修正します。
 
-## 変更内容
+## 提案される変更
 
-### 1. Editor.jsx のハイライト計算制限を緩和
-- `HIGHLIGHT_CHAR_LIMIT` を 20,000 から 200,000 に変更します。
-- これにより 14万字の文書でも正規表現によるマッチングが行われるようになります。
+### Editor コンポーネント
 
-### 2. 描画負荷対策の維持
-- `MAX_HIGHLIGHT_ELEMENTS = 2000` は維持します。
-- これにより、全文書を走査しても、実際に生成される DOM 要素（`<div>`）は先頭から 2,000 件に制限され、ブラウザの描画負荷を低く保ちます。
+#### [MODIFY] [Editor.jsx](file:///Volumes/Black6T/Nexus_Dev/antigravity/src/components/Editor.jsx)
 
-## 修正ファイル
+`highlightElements` の `useMemo` 内にある、縦書きモードのフィルタリングロジックを修正します。
 
-### [MODIFY] [Editor.jsx](file:///Volumes/Black6T/Nexus_Dev/antigravity/src/components/Editor.jsx)
-- `HIGHLIGHT_CHAR_LIMIT` の定数変更。
-- 必要に応じて、座標計算ロジック（`highlights` useMemo内）の微調整。
+- **原因**: `visRight` が `margin`（固定値）になっており、スクロール位置に関係なく右端（先頭）付近のハイライトしか表示されない。
+- **修正**: `visRight` を `vp.scrollLeft + vp.width + margin` に変更し、スクロール位置に応じた可視範囲でフィルタリングするようにします。
+
+```diff
+     if (isVert) {
+-      const sl = vp.scrollLeft;
+-      const visRight = margin;
+-      const visLeft = sl - margin;
++      const visLeft = vp.scrollLeft - margin;
++      const visRight = vp.scrollLeft + vp.width + margin;
+       filtered = highlights.filter(h => h.x >= visLeft && h.x <= visRight);
+     }
+```
 
 ## 検証計画
-- 修正後、大規模文書で着色が復活するか確認。
-- 小規模文書でも着色が正しく行われていることを確認。
-- タイピング時のレスポンス（デバウンスが効いているか）を確認。
+
+### 手動確認
+1.  縦書きモードで長いテキスト（10,000文字以上）を開く。
+2.  会話文（「」）などのハイライトが、画面内のどの位置でも（スクロールしても）正しく表示されることを確認。
+3.  横書きモードでハイライトが維持されていることを確認。
+4.  日本語入力および undo (Cmd+Z) が正常に動作することを確認。
