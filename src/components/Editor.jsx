@@ -139,23 +139,113 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   const isComposingRef = useRef(false);
   const compositionTextRef = useRef(null); // composition 開始前のテキストを保持
 
-  const initialDisplayValue = useMemo(() => {
-    return settings.isVertical ? toVerticalDisplay(value) : value;
-  }, []); // 初回マウント時のみ
-
+  // ★ パフォーマンス根治: ローカルテキスト状態
+  // タイピング時は localText のみ更新（Editor 内部の再レンダリングだけ）
+  // App への通知（onChange）は 500ms デバウンスで行い、App の再レンダリングを回避
+  const [localText, setLocalText] = useState(value);
   const appNotifyTimerRef = useRef(null);
-  const highlightDebounceRef = useRef(null); // ハイライト用デバウンスタイマー
-  const localTextRef = useRef(value); // 初期値を prop から取得
+  const localTextRef = useRef(localText); // ★ composition ハンドラ用（deps から localText を除外するため）
+  localTextRef.current = localText;
 
-  /**
-   * 削除済み: localText state
-   * nextCursorPos ref も Phase 3 では不要 (applyTextが直接操作するため)
-   */
+  // ★ 外部からの value 変更（ファイル切替、フォーマット適用等）を同期
+  //    問題: Editor → App → Editor の往復で value が debounce 遅延つきで戻ってくるため、
+  //    localText を上書きするとカーソル位置がリセットされる。
+  //    解決: 大幅な変更（ファイル切替等）のみ同期し、通常の往復は無視する。
+  const prevValueRef2 = useRef(value);
+  useEffect(() => {
+    const prev = prevValueRef2.current;
+    prevValueRef2.current = value;
+    // ★ 小さな差分（通常の入力→App→Editor の往復）は無視
+    //    大きな差分（ファイル切替、外部からのテキスト置換等）のみ同期
+    if (Math.abs(value.length - prev.length) > 100 || 
+        (value.length > 0 && prev.length > 0 && value.slice(0, 64) !== prev.slice(0, 64))) {
+      setLocalText(value);
+    }
+  }, [value]);
+
+  // --- Undo/Redo スタック ---
+  const localOnChange = useCallback((newText) => {
+    // ローカル状態を即座に更新
+    setLocalText(newText);
+    // App への通知はデバウンス（500ms）
+    if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
+    appNotifyTimerRef.current = setTimeout(() => {
+      onChange(newText);
+    }, 500);
+  }, [onChange]);
+
+  const { initHistory, pushHistory, undo, redo, handleKeyDown: undoKeyDown, pendingCursor: pendingCursorRef, currentCursor: currentCursorRef } = useUndoHistory(localOnChange);
+  // --- クリップボード履歴 ---
+  const { clipboardHistory, addToClipboard } = useClipboardHistory();
+
+  // ファイル切替時に履歴をリセット
+  const prevValueRef = useRef(value);
+  useEffect(() => {
+    // 値が大きく変わった場合（ファイル切替）は履歴リセット
+    if (Math.abs(value.length - prevValueRef.current.length) > 100) {
+      initHistory(value);
+    }
+    prevValueRef.current = value;
+  }, [value, initHistory]);
+
+  // カーソル位置を追跡するref（全てのonChange呼び出しで更新）
+  const nextCursorPos = useRef(null);
+
+  // React再レンダリング直後にカーソル位置を復元（useLayoutEffectでペイント前に実行）
+  // ★ IME 変換中はカーソル復元をスキップ（変換カーソルを破壊しないため）
+  useLayoutEffect(() => {
+    if (isComposingRef.current) return;
+    // undo/redo後のカーソル復元
+    if (pendingCursorRef && pendingCursorRef.current != null && textareaRef.current) {
+      const pos = pendingCursorRef.current;
+      pendingCursorRef.current = null;
+      textareaRef.current.setSelectionRange(pos, pos);
+      return;
+    }
+    // 通常編集後のカーソル復元
+    if (nextCursorPos.current != null && textareaRef.current) {
+      const pos = nextCursorPos.current;
+      nextCursorPos.current = null;
+      textareaRef.current.setSelectionRange(pos, pos);
+    }
+  });
+
+  // Context Menu Close Handler
+  useEffect(() => {
+    const close = () => setEditorContextMenu(null);
+    if (editorContextMenu) {
+      document.addEventListener('click', close);
+      return () => document.removeEventListener('click', close);
+    }
+  }, [editorContextMenu]);
+
+  // cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
+    };
+  }, []);
+
 
   const splitString = (str) => Array.from(str || "");
 
+  // --- パフォーマンス最適化: ハイライト用デバウンス（ローカルテキストベース）---
+  const [debouncedValue, setDebouncedValue] = useState(localText);
+  const debouncePrevLenRef = useRef(localText.length);
+
+  useEffect(() => {
+    // 大きな変更（ファイル切替等）は即座に反映
+    if (Math.abs(localText.length - debouncePrevLenRef.current) > 100) {
+      setDebouncedValue(localText);
+      debouncePrevLenRef.current = localText.length;
+      return;
+    }
+    debouncePrevLenRef.current = localText.length;
+    const timer = setTimeout(() => setDebouncedValue(localText), 300);
+    return () => clearTimeout(timer);
+  }, [localText]);
+
   // --- 1a. ベース寸法（設定のみ依存、valueに依存しない） ---
-  // useCallback/localOnChange よりも前に定義する必要がある (TDZ回避)
   const baseMetrics = useMemo(() => {
     const fontSize = parseInt(settings.fontSize) || 18;
     const isManuscript = settings.paperStyle === 'grid';
@@ -181,133 +271,21 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     return { fontSize, cell, maxPerLine, padding: PADDING, letterSpacing: cell - fontSize };
   }, [settings.fontSize, settings.lineHeight, settings.isVertical, settings.charsPerLine, settings.paperStyle, settings.charSpacing]);
 
-  // --- パフォーマンス最適化: ハイライト用デバウンス（ローカルテキストベース）---
-  const [debouncedValue, setDebouncedValue] = useState(localTextRef.current);
-  const debouncePrevLenRef = useRef(localTextRef.current.length);
-
   // --- 1b. グリッド寸法（デバウンス値に依存 — 毎キー入力での全文走査を回避） ---
-  const [debouncedLineCount, setDebouncedLineCount] = useState(() => computeTotalLines(localTextRef.current, baseMetrics.maxPerLine));
+  const [debouncedLineCount, setDebouncedLineCount] = useState(() => computeTotalLines(localText, baseMetrics.maxPerLine));
   const lineCountTimerRef = useRef(null);
-
-  /**
-   * 外部からのテキスト変更を安全に適用する統合窓口。
-   * Phase 3: Uncontrolled 本番化。DOM 直接操作とカーソル直接復元を行う。
-   */
-  const applyText = useCallback((newText, cursorPos = null) => {
-    // IME 変換中は適用しない（バッファ破壊防止）
-    if (isComposingRef.current) return;
-
-    const ta = textareaRef.current;
-    if (!ta) return;
-
-    // 1. DOM を直接更新
-    ta.value = settings.isVertical ? toVerticalDisplay(newText) : newText;
-
-    // 2. ref を更新
-    localTextRef.current = newText;
-
-    // 3. App への通知 (即時)
-    onChange(newText);
-
-    // 4. ハイライト計算用 debouncedValue 等の即時更新
-    setDebouncedValue(newText);
-    setDebouncedLineCount(computeTotalLines(newText, baseMetrics.maxPerLine));
-    debouncePrevLenRef.current = newText.length;
-
-    // 5. カーソル復元
-    if (cursorPos != null) {
-      ta.setSelectionRange(cursorPos, cursorPos);
-    }
-  }, [settings.isVertical, onChange, baseMetrics.maxPerLine]);
-
-  // ★ 外部からの value 変更を同期 (ファイル切替等)
-  const prevValueRef2 = useRef(value);
   useEffect(() => {
-    const prev = prevValueRef2.current;
-    prevValueRef2.current = value;
-    if (Math.abs(value.length - prev.length) > 100 || 
-        (value.length > 0 && prev.length > 0 && value.slice(0, 64) !== prev.slice(0, 64))) {
-      applyText(value);
+    // 大きな変更は即座に反映
+    if (Math.abs(localText.length - (debouncePrevLenRef.current || 0)) > 50) {
+      setDebouncedLineCount(computeTotalLines(localText, baseMetrics.maxPerLine));
+      return;
     }
-  }, [value, applyText]);
-
-  // --- Undo/Redo スタック ---
-  const localOnChange = useCallback((newText) => {
-    // ref を更新
-    localTextRef.current = newText;
-
-    // App への通知はデバウンス（500ms）
-    if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
-    appNotifyTimerRef.current = setTimeout(() => {
-      onChange(newText);
-    }, 500);
-
-    // ハイライト用のデバウンス（300ms）
-    if (Math.abs(newText.length - (debouncePrevLenRef.current || 0)) > 100) {
-      setDebouncedValue(newText);
-      setDebouncedLineCount(computeTotalLines(newText, baseMetrics.maxPerLine));
-      debouncePrevLenRef.current = newText.length;
-    } else {
-      if (highlightDebounceRef.current) clearTimeout(highlightDebounceRef.current);
-      highlightDebounceRef.current = setTimeout(() => {
-        setDebouncedValue(newText);
-        setDebouncedLineCount(computeTotalLines(newText, baseMetrics.maxPerLine));
-        debouncePrevLenRef.current = newText.length;
-      }, 300);
-    }
-  }, [onChange, baseMetrics.maxPerLine]);
-
-  // ★ Undo/Redo 用コールバック: useUndoHistory に渡すが、中身は後で設定する（TDZ 回避）
-  const undoRedoCallbackRef = useRef(null);
-  const undoRedoCallback = useCallback((newText) => {
-    if (undoRedoCallbackRef.current) undoRedoCallbackRef.current(newText);
-  }, []);
-
-  const { initHistory, pushHistory, undo, redo, handleKeyDown: undoKeyDown, pendingCursor: pendingCursorRef, currentCursor: currentCursorRef } = useUndoHistory(undoRedoCallback);
-
-  // ★ useUndoHistory の後で pendingCursorRef が利用可能になったので、本体を設定
-  undoRedoCallbackRef.current = (newText) => {
-    const pos = (pendingCursorRef && pendingCursorRef.current != null) ? pendingCursorRef.current : null;
-    if (pendingCursorRef) pendingCursorRef.current = null;
-    applyText(newText, pos);
-  };
-  // --- クリップボード履歴 ---
-  const { clipboardHistory, addToClipboard } = useClipboardHistory();
-
-  // ファイル切替時に履歴をリセット
-  const prevValueRef = useRef(value);
-  useEffect(() => {
-    // 値が大きく変わった場合（ファイル切替）は履歴リセット
-    if (Math.abs(value.length - prevValueRef.current.length) > 100) {
-      initHistory(value);
-    }
-    prevValueRef.current = value;
-  }, [value, initHistory]);
-
-  // React再レンダリング直後のカーソル復元ロジックは Uncontrolled では不要
-  // applyText が直接 ta.setSelectionRange を行うため。
-  useLayoutEffect(() => {
-    // 必要であればここに将来の同期ロジックを追加
-  });
-
-  // Context Menu Close Handler
-  useEffect(() => {
-    const close = () => setEditorContextMenu(null);
-    if (editorContextMenu) {
-      document.addEventListener('click', close);
-      return () => document.removeEventListener('click', close);
-    }
-  }, [editorContextMenu]);
-
-  // cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
-    };
-  }, []);
-
-
-  // 定義を applyText 前に移動済み
+    if (lineCountTimerRef.current) clearTimeout(lineCountTimerRef.current);
+    lineCountTimerRef.current = setTimeout(() => {
+      setDebouncedLineCount(computeTotalLines(localText, baseMetrics.maxPerLine));
+    }, 300);
+    return () => { if (lineCountTimerRef.current) clearTimeout(lineCountTimerRef.current); };
+  }, [localText, baseMetrics.maxPerLine]);
 
   const metrics = useMemo(() => {
     const { fontSize, cell, maxPerLine, padding, letterSpacing } = baseMetrics;
@@ -454,7 +432,9 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
 
 
   // --- 3. 約物フィルター (縦書き時のみ — メモ化でローカルテキストベース) ---
-  // Uncontrolled 移行後は displayValue state 依存を削除
+  const displayValue = useMemo(() => {
+    return settings.isVertical ? toVerticalDisplay(localText) : localText;
+  }, [localText, settings.isVertical]);
 
   const handleChange = useCallback((e) => {
     const ta = e.target;
@@ -463,13 +443,15 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     const cursorPos = ta.selectionStart;
 
     if (isComposingRef.current) {
-      // ★ IME 変換中: DOM はブラウザが管理。ref だけ更新しておく（同期のため）
-      localTextRef.current = restored;
+      // ★ IME 変換中: localText は更新する（React が DOM を上書きしないように）
+      //    ただし undo 履歴と App への通知はスキップ（確定時に handleCompositionEnd で行う）
+      setLocalText(restored);
       return;
     }
 
     pushHistory(localTextRef.current, restored, cursorPos);
     if (currentCursorRef) currentCursorRef.current = cursorPos;
+    nextCursorPos.current = cursorPos;
     localOnChange(restored);
   }, [localOnChange, settings.isVertical, pushHistory, currentCursorRef]);
 
@@ -492,6 +474,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     const beforeComposition = compositionTextRef.current ?? localTextRef.current;
     pushHistory(beforeComposition, restored, cursorPos);
     if (currentCursorRef) currentCursorRef.current = cursorPos;
+    nextCursorPos.current = cursorPos;
     localOnChange(restored);
     compositionTextRef.current = null;
   }, [localOnChange, settings.isVertical, pushHistory, currentCursorRef]);
@@ -540,7 +523,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         const after = textarea.value.substring(textarea.selectionEnd);
         const newValue = fromVerticalDisplay(before + after);
         pushHistory(localTextRef.current, newValue, cursorPos);
-        applyText(newValue, cursorPos);
+        nextCursorPos.current = cursorPos;
+        localOnChange(newValue);
       }
     }
   }, [localOnChange, settings.isVertical, addToClipboard, pushHistory]);
@@ -551,7 +535,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       onCursorStats({
         start: textareaRef.current.selectionStart,
         end: textareaRef.current.selectionEnd,
-        total: textareaRef.current.value.length
+        total: localText.length
       });
     }
   };
@@ -677,7 +661,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     }
 
     const { maxPerLine, cell, padding } = baseMetrics;
-    const text = settings.isVertical ? toVerticalDisplay(localTextRef.current) : localTextRef.current;
+    const text = settings.isVertical ? toVerticalDisplay(localText) : localText;
 
     let line = 0;
     let pos = 0;
@@ -707,7 +691,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       const targetScrollTop = Math.max(0, caretY - viewCenter);
       container.scrollTop = targetScrollTop;
     }
-  }, [settings.isVertical, settings.paperStyle, baseMetrics]);
+  }, [localText, settings.isVertical, settings.paperStyle, baseMetrics]);
 
   useImperativeHandle(ref, () => ({
     focus: () => textareaRef.current?.focus(),
@@ -726,8 +710,9 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       const currentVal = ta.value;
       const rawVal = settings.isVertical ? fromVerticalDisplay(currentVal) : currentVal;
       const newValue = rawVal.substring(0, start) + text + rawVal.substring(end);
-      pushHistory(localTextRef.current, newValue, start);
-      applyText(newValue, start + text.length);
+      pushHistory(localText, newValue, start);
+      nextCursorPos.current = start + text.length;
+      localOnChange(newValue);
     },
     insertRuby: () => {
       const ta = textareaRef.current;
@@ -741,26 +726,16 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         ? `${selectedText}《》`
         : '《》';
       const newValue = rawValue.substring(0, start) + insertion + rawValue.substring(end);
-      pushHistory(localTextRef.current, newValue, start);
+      pushHistory(localText, newValue, start);
       // カーソルを《》の間に配置（読みを入力する位置）
-      const cursorPos = start + (selectedText ? selectedText.length + 1 : 1);
-      applyText(newValue, cursorPos);
-
+      nextCursorPos.current = start + (selectedText ? selectedText.length + 1 : 1);
+      localOnChange(newValue);
       // useLayoutEffect だけでは縦書き時に復元されないことがあるため、明示的にフォーカス
       setTimeout(() => {
+        const pos = start + (selectedText ? selectedText.length + 1 : 1);
         ta.focus();
-        ta.setSelectionRange(cursorPos, cursorPos);
+        ta.setSelectionRange(pos, pos);
       }, 0);
-    },
-    insertText: (text) => {
-      const ta = textareaRef.current;
-      if (!ta) return;
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
-      const rawVal = settings.isVertical ? fromVerticalDisplay(ta.value) : ta.value;
-      const newValue = rawVal.substring(0, start) + text + rawVal.substring(end);
-      pushHistory(localTextRef.current, newValue, start);
-      applyText(newValue, start + text.length);
     },
     setCursorPosition: (position) => {
       const ta = textareaRef.current;
@@ -907,8 +882,9 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     const margin = cell * 3;
     let filtered;
     if (isVert) {
-      const visLeft = vp.scrollLeft - margin;
-      const visRight = vp.scrollLeft + vp.width + margin;
+      const sl = vp.scrollLeft;
+      const visRight = margin;
+      const visLeft = sl - margin;
       filtered = highlights.filter(h => h.x >= visLeft && h.x <= visRight);
     } else {
       const visTop = vp.scrollTop - margin;
@@ -959,12 +935,13 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         const pos = ta.selectionStart;
         // 前後が改行されていない場合は改行で挟むなどの調整が可能（今回はシンプルに改行挟み）
         const insertion = `\n［＃挿絵（${fileName}）入る］\n`;
-        const newValue = localTextRef.current.substring(0, pos) + insertion + localTextRef.current.substring(pos);
-        pushHistory(localTextRef.current, newValue, pos);
-        applyText(newValue, pos + insertion.length);
+        const newValue = localText.substring(0, pos) + insertion + localText.substring(pos);
+        pushHistory(localText, newValue, pos);
+        nextCursorPos.current = pos + insertion.length;
+        localOnChange(newValue);
       }
     }
-  }, [applyText, pushHistory, onImageDrop]);
+  }, [localText, localOnChange, pushHistory, onImageDrop]);
 
   return (
     <div lang="ja" className={`editor-container ${settings.isVertical ? 'vertical' : 'horizontal'} ${paperClass}`}>
@@ -1022,7 +999,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         lang="ja"
         ref={textareaRef}
         className={`native-grid-editor ${paperClass}`}
-        defaultValue={initialDisplayValue}
+        value={displayValue}
         onChange={handleChange}
         onCompositionStart={handleCompositionStart}
         onCompositionEnd={handleCompositionEnd}
@@ -1039,9 +1016,9 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
               const start = ta.selectionStart;
               const val = ta.value;
               const newValue = val.slice(0, start) + ghostText + val.slice(start);
-              const restoredNewValue = settings.isVertical ? fromVerticalDisplay(newValue) : newValue;
-              pushHistory(localTextRef.current, restoredNewValue);
-              applyText(restoredNewValue, start + ghostText.length);
+              pushHistory(val, newValue);
+              nextCursorPos.current = start + ghostText.length;
+              localOnChange(newValue);
               setGhostText('');
               return;
             }
@@ -1147,8 +1124,9 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
                       const selected = rawValue.substring(start, end);
                       const wrapped = `{font:${f.name}}${selected}{/font}`;
                       const newValue = rawValue.substring(0, start) + wrapped + rawValue.substring(end);
-                      pushHistory(localTextRef.current, newValue, start);
-                      applyText(newValue, start + wrapped.length);
+                      pushHistory(localText, newValue, start);
+                      nextCursorPos.current = start + wrapped.length;
+                      localOnChange(newValue);
                       setEditorContextMenu(null);
                     }}>
                       {f.label}
@@ -1165,8 +1143,9 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
                     // Remove font tags from selection
                     const cleaned = selected.replace(/\{font[:：][^}]*\}/g, '').replace(/\{\/font\}/g, '');
                     const newValue = rawValue.substring(0, start) + cleaned + rawValue.substring(end);
-                    pushHistory(localTextRef.current, newValue, start);
-                    applyText(newValue, start + cleaned.length);
+                    pushHistory(localText, newValue, start);
+                    nextCursorPos.current = start + cleaned.length;
+                    localOnChange(newValue);
                     setEditorContextMenu(null);
                   }}>
                     ❌ フォント解除
@@ -1186,8 +1165,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
                   const before = ta.value.substring(0, cursorPos);
                   const after = ta.value.substring(ta.selectionEnd);
                   const newValue = settings.isVertical ? fromVerticalDisplay(before + after) : (before + after);
-                  pushHistory(localTextRef.current, newValue, cursorPos);
-                  applyText(newValue, cursorPos);
+                  pushHistory(localText, newValue, cursorPos);
+                  localOnChange(newValue);
                 }
                 setEditorContextMenu(null);
               }}>
@@ -1219,8 +1198,9 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
               const currentVal = ta.value;
               const rawVal = settings.isVertical ? fromVerticalDisplay(currentVal) : currentVal;
               const newValue = rawVal.substring(0, start) + text + rawVal.substring(end);
-              pushHistory(localTextRef.current, newValue, start);
-              applyText(newValue, start + text.length);
+              pushHistory(localText, newValue, start);
+              nextCursorPos.current = start + text.length;
+              localOnChange(newValue);
               addToClipboard(text);
               requestAnimationFrame(() => {
                 ta.focus();
