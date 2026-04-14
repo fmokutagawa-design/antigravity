@@ -144,50 +144,12 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   }, []); // 初回マウント時のみ
 
   const appNotifyTimerRef = useRef(null);
-  const highlightDebounceRef = useRef(null); // ハイライト用デバウンスタイマー
   const localTextRef = useRef(value); // 初期値を prop から取得
 
   /**
    * 削除済み: localText state
    * nextCursorPos ref も Phase 3 では不要 (applyTextが直接操作するため)
    */
-
-  const splitString = (str) => Array.from(str || "");
-
-  // --- 1a. ベース寸法（設定のみ依存、valueに依存しない） ---
-  // useCallback/localOnChange よりも前に定義する必要がある (TDZ回避)
-  const baseMetrics = useMemo(() => {
-    const fontSize = parseInt(settings.fontSize) || 18;
-    const isManuscript = settings.paperStyle === 'grid';
-    const lineHeightRatio = isManuscript
-      ? (settings.lineHeight || 1.65)
-      : (settings.charSpacing || 1.4);
-    const cell = Math.floor(fontSize * lineHeightRatio);
-    const PADDING = 10;
-
-    let maxPerLine;
-    if (settings.isVertical) {
-      const winH = window.innerHeight;
-      const availableH = winH - (PADDING * 2) - 28 - 40;
-      maxPerLine = settings.charsPerLine || Math.floor(availableH / cell);
-      if (maxPerLine < 5) maxPerLine = 20;
-    } else {
-      const winW = window.innerWidth;
-      const availableW = winW - 320 - (PADDING * 2);
-      maxPerLine = settings.charsPerLine || Math.floor(availableW / cell);
-      if (maxPerLine < 5) maxPerLine = 20;
-    }
-
-    return { fontSize, cell, maxPerLine, padding: PADDING, letterSpacing: cell - fontSize };
-  }, [settings.fontSize, settings.lineHeight, settings.isVertical, settings.charsPerLine, settings.paperStyle, settings.charSpacing]);
-
-  // --- パフォーマンス最適化: ハイライト用デバウンス（ローカルテキストベース）---
-  const [debouncedValue, setDebouncedValue] = useState(localTextRef.current);
-  const debouncePrevLenRef = useRef(localTextRef.current.length);
-
-  // --- 1b. グリッド寸法（デバウンス値に依存 — 毎キー入力での全文走査を回避） ---
-  const [debouncedLineCount, setDebouncedLineCount] = useState(() => computeTotalLines(localTextRef.current, baseMetrics.maxPerLine));
-  const lineCountTimerRef = useRef(null);
 
   /**
    * 外部からのテキスト変更を安全に適用する統合窓口。
@@ -248,29 +210,24 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       setDebouncedLineCount(computeTotalLines(newText, baseMetrics.maxPerLine));
       debouncePrevLenRef.current = newText.length;
     } else {
-      if (highlightDebounceRef.current) clearTimeout(highlightDebounceRef.current);
-      highlightDebounceRef.current = setTimeout(() => {
+      const timer = setTimeout(() => {
         setDebouncedValue(newText);
         setDebouncedLineCount(computeTotalLines(newText, baseMetrics.maxPerLine));
-        debouncePrevLenRef.current = newText.length;
       }, 300);
     }
   }, [onChange, baseMetrics.maxPerLine]);
 
-  // ★ Undo/Redo 用コールバック: useUndoHistory に渡すが、中身は後で設定する（TDZ 回避）
-  const undoRedoCallbackRef = useRef(null);
-  const undoRedoCallback = useCallback((newText) => {
-    if (undoRedoCallbackRef.current) undoRedoCallbackRef.current(newText);
-  }, []);
-
-  const { initHistory, pushHistory, undo, redo, handleKeyDown: undoKeyDown, pendingCursor: pendingCursorRef, currentCursor: currentCursorRef } = useUndoHistory(undoRedoCallback);
-
-  // ★ useUndoHistory の後で pendingCursorRef が利用可能になったので、本体を設定
-  undoRedoCallbackRef.current = (newText) => {
+  /**
+   * Undo/Redo 時に applyText を経由して DOM を更新するためのラッパー
+   */
+  const applyTextFromHistory = useCallback((newText) => {
+    // useUndoHistory から呼ばれる際のカーソルは pendingCursorRef に入っている
     const pos = (pendingCursorRef && pendingCursorRef.current != null) ? pendingCursorRef.current : null;
     if (pendingCursorRef) pendingCursorRef.current = null;
     applyText(newText, pos);
-  };
+  }, [applyText]);
+
+  const { initHistory, pushHistory, undo, redo, handleKeyDown: undoKeyDown, pendingCursor: pendingCursorRef, currentCursor: currentCursorRef } = useUndoHistory(applyTextFromHistory);
   // --- クリップボード履歴 ---
   const { clipboardHistory, addToClipboard } = useClipboardHistory();
 
@@ -307,7 +264,46 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   }, []);
 
 
-  // 定義を applyText 前に移動済み
+  const splitString = (str) => Array.from(str || "");
+
+  // --- パフォーマンス最適化: ハイライト用デバウンス（ローカルテキストベース）---
+  const [debouncedValue, setDebouncedValue] = useState(localTextRef.current);
+  const debouncePrevLenRef = useRef(localTextRef.current.length);
+
+  // useEffect による追従を廃止 (Phase 2)
+  // 初期同期は applyText/localOnChange が管理する。
+
+  // --- 1a. ベース寸法（設定のみ依存、valueに依存しない） ---
+  const baseMetrics = useMemo(() => {
+    const fontSize = parseInt(settings.fontSize) || 18;
+    const isManuscript = settings.paperStyle === 'grid';
+    const lineHeightRatio = isManuscript
+      ? (settings.lineHeight || 1.65)
+      : (settings.charSpacing || 1.4);
+    const cell = Math.floor(fontSize * lineHeightRatio);
+    const PADDING = 10;
+
+    let maxPerLine;
+    if (settings.isVertical) {
+      const winH = window.innerHeight;
+      const availableH = winH - (PADDING * 2) - 28 - 40;
+      maxPerLine = settings.charsPerLine || Math.floor(availableH / cell);
+      if (maxPerLine < 5) maxPerLine = 20;
+    } else {
+      const winW = window.innerWidth;
+      const availableW = winW - 320 - (PADDING * 2);
+      maxPerLine = settings.charsPerLine || Math.floor(availableW / cell);
+      if (maxPerLine < 5) maxPerLine = 20;
+    }
+
+    return { fontSize, cell, maxPerLine, padding: PADDING, letterSpacing: cell - fontSize };
+  }, [settings.fontSize, settings.lineHeight, settings.isVertical, settings.charsPerLine, settings.paperStyle, settings.charSpacing]);
+
+  // --- 1b. グリッド寸法（デバウンス値に依存 — 毎キー入力での全文走査を回避） ---
+  const [debouncedLineCount, setDebouncedLineCount] = useState(() => computeTotalLines(localTextRef.current, baseMetrics.maxPerLine));
+  const lineCountTimerRef = useRef(null);
+
+  // useEffect による追従を廃止 (Phase 2)
 
   const metrics = useMemo(() => {
     const { fontSize, cell, maxPerLine, padding, letterSpacing } = baseMetrics;
@@ -707,7 +703,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       const targetScrollTop = Math.max(0, caretY - viewCenter);
       container.scrollTop = targetScrollTop;
     }
-  }, [settings.isVertical, settings.paperStyle, baseMetrics]);
+  }, [localText, settings.isVertical, settings.paperStyle, baseMetrics]);
 
   useImperativeHandle(ref, () => ({
     focus: () => textareaRef.current?.focus(),
@@ -964,7 +960,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         applyText(newValue, pos + insertion.length);
       }
     }
-  }, [applyText, pushHistory, onImageDrop]);
+  }, [localText, localOnChange, pushHistory, onImageDrop]);
 
   return (
     <div lang="ja" className={`editor-container ${settings.isVertical ? 'vertical' : 'horizontal'} ${paperClass}`}>
