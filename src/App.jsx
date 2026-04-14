@@ -937,7 +937,7 @@ function App() {
           (async () => {
             try {
               setProjectHandle(projectPath);
-              const tree = await fileSystem.readDirectory({ handle: projectPath });
+              const tree = await fileSystem.readDirectory(projectPath);
               setFileTree(tree);
               setIsProjectMode(true);
             } catch (err) {
@@ -952,7 +952,14 @@ function App() {
         loadProjectHandle().then(async (handle) => {
           if (!handle) return;
           try {
-            if (handle.requestPermission) {
+            if (isElectron || isTauri) {
+              // Electron/Tauri: Path based
+              setProjectHandle(handle);
+              const tree = await fileSystem.readDirectory(handle);
+              setFileTree(tree);
+              setIsProjectMode(true);
+            } else if (handle.requestPermission) {
+              // Browser: File System Access API handle based
               const permission = await handle.requestPermission({ mode: 'readwrite' });
               if (permission === 'granted') {
                 setProjectHandle(handle);
