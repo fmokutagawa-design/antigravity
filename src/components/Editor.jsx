@@ -437,20 +437,21 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   }, [localText, settings.isVertical]);
 
   const handleChange = useCallback((e) => {
-    // ★ IME 変換中は React の state 更新をスキップ
-    // ブラウザが textarea の DOM を直接操作するため、React が介入すると
-    // IME バッファを破壊して「文字が消える」「二重入力」の原因になる
-    if (isComposingRef.current) return;
-
     const ta = e.target;
     const raw = ta.value;
     const restored = settings.isVertical ? fromVerticalDisplay(raw) : raw;
-    // カーソル位置を保存（React再レンダリングでリセットされるため）
     const cursorPos = ta.selectionStart;
+
+    if (isComposingRef.current) {
+      // ★ IME 変換中: localText は更新する（React が DOM を上書きしないように）
+      //    ただし undo 履歴と App への通知はスキップ（確定時に handleCompositionEnd で行う）
+      setLocalText(restored);
+      return;
+    }
+
     pushHistory(localTextRef.current, restored, cursorPos);
     if (currentCursorRef) currentCursorRef.current = cursorPos;
     nextCursorPos.current = cursorPos;
-    // ★ ローカル状態を即座に更新 + App への通知はデバウンス
     localOnChange(restored);
   }, [localOnChange, settings.isVertical, pushHistory, currentCursorRef]);
 
