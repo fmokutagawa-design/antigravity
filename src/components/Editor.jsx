@@ -768,9 +768,9 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     settings.paperStyle === 'grid' ? 'paper-manuscript' :
       settings.paperStyle === 'lined' ? 'paper-lined' : 'paper-plain';
 
-  // フォントスタイル
+  // フォントスタイル（メモ化 — レンダリングごとの新規オブジェクト生成を回避）
   const cleanFontFamily = settings.cleanFontFamily || 'var(--font-mincho)';
-  const fontStyle = isCleanMode ? {
+  const fontStyle = useMemo(() => isCleanMode ? {
     fontFamily: `${cleanFontFamily}, serif`,
     letterSpacing: '0em',
     lineHeight: settings.isVertical ? 'normal' : '2.0',
@@ -783,31 +783,124 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     fontFamily: `${settings.fontFamily || 'var(--font-mincho)'}, serif`,
     letterSpacing: `${metrics.letterSpacing}px`,
     lineHeight: `${metrics.cell}px`,
-    // 全角幅を強制
     fontVariantEastAsian: 'full-width',
-    // 合字を無効化
     fontVariantLigatures: 'none',
-    // カーニング完全無効化
     fontKerning: 'none',
-    // Chromium の自動アキ（句読点・括弧周りの余白調整）を殺す
     textAutospace: 'no-autospace',
-    // CJK約物間の余白折りたたみを殺す（Chromium 144 対応）
     textSpacingTrim: 'space-all',
-    // OpenType機能を制御:
     fontFeatureSettings: settings.isVertical
       ? '"palt" 0, "halt" 0, "kern" 0, "vkrn" 0, "chws" 0, "liga" 0, "clig" 0, "calt" 0, "vert" 1, "vrt2" 1'
       : '"palt" 0, "halt" 0, "kern" 0, "vkrn" 0, "chws" 0, "liga" 0, "clig" 0, "calt" 0, "vert" 0, "vrt2" 0',
-  };
+  }, [isCleanMode, cleanFontFamily, settings.isVertical, settings.fontFamily, metrics.letterSpacing, metrics.cell]);
 
-  // --- メモ化: シンタックスハイライト要素（件数上限付き — DOM爆発防止） ---
-  const MAX_HIGHLIGHT_ELEMENTS = 2000;
+  // ★ textarea の style オブジェクトをメモ化（キー入力ごとの新規オブジェクト生成を回避）
+  const textareaStyle = useMemo(() => isCleanMode ? {
+    fontSize: `${settings.fontSize || 16}px`,
+    width: settings.isVertical ? `${Math.max(5000, metrics.gridW + 200)}px` : '100%',
+    height: '100%',
+    maxWidth: settings.isVertical ? 'none'
+      : (settings.charsPerLine ? `${settings.charsPerLine * (parseInt(settings.fontSize) || 16) * 1.2 + 64}px` : 'none'),
+    margin: settings.isVertical ? '0' : (settings.charsPerLine ? '0 auto' : '0'),
+    padding: '40px 32px',
+    textAlign: 'start',
+    wordBreak: 'normal',
+    overflowWrap: 'break-word',
+    lineBreak: 'normal',
+    writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb',
+    textOrientation: settings.isVertical ? 'upright' : 'mixed',
+    overflowY: settings.isVertical ? 'hidden' : 'scroll',
+    overflowX: 'hidden',
+    resize: 'none',
+    background: 'transparent',
+    direction: 'ltr',
+    ...fontStyle
+  } : {
+    fontSize: `${metrics.fontSize}px`,
+    '--cell': `${metrics.cell}px`,
+    '--grid-w': `${metrics.gridW}px`,
+    '--grid-h': `${metrics.gridH}px`,
+    '--ls-half': `${Math.round(metrics.letterSpacing / 2)}px`,
+    width: settings.isVertical
+      ? `${metrics.gridW + (metrics.padding * 2) + metrics.cell + 2}px`
+      : `${metrics.gridW + (metrics.padding * 2) + 2}px`,
+    height: settings.isVertical
+      ? `${metrics.gridH + (metrics.padding * 2) + 2}px`
+      : `${metrics.gridH + (metrics.padding * 2) + metrics.cell + 2}px`,
+    padding: `${metrics.padding}px`,
+    textAlign: 'start',
+    wordBreak: 'break-all',
+    lineBreak: 'anywhere',
+    textOrientation: settings.isVertical ? 'upright' : 'mixed',
+    overflow: 'hidden',
+    resize: 'none',
+    ...fontStyle
+  }, [isCleanMode, settings.fontSize, settings.isVertical, settings.charsPerLine, metrics, fontStyle]);
+
+  // --- メモ化: シンタックスハイライト要素（ビューポート仮想化 — 可視範囲のみ描画） ---
+  const [viewportRect, setViewportRect] = useState({ top: 0, left: 0, width: 0, height: 0, scrollTop: 0, scrollLeft: 0 });
+  
+  // スクロール・リサイズ時にビューポートを更新（throttle 付き）
+  const viewportTimerRef = useRef(null);
+  const updateViewport = useCallback(() => {
+    const container = textareaRef.current?.closest('.editor-container');
+    if (!container) return;
+    setViewportRect({
+      top: 0, left: 0,
+      width: container.clientWidth,
+      height: container.clientHeight,
+      scrollTop: container.scrollTop,
+      scrollLeft: container.scrollLeft,
+    });
+  }, []);
+
+  useEffect(() => {
+    const container = textareaRef.current?.closest('.editor-container');
+    if (!container) return;
+    const onScroll = () => {
+      if (viewportTimerRef.current) return; // throttle
+      viewportTimerRef.current = requestAnimationFrame(() => {
+        viewportTimerRef.current = null;
+        updateViewport();
+      });
+    };
+    container.addEventListener('scroll', onScroll, { passive: true });
+    // 初期化
+    updateViewport();
+    return () => {
+      container.removeEventListener('scroll', onScroll);
+      if (viewportTimerRef.current) cancelAnimationFrame(viewportTimerRef.current);
+    };
+  }, [updateViewport, settings.isVertical]);
+
   const highlightElements = useMemo(() => {
     if (settings.editorSyntaxColors === false || !highlights.length) return null;
     const cell = baseMetrics.cell;
     const isVert = settings.isVertical;
-    const limited = highlights.length > MAX_HIGHLIGHT_ELEMENTS
-      ? highlights.slice(0, MAX_HIGHLIGHT_ELEMENTS)
-      : highlights;
+    const pad = baseMetrics.padding;
+    
+    // ★ ビューポート内のハイライトだけをフィルタリング
+    // マージンを cell * 3 分追加して、スクロール直後の空白を防ぐ
+    const margin = cell * 3;
+    let filtered;
+    if (isVert) {
+      // 縦書き: h.x は負値（右端=0、左に進むほど負）
+      // scrollLeft も負値（右端=0）
+      // 可視範囲: scrollLeft ～ scrollLeft + clientWidth の範囲内の h.x
+      const sl = viewportRect.scrollLeft;
+      const visRight = margin; // 右端よりmargin分右まで
+      const visLeft = sl - margin; // スクロール位置よりmargin分左まで
+      filtered = highlights.filter(h => h.x >= visLeft && h.x <= visRight);
+    } else {
+      // 横書き: scrollTop ベース
+      const visTop = viewportRect.scrollTop - margin;
+      const visBottom = viewportRect.scrollTop + viewportRect.height + margin;
+      filtered = highlights.filter(h => h.y >= visTop && h.y <= visBottom);
+    }
+
+    // フィルタ後も上限を設ける（安全弁）
+    const MAX_VISIBLE = 500;
+    const limited = filtered.length > MAX_VISIBLE ? filtered.slice(0, MAX_VISIBLE) : filtered;
+    
     return limited.map((h) => (
       <div key={h.key} style={{
         position: 'absolute',
@@ -817,11 +910,11 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         width: `${cell}px`,
         height: `${cell}px`,
         backgroundColor: h.color,
-        opacity: h.isConversation ? 0.35 : 0.15,
+        opacity: h.isConversation ? 0.5 : 0.25,
         borderRadius: '2px'
       }} />
     ));
-  }, [highlights, settings.isVertical, settings.editorSyntaxColors, baseMetrics.cell]);
+  }, [highlights, settings.isVertical, settings.editorSyntaxColors, baseMetrics.cell, baseMetrics.padding, viewportRect]);
 
   // --- ドラッグ&ドロップでの画像挿入 ---
   const handleDragOver = useCallback((e) => {
@@ -968,50 +1061,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         }}
         spellCheck={false}
         placeholder="ここから物語を紡ぎましょう..."
-        style={isCleanMode ? {
-          // Clean mode: proportional font, no grid
-          fontSize: `${settings.fontSize || 16}px`,
-          width: settings.isVertical ? `${Math.max(5000, metrics.gridW + 200)}px` : '100%',
-          height: '100%',
-          maxWidth: settings.isVertical ? 'none'
-            : (settings.charsPerLine ? `${settings.charsPerLine * (parseInt(settings.fontSize) || 16) * 1.2 + 64}px` : 'none'),
-          margin: settings.isVertical ? '0'
-            : (settings.charsPerLine ? '0 auto' : '0'),
-          padding: '40px 32px',
-          textAlign: 'start',
-          wordBreak: 'normal',
-          overflowWrap: 'break-word',
-          lineBreak: 'normal',
-          writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb',
-          textOrientation: settings.isVertical ? 'upright' : 'mixed',
-          // 横書き: textarea自身がスクロール / 縦書き: コンテナがスクロール
-          overflowY: settings.isVertical ? 'hidden' : 'scroll',
-          overflowX: settings.isVertical ? 'hidden' : 'hidden',
-          resize: 'none',
-          background: 'transparent',
-          direction: 'ltr',
-          ...fontStyle
-        } : {
-          fontSize: `${metrics.fontSize}px`,
-          '--cell': `${metrics.cell}px`,
-          '--grid-w': `${metrics.gridW}px`,
-          '--grid-h': `${metrics.gridH}px`,
-          '--ls-half': `${Math.round(metrics.letterSpacing / 2)}px`,
-          width: settings.isVertical
-            ? `${metrics.gridW + (metrics.padding * 2) + metrics.cell + 2}px`
-            : `${metrics.gridW + (metrics.padding * 2) + 2}px`,
-          height: settings.isVertical
-            ? `${metrics.gridH + (metrics.padding * 2) + 2}px`
-            : `${metrics.gridH + (metrics.padding * 2) + metrics.cell + 2}px`,
-          padding: `${metrics.padding}px`,
-          textAlign: 'start',
-          wordBreak: 'break-all',
-          lineBreak: 'anywhere',
-          textOrientation: settings.isVertical ? 'upright' : 'mixed',
-          overflow: 'hidden',
-          resize: 'none',
-          ...fontStyle
-        }}
+        style={textareaStyle}
       />
       {editorContextMenu && ReactDOM.createPortal(
         <div className="context-menu" style={{
