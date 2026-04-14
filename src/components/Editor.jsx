@@ -837,67 +837,60 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   }, [isCleanMode, settings.fontSize, settings.isVertical, settings.charsPerLine, metrics, fontStyle]);
 
   // --- メモ化: シンタックスハイライト要素（ビューポート仮想化 — 可視範囲のみ描画） ---
-  const [viewportRect, setViewportRect] = useState({ top: 0, left: 0, width: 0, height: 0, scrollTop: 0, scrollLeft: 0 });
+  // --- メモ化: シンタックスハイライト要素（ビューポート仮想化 — 可視範囲のみ描画） ---
+  // ★ viewport を ref で管理（setState による再レンダリングを回避 — カーソル飛びの原因だった）
+  const viewportRef = useRef({ width: 0, height: 0, scrollTop: 0, scrollLeft: 0 });
   
-  // スクロール・リサイズ時にビューポートを更新（throttle 付き）
-  const viewportTimerRef = useRef(null);
-  const updateViewport = useCallback(() => {
+  useEffect(() => {
     const container = textareaRef.current?.closest('.editor-container');
     if (!container) return;
-    setViewportRect({
-      top: 0, left: 0,
+    viewportRef.current = {
       width: container.clientWidth,
       height: container.clientHeight,
       scrollTop: container.scrollTop,
       scrollLeft: container.scrollLeft,
-    });
-  }, []);
-
-  useEffect(() => {
-    const container = textareaRef.current?.closest('.editor-container');
-    if (!container) return;
+    };
+    let rafId = null;
     const onScroll = () => {
-      if (viewportTimerRef.current) return; // throttle
-      viewportTimerRef.current = requestAnimationFrame(() => {
-        viewportTimerRef.current = null;
-        updateViewport();
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        viewportRef.current = {
+          width: container.clientWidth,
+          height: container.clientHeight,
+          scrollTop: container.scrollTop,
+          scrollLeft: container.scrollLeft,
+        };
       });
     };
     container.addEventListener('scroll', onScroll, { passive: true });
-    // 初期化
-    updateViewport();
     return () => {
       container.removeEventListener('scroll', onScroll);
-      if (viewportTimerRef.current) cancelAnimationFrame(viewportTimerRef.current);
+      if (rafId) cancelAnimationFrame(rafId);
     };
-  }, [updateViewport, settings.isVertical]);
+  }, [settings.isVertical]);
 
   const highlightElements = useMemo(() => {
     if (settings.editorSyntaxColors === false || !highlights.length) return null;
     const cell = baseMetrics.cell;
     const isVert = settings.isVertical;
-    const pad = baseMetrics.padding;
     
-    // ★ ビューポート内のハイライトだけをフィルタリング
-    // マージンを cell * 3 分追加して、スクロール直後の空白を防ぐ
+    // ★ ref から viewport を読む（ハイライト再計算時のスナップショット）
+    //    スクロールだけでは再計算されない（highlights 変更時のみ）
+    const vp = viewportRef.current;
     const margin = cell * 3;
     let filtered;
     if (isVert) {
-      // 縦書き: h.x は負値（右端=0、左に進むほど負）
-      // scrollLeft も負値（右端=0）
-      // 可視範囲: scrollLeft ～ scrollLeft + clientWidth の範囲内の h.x
-      const sl = viewportRect.scrollLeft;
-      const visRight = margin; // 右端よりmargin分右まで
-      const visLeft = sl - margin; // スクロール位置よりmargin分左まで
+      const sl = vp.scrollLeft;
+      const visRight = margin;
+      const visLeft = sl - margin;
       filtered = highlights.filter(h => h.x >= visLeft && h.x <= visRight);
     } else {
-      // 横書き: scrollTop ベース
-      const visTop = viewportRect.scrollTop - margin;
-      const visBottom = viewportRect.scrollTop + viewportRect.height + margin;
+      const visTop = vp.scrollTop - margin;
+      const visBottom = vp.scrollTop + vp.height + margin;
       filtered = highlights.filter(h => h.y >= visTop && h.y <= visBottom);
     }
 
-    // フィルタ後も上限を設ける（安全弁）
     const MAX_VISIBLE = 500;
     const limited = filtered.length > MAX_VISIBLE ? filtered.slice(0, MAX_VISIBLE) : filtered;
     
@@ -914,7 +907,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         borderRadius: '2px'
       }} />
     ));
-  }, [highlights, settings.isVertical, settings.editorSyntaxColors, baseMetrics.cell, baseMetrics.padding, viewportRect]);
+  }, [highlights, settings.isVertical, settings.editorSyntaxColors, baseMetrics.cell]);
 
   // --- ドラッグ&ドロップでの画像挿入 ---
   const handleDragOver = useCallback((e) => {
