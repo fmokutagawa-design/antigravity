@@ -12,8 +12,8 @@
   /* 罫線の色 */
   --grid-line: rgba(0, 0, 0, 0.15);
   /* 薄い線（ノート用） */
-  --grid-line-strong: rgba(160, 140, 110, 0.5);
-  /* 濃い線（原稿用紙用） */
+  --grid-line-strong: rgba(160, 140, 110, 0.8);
+  /* 濃い線（原稿用紙用）を強調 */
 
   /* アンダーレイ（背景ハイライト）の色 */
   --highlight-tag: rgba(33, 150, 243, 0.2);
@@ -222,11 +222,10 @@ body {
   /* クリックを透過 */
 
   /* テキストエリアの padding と「完全に」一致させる */
-  top: 10px;
-  left: 10px;
-
-  /* 念のためサイズ制限 */
-  max-width: 100%;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
 }
 
 /* =========================================
@@ -281,8 +280,8 @@ body {
 .editor-container.vertical .editor-underlay {
   /* 縦書きの原点は「右上」 */
   left: auto;
-  right: 10px;
-  top: 10px;
+  right: 0;
+  top: 0;
 
   /* アンダーレイ側も縦書きモードを強制 */
   writing-mode: vertical-rl;
@@ -290,24 +289,40 @@ body {
 }
 
 /* 縦書き：原稿用紙グリッド */
-.editor-container.vertical.paper-manuscript .native-grid-editor {
+.editor-grid-layer.paper-manuscript {
   background-image:
     linear-gradient(to bottom, var(--grid-line-strong) 1px, transparent 1px),
     linear-gradient(to left, var(--grid-line-strong) 1px, transparent 1px);
-  /* 正方形マス（縦横ともにcellサイズ） */
   background-size: var(--cell) var(--cell);
-  /* letter-spacingの半分だけグリッドを下にずらして文字を中央に合わせる */
-  background-position: right 10px top calc(10px - var(--ls-half, 0px));
+  /* ラッパー内では 0 0 基点でOK（ラッパー自体がオフセットされているため） */
+  background-position: right 0 top calc(0px - var(--ls-half, 0px));
+  background-attachment: scroll;
+  background-repeat: repeat;
+  width: 100%;
+  height: 100%;
 }
 
-/* 縦書き：大学ノート (縦線 = 行の区切り線) */
-.editor-container.vertical.paper-lined .native-grid-editor {
-  background-image:
-    linear-gradient(to left, var(--grid-line) 1px, transparent 1px);
-  /* 縦線なので、幅はcellサイズ、高さは100% */
+/* 縦書き：大学ノート */
+.editor-grid-layer.paper-lined {
   background-size: var(--cell) 100%;
-  background-position: right 10px top 0;
-  /* top 0 で上端まで線を伸ばす */
+  background-position: right 0 top 0;
+  background-image: linear-gradient(to left, var(--grid-line) 1px, transparent 1px);
+  width: 100%;
+  height: 100%;
+}
+
+.chunks-container {
+  background-color: var(--bg-paper);
+}
+
+.chunks-content-root {
+  position: absolute;
+  top: var(--grid-offset-y, 0px);
+  right: var(--grid-offset-x, 0px);
+  left: auto;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* 下の要素へのイベント透過は子要素側で制御 */
 }
 
 /* ... */
@@ -393,21 +408,30 @@ body.dark-mode .editor-container.horizontal::-webkit-scrollbar-thumb:hover {
 }
 
 /* 横書き：原稿用紙グリッド */
-.editor-container.horizontal.paper-manuscript .native-grid-editor {
+.editor-grid-layer.paper-manuscript {
   background-image:
     linear-gradient(to right, var(--grid-line-strong) 1px, transparent 1px),
     linear-gradient(to bottom, var(--grid-line-strong) 1px, transparent 1px);
-  /* 正方形マス */
   background-size: var(--cell) var(--cell);
-  /* letter-spacingの半分だけグリッドを左にずらして文字を中央に合わせる */
-  background-position: left calc(10px - var(--ls-half, 0px)) top 10px;
+  background-position: left 0 top calc(0px - var(--ls-half, 0px));
 }
 
 /* 横書き：大学ノート */
-.editor-container.horizontal.paper-lined .native-grid-editor {
+.editor-grid-layer.paper-lined {
   background-image:
     linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
   background-size: 100% var(--cell);
+}
+
+/* グリッドレイヤーの基底設定 */
+.editor-grid-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
 }
 
 /* =========================================================

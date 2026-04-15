@@ -1,4 +1,5 @@
 import React, { useRef, useImperativeHandle, forwardRef, useMemo, useEffect, useCallback, useLayoutEffect, useState } from 'react';
+import ReactDOM from 'react-dom';
 import '../index.css';
 // ★ 約物フィルターを無効化したい場合、この import をコメントアウトしてください
 import { toVerticalDisplay, fromVerticalDisplay } from '../utils/verticalPunctuation';
@@ -40,9 +41,9 @@ const HANGING_CHARS = new Set(['、', '。', '，', '．']);
  * CSS lineBreak: strict と同じルールを JS で再現し、
  * グリッド座標とテキスト折り返しを完全に同期させる。
  */
-function computeCharPositions(charArray, maxPerLine) {
+function computeCharPositions(charArray, maxPerLine, startLine = 0) {
   const positions = new Array(charArray.length);
-  let line = 0;
+  let line = startLine;
   let pos = 0;
   let allowHanging = false;
 
@@ -128,29 +129,183 @@ function computeTotalLines(text, maxPerLine) {
 }
 
 
-import ReactDOM from 'react-dom';
+const splitString = (str) => Array.from(str || "");
+
+// --- ヘルパー: テキスト分割 (Chapter-based Chunking) ---
+// ブラウザのレイアウト負荷を下げるため、章（# 等）ごと、あるいは一定文字数ごとに分割する。
+const CHUNK_CHAR_LIMIT = 20000;
+
+// --- 再レンダリング最適化のためのチャンクエディタコンポーネント ---
+const ChunkEditor = React.memo(({ 
+  chunk, idx, isVertical, baseMetrics, paperClass, textareaStyle, ghostText, 
+  handleChunkChange, setGhostText, undoKeyDown, handleCursor, handleChange, 
+  handleCompositionStart, handleCompositionEnd, handleCopy, handleCut, 
+  handleDragOver, handleDrop, setEditorContextMenu, textareaRefs, textareaRef,
+  toVerticalDisplay, chunks
+}) => {
+  return (
+    <textarea
+      key={`${chunk.id}-${isVertical ? 'v' : 'h'}`}
+      lang="ja"
+      ref={el => textareaRefs.current[idx] = el}
+      className={`native-grid-editor chunk-editor ${paperClass}`}
+      defaultValue={isVertical ? toVerticalDisplay(chunk.text) : chunk.text}
+      onChange={(e) => handleChange(e, idx)}
+      onCompositionStart={handleCompositionStart}
+      onCompositionEnd={(e) => handleCompositionEnd(e, idx)}
+      onCopy={handleCopy}
+      onCut={handleCut}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+      onFocus={() => {
+        textareaRef.current = textareaRefs.current[idx];
+      }}
+      onKeyDown={(e) => {
+        if (ghostText && e.key === 'Tab') {
+          e.preventDefault();
+          const ta = e.target;
+          const start = ta.selectionStart;
+          const val = ta.value;
+          const newVal = val.slice(0, start) + ghostText + val.slice(ta.selectionEnd);
+          ta.value = newVal;
+          ta.selectionStart = ta.selectionEnd = start + ghostText.length;
+          handleChunkChange(idx, newVal);
+          setGhostText('');
+          return;
+        }
+        if (ghostText && e.key === 'Escape') {
+          e.preventDefault();
+          setGhostText('');
+          return;
+        }
+        if (ghostText && !['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) {
+          setGhostText('');
+        }
+        undoKeyDown(e);
+      }}
+      onScroll={handleCursor}
+      onSelect={handleCursor}
+      onClick={handleCursor}
+      onKeyUp={handleCursor}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        const textarea = textareaRefs.current[idx];
+        const hasSelection = textarea && textarea.selectionStart !== textarea.selectionEnd;
+        setEditorContextMenu({
+          x: e.clientX,
+          y: e.clientY,
+          hasSelection,
+          chunkIdx: idx
+        });
+      }}
+      spellCheck={false}
+      placeholder={idx === 0 ? "ここから物語を紡ぎましょう..." : ""}
+      style={{
+        ...textareaStyle,
+        position: 'absolute',
+        top: isVertical ? 0 : `${chunk.startLine * baseMetrics.cell}px`,
+        left: isVertical ? 'auto' : 0,
+        right: isVertical ? `${chunk.startLine * baseMetrics.cell}px` : 'auto',
+        height: isVertical ? '100%' : `${chunk.lineCount * baseMetrics.cell}px`,
+        width: isVertical ? `${chunk.lineCount * baseMetrics.cell}px` : '100%',
+        overflowX: 'hidden',
+        overflowY: 'hidden',
+        resize: 'none',
+        padding: '0 !important',
+        textIndent: 0,
+        margin: 0,
+        display: 'block',
+        background: 'transparent',
+        boxSizing: 'border-box',
+        zIndex: 2, // テキストを最前面に
+      }}
+    />
+  );
+});
+
+function splitIntoChunks(text) {
+  if (!text) return [{ id: 'empty', text: '', startOffset: 0 }];
+
+  const lines = text.split('\n');
+  const chunks = [];
+  let currentChunkText = [];
+  let currentOffset = 0;
+  let chunkId = 0;
+
+  const jpRegex = /^(第[0-9０-９一二三四五六七八九十百千万]+[章話節幕編部]).*/;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const isHeader = line.startsWith('#') || jpRegex.test(line);
+
+    // 新しい章が見つかったか、文字数が限界を超えた場合に分割
+    if ((isHeader && currentChunkText.length > 0) || (currentChunkText.join('\n').length > CHUNK_CHAR_LIMIT)) {
+      chunks.push({
+        id: `chunk-${chunkId++}`,
+        text: currentChunkText.join('\n'),
+        startOffset: currentOffset,
+      });
+      currentOffset += currentChunkText.join('\n').length + 1; // +1 for the \n that will be joined
+      currentChunkText = [];
+    }
+    currentChunkText.push(line);
+  }
+
+  if (currentChunkText.length > 0) {
+    chunks.push({
+      id: `chunk-${chunkId++}`,
+      text: currentChunkText.join('\n'),
+      startOffset: currentOffset,
+    });
+  }
+
+  return chunks;
+}
 
 const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertRuby, onInsertLink, onLaunchAI, ghostText, setGhostText, corrections = [], onImageDrop }, ref) => {
-  const splitString = (str) => Array.from(str || "");
-  const textareaRef = useRef(null);
-  const [editorContextMenu, setEditorContextMenu] = React.useState(null);
+  const currentRenderStartTime = performance.now();
 
-  // ★ IME（日本語入力）変換中フラグ
+  // --- 1. Refs (初期計測などの副作用のないもの) ---
+  const jsTotalTimeRef = useRef(0);
+  // 毎レンダリングごとに JS 実行時間をリセット
+  jsTotalTimeRef.current = 0;
+
+  const renderStartTimeRef = useRef(currentRenderStartTime);
+  const textareaRef = useRef(null);
+  const containerRef = useRef(null);
+  const textareaRefs = useRef([]);
+  const localTextRef = useRef(value);
+  const debouncedValueRef = useRef(value);
+  const lastNotifiedValueRef = useRef(value);
+  const viewportRef = useRef({ scrollTop: 0, scrollLeft: 0, height: 800, width: 1000 });
   const isComposingRef = useRef(false);
   const compositionTextRef = useRef(null);
-
-  // ★ パフォーマンス根治: Uncontrolled 構成
-  const localTextRef = useRef(value);
+  const undoRedoCallbackRef = useRef(null);
+  const pendingCursorRef = useRef(null);
+  const currentCursorRef = useRef(null);
   const appNotifyTimerRef = useRef(null);
   const highlightDebounceRef = useRef(null);
   const debouncePrevLenRef = useRef(value.length);
   const lineCountTimerRef = useRef(null);
+  const lastLagUpdateRef = useRef(0);
 
-  // --- 再レンダリング抑制用のデバウンスステート ---
-  const [debouncedValue, setDebouncedValue] = useState(localTextRef.current);
-  const debouncedValueRef = useRef(localTextRef.current);
+  // --- 2. States ---
+  const [lagStats, setLagStats] = useState({ jsTime: 0, totalTime: 0 });
+  const [scrollForce, setScrollForce] = useState(0);
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  const [editorContextMenu, setEditorContextMenu] = useState(null);
 
-  // --- 1a. ベース寸法（設定のみ依存、valueに依存しない） ---
+  // --- 3. カスタムフック (状態に依存するもの) ---
+  const undoRedoCallback = useCallback((newText) => {
+    if (undoRedoCallbackRef.current) undoRedoCallbackRef.current(newText);
+  }, []);
+
+  const { initHistory, pushHistory, undo, redo, handleKeyDown: undoKeyDown, pendingCursor, currentCursor } = useUndoHistory(undoRedoCallback);
+  const { clipboardHistory, addToClipboard } = useClipboardHistory();
+
+  // --- 4. メモ化変数 (Memos) - 依存関係の順序が重要 ---
+
+  // A. ベース寸法（すべての計算の基礎）
   const baseMetrics = useMemo(() => {
     const fontSize = parseInt(settings.fontSize) || 18;
     const isManuscript = settings.paperStyle === 'grid';
@@ -176,295 +331,195 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     return { fontSize, cell, maxPerLine, padding: PADDING, letterSpacing: cell - fontSize };
   }, [settings.fontSize, settings.lineHeight, settings.isVertical, settings.charsPerLine, settings.paperStyle, settings.charSpacing]);
 
-  const [debouncedLineCount, setDebouncedLineCount] = useState(() => computeTotalLines(localTextRef.current, baseMetrics.maxPerLine));
+  // B. チャンク分割と位置計算
+  const chunks = useMemo(() => {
+    const split = splitIntoChunks(debouncedValue);
+    let cumulativeLines = 0;
+    return split.map(c => {
+      const lines = c.text.split('\n');
+      let totalLines = 0;
+      lines.forEach(l => {
+        const len = splitString(l).length;
+        totalLines += (len === 0) ? 1 : Math.ceil(len / baseMetrics.maxPerLine);
+      });
+      const res = { ...c, lineCount: totalLines, startLine: cumulativeLines };
+      cumulativeLines += totalLines;
+      return res;
+    });
+  }, [debouncedValue, baseMetrics.maxPerLine]);
 
-  // --- コールバック定義 ---
+  // B-2. 可視チャンクの抽出 (仮想化の核)
+  const visibleChunks = useMemo(() => {
+    const vp = viewportRef.current;
+    const { cell } = baseMetrics;
+    const isVert = settings.isVertical;
+    const scrollPos = isVert ? -vp.scrollLeft : vp.scrollTop;
+    const vpSize = isVert ? vp.width : vp.height;
+    
+    return chunks.filter(c => {
+      const startPos = c.startLine * cell;
+      const endPos = (c.startLine + c.lineCount) * cell;
+      // バッファとして前後 1000px 分含める
+      return (endPos >= scrollPos - 1000 && startPos <= scrollPos + vpSize + 1000);
+    });
+  }, [chunks, scrollForce, baseMetrics, settings.isVertical]);
+
+  // C. 段落インデックス（ハイライト等の座標計算用）
+  const paragraphIndex = useMemo(() => {
+    const t0 = performance.now();
+    if (!debouncedValue) return [];
+    const rawParagraphs = debouncedValue.split('\n');
+    const index = [];
+    let currentLine = 0;
+    let currentCharOffset = 0;
+    for (let i = 0; i < rawParagraphs.length; i++) {
+      const pText = rawParagraphs[i];
+      const pCharArray = splitString(pText);
+      const pLen = pCharArray.length;
+      const pLineCount = (pLen === 0) ? 1 : Math.max(1, Math.ceil(pLen / baseMetrics.maxPerLine));
+      index.push({
+        id: i,
+        text: pText,
+        charArray: pCharArray,
+        lineCount: pLineCount,
+        startLine: currentLine,
+        charOffset: currentCharOffset
+      });
+      currentLine += pLineCount;
+      currentCharOffset += pText.length + 1;
+    }
+    jsTotalTimeRef.current += (performance.now() - t0);
+    return index;
+  }, [debouncedValue, baseMetrics.maxPerLine]);
+
+  // D. その他依存変数
+  const debouncedLineCount = useMemo(() => {
+    if (paragraphIndex.length === 0) return 1;
+    const last = paragraphIndex[paragraphIndex.length - 1];
+    return last.startLine + last.lineCount;
+  }, [paragraphIndex]);
+
+  // E. グリッド寸法計算
+  const metrics = useMemo(() => {
+    const { fontSize, cell, maxPerLine, padding, letterSpacing } = baseMetrics;
+    const totalLines = debouncedLineCount;
+    let cols, rows, gridW, gridH;
+
+    if (settings.isVertical) {
+      rows = maxPerLine;
+      cols = Math.max(totalLines, settings.linesPerPage || 10);
+      gridH = rows * cell; gridW = cols * cell;
+    } else {
+      cols = maxPerLine;
+      rows = Math.max(totalLines, settings.linesPerPage || 10);
+      gridW = cols * cell; gridH = rows * cell;
+    }
+    return { fontSize, cell, cols, rows, gridW, gridH, padding, letterSpacing };
+  }, [debouncedLineCount, baseMetrics, settings.isVertical, settings.linesPerPage]);
+
+  // --- 5. コールバック関数 (Callbacks) ---
+
   const localOnChange = useCallback((newText) => {
     localTextRef.current = newText;
+    lastNotifiedValueRef.current = newText;
     if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
-    appNotifyTimerRef.current = setTimeout(() => {
-      onChange(newText);
-    }, 500);
+    appNotifyTimerRef.current = setTimeout(() => { onChange(newText); }, 500);
 
     if (highlightDebounceRef.current) clearTimeout(highlightDebounceRef.current);
     if (Math.abs(newText.length - (debouncePrevLenRef.current || 0)) > 100) {
       setDebouncedValue(newText);
-      setDebouncedLineCount(computeTotalLines(newText, baseMetrics.maxPerLine));
       debouncePrevLenRef.current = newText.length;
     } else {
       highlightDebounceRef.current = setTimeout(() => {
         setDebouncedValue(newText);
-        setDebouncedLineCount(computeTotalLines(newText, baseMetrics.maxPerLine));
         debouncePrevLenRef.current = newText.length;
       }, 300);
     }
-  }, [onChange, baseMetrics.maxPerLine]);
+  }, [onChange]);
+
+  const handleChunkChange = useCallback((idx, newVal) => {
+    const allVals = textareaRefs.current.map((ta, i) => {
+      if (!ta) return chunks[i]?.text || "";
+      const v = ta.value;
+      return settings.isVertical ? fromVerticalDisplay(v) : v;
+    });
+    const merged = allVals.join('\n');
+    localTextRef.current = merged;
+    lastNotifiedValueRef.current = merged;
+    localOnChange(merged);
+  }, [chunks, settings.isVertical, localOnChange]);
 
   const applyText = useCallback((newText, cursorPos = null) => {
     if (isComposingRef.current) return;
-    const ta = textareaRef.current;
-    if (!ta) return;
-
-    if (appNotifyTimerRef.current) {
-      clearTimeout(appNotifyTimerRef.current);
-      appNotifyTimerRef.current = null;
-    }
-    if (highlightDebounceRef.current) {
-      clearTimeout(highlightDebounceRef.current);
-      highlightDebounceRef.current = null;
-    }
-
-    ta.value = settings.isVertical ? toVerticalDisplay(newText) : newText;
+    const newChunks = splitIntoChunks(newText);
+    textareaRefs.current.forEach((ta, idx) => {
+      if (!ta) return;
+      const chunkText = newChunks[idx]?.text || "";
+      ta.value = settings.isVertical ? toVerticalDisplay(chunkText) : chunkText;
+    });
     localTextRef.current = newText;
-
+    lastNotifiedValueRef.current = newText;
     setDebouncedValue(newText);
-    setDebouncedLineCount(computeTotalLines(newText, baseMetrics.maxPerLine));
     debouncePrevLenRef.current = newText.length;
 
     if (cursorPos != null) {
-      ta.setSelectionRange(cursorPos, cursorPos);
-    }
-  }, [settings.isVertical, baseMetrics.maxPerLine]);
-
-  // --- Undo/Redo 接続 ---
-  const undoRedoCallbackRef = useRef(null);
-  const undoRedoCallback = useCallback((newText) => {
-    if (undoRedoCallbackRef.current) undoRedoCallbackRef.current(newText);
-  }, []);
-
-  const { initHistory, pushHistory, undo, redo, handleKeyDown: undoKeyDown, pendingCursor: pendingCursorRef, currentCursor: currentCursorRef } = useUndoHistory(undoRedoCallback);
-
-  undoRedoCallbackRef.current = (newText) => {
-    const pos = pendingCursorRef?.current ?? null;
-    if (pendingCursorRef) pendingCursorRef.current = null;
-    applyText(newText, pos);
-    onChange(newText);
-  };
-
-  const { clipboardHistory, addToClipboard } = useClipboardHistory();
-
-  // --- 副作用 (useEffect) ---
-  useEffect(() => {
-    const current = localTextRef.current;
-    if (value === current) return;
-    if (value.length === current.length &&
-        value.slice(0, 64) === current.slice(0, 64) &&
-        value.slice(-64) === current.slice(-64)) {
-      return;
-    }
-    applyText(value);
-  }, [value, applyText]);
-
-  useEffect(() => {
-    if (Math.abs(value.length - localTextRef.current.length) > 100) {
-      initHistory(value);
-    }
-  }, [value, initHistory]);
-  useEffect(() => {
-    setDebouncedLineCount(computeTotalLines(debouncedValue, baseMetrics.maxPerLine));
-  }, [debouncedValue, baseMetrics.maxPerLine]);
-
-  const metrics = useMemo(() => {
-    const { fontSize, cell, maxPerLine, padding, letterSpacing } = baseMetrics;
-    const totalLines = debouncedLineCount;
-
-    let cols, rows, gridW, gridH;
-    if (settings.isVertical) {
-      rows = maxPerLine;
-      cols = Math.max(totalLines, settings.linesPerPage || 10);
-      gridH = rows * cell;
-      gridW = cols * cell;
-    } else {
-      cols = maxPerLine;
-      rows = Math.max(totalLines, settings.linesPerPage || 10);
-      gridW = cols * cell;
-      gridH = rows * cell;
-    }
-
-    return { fontSize, cell, cols, rows, gridW, gridH, padding, letterSpacing };
-  }, [debouncedLineCount, baseMetrics, settings.isVertical, settings.linesPerPage]);
-
-  // --- 共有キャラクター座標キャッシュ（デバウンス値 + 安定した maxPerLine） ---
-  const charPositionsCache = useMemo(() => {
-    if (!debouncedValue) return { positions: [], charArray: [], utf16ToCharIdx: new Map() };
-    const charArray = splitString(debouncedValue);
-    const { positions } = computeCharPositions(charArray, baseMetrics.maxPerLine);
-
-    // UTF-16インデックス → 文字インデックスのマッピングを事前計算
-    const utf16ToCharIdx = new Map();
-    let codeUnitOffset = 0;
-    for (let i = 0; i < charArray.length; i++) {
-      utf16ToCharIdx.set(codeUnitOffset, i);
-      codeUnitOffset += charArray[i].length;
-    }
-
-    return { positions, charArray, utf16ToCharIdx };
-  }, [debouncedValue, baseMetrics.maxPerLine]);
-
-  // --- 2. アンダーレイ（座標マップ）の生成（デバウンス） ---
-  // ★ 大規模テキスト（20000文字超≒原稿用紙100枚超）ではハイライトを自動停止
-  const HIGHLIGHT_CHAR_LIMIT = 200000;
-  const highlights = useMemo(() => {
-    if (settings.editorSyntaxColors === false) return [];
-    if (!debouncedValue) return [];
-    if (debouncedValue.length > HIGHLIGHT_CHAR_LIMIT) return [];
-    const { cell } = baseMetrics;
-    const { positions, utf16ToCharIdx } = charPositionsCache;
-    const isVert = settings.isVertical;
-
-    const patterns = [
-      { regex: /\[\[.*?\]\]|［［.*?］］/g, color: settings.syntaxColors?.link || '#2980b9' },
-      { regex: /『.*?』/g, color: settings.syntaxColors?.emphasis || '#c0392b' },
-      { regex: /「.*?」/g, color: settings.syntaxColors?.conversation || '#27ae60', isConversation: true },
-      { regex: /《.*?》/g, color: settings.syntaxColors?.ruby || '#e67e22' },
-      { regex: /［＃.*?］/g, color: settings.syntaxColors?.aozora || '#8e44ad' },
-      { regex: /\{font[:：].*?\}|\{\/font\}/g, color: settings.syntaxColors?.aozora || '#8e44ad' },
-      { regex: /\*\*.*?\*\*/g, color: settings.syntaxColors?.emphasis || '#c0392b' },
-    ];
-
-    const list = [];
-    patterns.forEach(({ regex, color, isConversation }) => {
-      let match;
-      while ((match = regex.exec(debouncedValue)) !== null) {
-        const visualStart = utf16ToCharIdx.get(match.index) ?? splitString(debouncedValue.substring(0, match.index)).length;
-        const visualLen = splitString(match[0]).length;
-        for (let i = 0; i < visualLen; i++) {
-          const p = positions[visualStart + i];
-          if (p) {
-            // ★ 中間配列を省略: positions から直接画面座標を算出
-            const x = isVert ? -p.line * cell : (p.pos * cell);
-            const y = isVert ? (p.pos * cell) : (p.line * cell);
-            list.push({ key: `${visualStart + i}-${regex.source}`, x, y, color, isConversation: !!isConversation });
+      let offset = 0;
+      for (let i = 0; i < newChunks.length; i++) {
+        const c = newChunks[i];
+        if (cursorPos >= offset && cursorPos <= offset + c.text.length) {
+          const ta = textareaRefs.current[i];
+          if (ta) {
+            ta.focus();
+            ta.setSelectionRange(cursorPos - offset, cursorPos - offset);
+            textareaRef.current = ta;
           }
+          break;
         }
-      }
-    });
-    return list;
-  }, [charPositionsCache, debouncedValue, baseMetrics, settings.isVertical, settings.syntaxColors, settings.editorSyntaxColors]);
-
-  // --- 3a. ゴーストテキスト座標計算 ---
-  const ghostHighlights = useMemo(() => {
-    if (!ghostText || !value) return [];
-
-    const fullText = value + ghostText;
-    const charArray = splitString(fullText);
-    const valueLen = splitString(value).length;
-    const ghostLen = splitString(ghostText).length;
-
-    const { cell, maxPerLine } = baseMetrics;
-    const { positions } = computeCharPositions(charArray, maxPerLine);
-
-    const list = [];
-    for (let i = 0; i < ghostLen; i++) {
-      const idx = valueLen + i;
-      const p = positions[idx];
-      if (p) {
-        const x = settings.isVertical ? -p.line * cell : (p.pos * cell);
-        const y = settings.isVertical ? (p.pos * cell) : (p.line * cell);
-        list.push({ key: `ghost-${i}`, x, y, char: charArray[idx] });
+        offset += c.text.length + 1;
       }
     }
-    return list;
-  }, [value, ghostText, baseMetrics, settings.isVertical]);
+  }, [settings.isVertical]);
 
-  // --- 3b. 校正ハイライト座標計算（デバウンス + キャッシュ共有） ---
-  const correctionHighlights = useMemo(() => {
-    if (!corrections || corrections.length === 0 || !debouncedValue) return [];
-
-    const { charArray, positions } = charPositionsCache;
-    const { cell } = baseMetrics;
-
-    const list = [];
-
-    corrections.forEach(corr => {
-      if (!corr.original) return;
-      let searchIndex = 0;
-      let index = debouncedValue.indexOf(corr.original, searchIndex);
-
-      while (index !== -1) {
-        const len = splitString(corr.original).length;
-        const preStr = debouncedValue.slice(0, index);
-        const startCharIdx = splitString(preStr).length;
-
-        for (let i = 0; i < len; i++) {
-          const p = positions[startCharIdx + i];
-          if (p) {
-            const x = settings.isVertical ? -p.line * cell : (p.pos * cell);
-            const y = settings.isVertical ? (p.pos * cell) : (p.line * cell);
-            list.push({
-              key: `corr-${corr.id}-${index}-${i}`,
-              x, y,
-              char: charArray[startCharIdx + i],
-              color: 'red'
-            });
-          }
-        }
-        break;
-      }
-    });
-
-    return list;
-  }, [debouncedValue, corrections, charPositionsCache, baseMetrics, settings.isVertical]);
-
-
-
-
-  const handleChange = (e) => {
+  const handleChange = (e, chunkIdx) => {
     const ta = e.target;
     const newValue = ta.value;
-    const rawValue = settings.isVertical ? fromVerticalDisplay(newValue) : newValue;
-    const cursorPos = ta.selectionStart;
-
     if (isComposingRef.current) {
-      // IME 変換中は Ref のみ更新し、履歴保存は確定時（handleCompositionEnd）に任せる
-      localTextRef.current = rawValue;
+      handleChunkChange(chunkIdx, newValue);
       return;
     }
-
-    pushHistory(localTextRef.current, rawValue, cursorPos);
-    if (currentCursorRef) currentCursorRef.current = cursorPos;
-
-    localTextRef.current = rawValue;
-    localOnChange(rawValue);
+    const oldFull = localTextRef.current;
+    handleChunkChange(chunkIdx, newValue);
+    const newFull = localTextRef.current;
+    const globalPos = (chunks[chunkIdx]?.startOffset || 0) + ta.selectionStart;
+    pushHistory(oldFull, newFull, globalPos);
+    if (currentCursorRef) currentCursorRef.current = globalPos;
   };
 
-  // ★ IME composition ハンドラ
-  // localTextRef 経由で参照することで、useCallback の deps から localText を除外
-  // → キー入力ごとのコールバック再生成を回避
   const handleCompositionStart = useCallback(() => {
     isComposingRef.current = true;
     compositionTextRef.current = localTextRef.current;
   }, []);
 
-  const handleCompositionEnd = useCallback((e) => {
+  const handleCompositionEnd = useCallback((e, chunkIdx) => {
     isComposingRef.current = false;
-    // composition 終了時に最終テキストを確定
     const ta = e.target;
     const raw = ta.value;
-    const restored = settings.isVertical ? fromVerticalDisplay(raw) : raw;
-    const cursorPos = ta.selectionStart;
-    // 変換開始前のテキストから undo 履歴を記録（中間状態は記録しない）
+    handleChunkChange(chunkIdx, raw);
     const beforeComposition = compositionTextRef.current ?? localTextRef.current;
-    pushHistory(beforeComposition, restored, cursorPos);
-    if (currentCursorRef) currentCursorRef.current = cursorPos;
-    
-    const newValue = settings.isVertical ? toVerticalDisplay(restored) : restored;
-    if (textareaRef.current) textareaRef.current.value = newValue;
-    localTextRef.current = restored;
-    localOnChange(restored);
+    const globalPos = (chunks[chunkIdx]?.startOffset || 0) + ta.selectionStart;
+    pushHistory(beforeComposition, localTextRef.current, globalPos);
+    if (currentCursorRef) currentCursorRef.current = globalPos;
     compositionTextRef.current = null;
-  }, [localOnChange, settings.isVertical, pushHistory, currentCursorRef]);
+  }, [chunks, handleChunkChange, pushHistory, currentCursorRef]);
 
   const handleUndo = useCallback(() => {
     const restored = undo();
     if (restored === null) return;
-    // applyText は undoRedoCallback 経由で実行されるため、ここでは不要
   }, [undo]);
 
   const handleRedo = useCallback(() => {
     const restored = redo();
     if (restored === null) return;
-    // applyText は undoRedoCallback 経由で実行されるため、ここでは不要
   }, [redo]);
 
   const handleCopy = useCallback((e) => {
@@ -473,21 +528,12 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     const selected = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
     if (selected) {
       const original = settings.isVertical ? fromVerticalDisplay(selected) : selected;
-      // クリップボード履歴に追加
       addToClipboard(original);
       if (settings.isVertical) {
-        // clipboardData が使える場合は同期APIで書き込む
         if (e.clipboardData) {
-          try {
-            e.clipboardData.setData('text/plain', original);
-            e.preventDefault();
-          } catch (err) {
-            // 別ウィンドウ等で clipboardData が無効な場合、非同期APIにフォールバック
-            e.preventDefault();
-            navigator.clipboard.writeText(original).catch(() => {});
-          }
+          e.clipboardData.setData('text/plain', original);
+          e.preventDefault();
         } else {
-          // clipboardData 自体がない場合
           e.preventDefault();
           navigator.clipboard.writeText(original).catch(() => {});
         }
@@ -501,7 +547,6 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     const selected = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
     if (selected) {
       const original = settings.isVertical ? fromVerticalDisplay(selected) : selected;
-      // クリップボード履歴に追加
       addToClipboard(original);
       if (settings.isVertical) {
         e.clipboardData.setData('text/plain', original);
@@ -515,10 +560,25 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         onChange(newValue);
       }
     }
-  }, [localOnChange, settings.isVertical, addToClipboard, pushHistory]);
+  }, [localOnChange, settings.isVertical, addToClipboard, pushHistory, applyText, onChange]);
 
-  // --- 4. ハンドラ ---
-  const handleCursor = () => {
+  const handleCursor = (e) => {
+    // 選択操作のみで仮想化の再計算が走るのを防ぐため、viewport の変化がない場合は無視
+    if (textareaRef.current) {
+      const container = containerRef.current;
+      if (container) {
+        if (Math.abs(container.scrollTop - viewportRef.current.scrollTop) > 5 || 
+            Math.abs(container.scrollLeft - viewportRef.current.scrollLeft) > 5) {
+          viewportRef.current = { 
+            scrollTop: container.scrollTop, 
+            scrollLeft: container.scrollLeft, 
+            height: container.clientHeight, 
+            width: container.clientWidth 
+          };
+          setScrollForce(f => f + 1);
+        }
+      }
+    }
     if (onCursorStats && textareaRef.current) {
       onCursorStats({
         start: textareaRef.current.selectionStart,
@@ -528,345 +588,245 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     }
   };
 
-  const handleWheel = useCallback((e) => {
-    if (!settings.isVertical) return;
-    // Only convert vertical wheel → horizontal scroll
-    // Let deltaX pass through to native browser scrolling
-    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-      const container = textareaRef.current?.closest('.editor-container');
-      if (container) {
-        container.scrollLeft -= e.deltaY;
-        e.preventDefault();
-      }
-    }
-  }, [settings.isVertical]);
-
-  useEffect(() => {
-    const el = textareaRef.current;
-    if (el && settings.isVertical) {
-      el.addEventListener('wheel', handleWheel, { passive: false });
-      return () => el.removeEventListener('wheel', handleWheel);
-    }
-  }, [settings.isVertical, handleWheel]);
-
-  // ★ コンテナにスクロールバーを強制表示（縦書き・横書き両対応）
-  useEffect(() => {
-    const container = textareaRef.current?.closest('.editor-container');
-    if (!container) return;
-
-    // 親フレックスコンテナに合わせる
-    container.style.height = '100%';
-
-    if (settings.isVertical) {
-      container.style.overflowX = 'scroll';
-      container.style.overflowY = 'hidden';
-    } else {
-      container.style.overflowX = 'hidden';
-      container.style.overflowY = 'scroll';
-    }
-
-    // -webkit-scrollbar 用の動的スタイルを注入
-    const styleId = 'nexus-scrollbar-style';
-    let styleEl = document.getElementById(styleId);
-    if (!styleEl) {
-      styleEl = document.createElement('style');
-      styleEl.id = styleId;
-      document.head.appendChild(styleEl);
-    }
-    const darkMode = document.body.classList.contains('dark-mode');
-    const thumbColor = darkMode ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)';
-    const thumbHover = darkMode ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.55)';
-    const trackColor = darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
-    const scrollbarCSS = `
-      background: ${thumbColor} !important;
-      border-radius: 7px !important;
-      border: 2px solid transparent !important;
-      background-clip: padding-box !important;
-    `;
-    styleEl.textContent = `
-      .editor-container.vertical,
-      .editor-container.horizontal {
-        height: 100% !important;
-      }
-      .editor-container.vertical {
-        overflow-x: scroll !important;
-        overflow-y: hidden !important;
-      }
-      .editor-container.horizontal {
-        overflow-y: scroll !important;
-        overflow-x: hidden !important;
-      }
-      .editor-container::-webkit-scrollbar { width: 14px !important; height: 14px !important; }
-      .editor-container::-webkit-scrollbar-track { background: ${trackColor} !important; }
-      .editor-container::-webkit-scrollbar-thumb { ${scrollbarCSS} }
-      .editor-container::-webkit-scrollbar-thumb:hover { background: ${thumbHover} !important; }
-    `;
-
-    return () => {
-      if (container) {
-        container.style.overflowX = '';
-        container.style.overflowY = '';
-        container.style.height = '';
-      }
-    };
-  }, [settings.isVertical]);
 
   const scrollToCaretPosition = useCallback((charIndex) => {
     const ta = textareaRef.current;
     const container = ta?.closest('.editor-container');
     if (!ta || !container) return;
-
     const isClean = settings.paperStyle === 'clean';
-
     if (isClean) {
-      const origWidth = ta.style.width;
-      const origHeight = ta.style.height;
-      const origOverflow = ta.style.overflow;
-
-      ta.style.overflow = 'auto';
-      ta.style.width = '1px';
-      ta.style.height = '1px';
-
-      ta.focus();
-      ta.setSelectionRange(charIndex, charIndex);
-
-      const innerTop = ta.scrollTop;
-      const innerLeft = ta.scrollLeft;
-
-      if (settings.isVertical) {
-        container.scrollLeft = innerLeft;
-      } else {
-        container.scrollTop = innerTop;
-      }
-
-      ta.scrollTop = 0;
-      ta.scrollLeft = 0;
-      ta.style.width = origWidth;
-      ta.style.height = origHeight;
-      ta.style.overflow = origOverflow;
-
+      const origW = ta.style.width; const origH = ta.style.height; const origO = ta.style.overflow;
+      ta.style.overflow = 'auto'; ta.style.width = '1px'; ta.style.height = '1px';
+      ta.focus(); ta.setSelectionRange(charIndex, charIndex);
+      if (settings.isVertical) container.scrollLeft = ta.scrollLeft;
+      else container.scrollTop = ta.scrollTop;
+      ta.scrollTop = 0; ta.scrollLeft = 0;
+      ta.style.width = origW; ta.style.height = origH; ta.style.overflow = origO;
       return;
     }
-
     const { maxPerLine, cell, padding } = baseMetrics;
-    const currentText = localTextRef.current;
-    const text = settings.isVertical ? toVerticalDisplay(currentText) : currentText;
-
-    let line = 0;
-    let pos = 0;
+    const text = settings.isVertical ? toVerticalDisplay(localTextRef.current) : localTextRef.current;
+    let line = 0; let pos = 0;
     for (let i = 0; i < charIndex && i < text.length; i++) {
-      if (text[i] === '\n') {
-        line++;
-        pos = 0;
-      } else {
-        if (pos >= maxPerLine) {
-          line++;
-          pos = 0;
-        }
-        pos++;
-      }
+      if (text[i] === '\n') { line++; pos = 0; }
+      else { if (pos >= maxPerLine) { line++; pos = 0; } pos++; }
     }
-
     if (settings.isVertical) {
-      const caretOffsetFromRight = line * cell + padding;
-      const viewCenter = container.clientWidth / 2;
-      const targetScrollLeft = -(caretOffsetFromRight - viewCenter);
-      const minScrollLeft = -(container.scrollWidth - container.clientWidth);
-      const clampedScrollLeft = Math.max(minScrollLeft, Math.min(0, targetScrollLeft));
-      container.scrollLeft = clampedScrollLeft;
+      const caretOffset = line * cell + padding;
+      container.scrollLeft = Math.max(-(container.scrollWidth - container.clientWidth), Math.min(0, -(caretOffset - container.clientWidth / 2)));
     } else {
-      const caretY = line * cell + padding;
-      const viewCenter = container.clientHeight / 2;
-      const targetScrollTop = Math.max(0, caretY - viewCenter);
-      container.scrollTop = targetScrollTop;
+      container.scrollTop = Math.max(0, (line * cell + padding) - container.clientHeight / 2);
     }
   }, [settings.isVertical, settings.paperStyle, baseMetrics]);
 
-  useImperativeHandle(ref, () => ({
-    focus: () => textareaRef.current?.focus(),
-    textarea: textareaRef.current,
-    textareaRef,
-    // Undo/Redo
-    undo,
-    redo,
-    // クリップボード履歴
-    clipboardHistory,
-    pasteFromHistory: (text) => {
-      const ta = textareaRef.current;
-      if (!ta) return;
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
-      const currentVal = ta.value;
-      const rawVal = settings.isVertical ? fromVerticalDisplay(currentVal) : currentVal;
-      const newValue = rawVal.substring(0, start) + text + rawVal.substring(end);
-      pushHistory(localTextRef.current, newValue, start);
-      applyText(newValue, start + text.length);
-      onChange(newValue);
-    },
-    insertRuby: () => {
-      const ta = textareaRef.current;
-      if (!ta) return;
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
-      const currentValue = ta.value;
-      const rawValue = settings.isVertical ? fromVerticalDisplay(currentValue) : currentValue;
-      const selectedText = rawValue.substring(start, end);
-      const insertion = selectedText
-        ? `${selectedText}《》`
-        : '《》';
-      const newValue = rawValue.substring(0, start) + insertion + rawValue.substring(end);
-      pushHistory(localTextRef.current, newValue, start);
-      // カーソルを《》の間に配置（読みを入力する位置）
-      const nextPos = start + (selectedText ? selectedText.length + 1 : 1);
-      applyText(newValue, nextPos);
-      onChange(newValue);
-      // useLayoutEffect だけでは縦書き時に復元されないことがあるため、明示的にフォーカス
-      setTimeout(() => {
-        ta.focus();
-        ta.setSelectionRange(nextPos, nextPos);
-      }, 0);
-    },
-    insertText: (text) => {
-      const ta = textareaRef.current;
-      if (!ta) return;
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
-      const rawVal = settings.isVertical ? fromVerticalDisplay(ta.value) : ta.value;
-      const newValue = rawVal.substring(0, start) + text + rawVal.substring(end);
-      pushHistory(localTextRef.current, newValue, start);
-      applyText(newValue, start + text.length);
-      onChange(newValue); // ★ App に即時通知
-    },
-    setCursorPosition: (position) => {
-      const ta = textareaRef.current;
-      if (!ta) return;
-      // まずスクロール（focus前にやることで画面移動を確実に）
-      scrollToCaretPosition(position);
-      // 次フレームで focus + selection
-      requestAnimationFrame(() => {
-        const el = textareaRef.current;
-        if (!el) return;
-        el.focus();
-        el.setSelectionRange(position, position);
+  // --- 6. 副次的なメモ化 (Cache, Highlights) ---
+
+  const charPositionsCache = useMemo(() => {
+    const t0 = performance.now();
+    if (paragraphIndex.length === 0) return { positions: [], charArray: [], visibleParagraphs: [] };
+    const { cell, maxPerLine } = baseMetrics;
+    const isVert = settings.isVertical;
+    const vp = viewportRef.current;
+    const viewportSize = isVert ? vp.width : vp.height;
+    const scrollPos = isVert ? -vp.scrollLeft : vp.scrollTop;
+    const startVisibleLine = Math.floor(scrollPos / cell) - (Math.floor(viewportSize / cell) * 5); // バッファ拡大
+    const endVisibleLine = Math.ceil((scrollPos + viewportSize) / cell) + (Math.floor(viewportSize / cell) * 5);
+    const visibleParagraphs = paragraphIndex.filter(p => (p.startLine + p.lineCount) >= startVisibleLine && p.startLine <= endVisibleLine);
+    jsTotalTimeRef.current += (performance.now() - t0);
+    return { visibleParagraphs };
+  }, [paragraphIndex, scrollForce, baseMetrics, settings.isVertical]);
+
+  const highlights = useMemo(() => {
+    if (settings.editorSyntaxColors === false || !charPositionsCache.visibleParagraphs.length) return [];
+    const t0 = performance.now();
+    const ps = localTextRef.current.split(/\r?\n/);
+    const { cell } = baseMetrics;
+    const isVert = settings.isVertical;
+    const patterns = [
+      { regex: /\[\[.*?\]\]|［［.*?］］/g, color: settings.syntaxColors?.link || '#2980b9' },
+      { regex: /『.*?』/g, color: settings.syntaxColors?.emphasis || '#c0392b' },
+      { regex: /「.*?」/g, color: settings.syntaxColors?.conversation || '#27ae60', isConversation: true },
+      { regex: /《.*?》/g, color: settings.syntaxColors?.ruby || '#e67e22' },
+      { regex: /［＃.*?］/g, color: settings.syntaxColors?.aozora || '#8e44ad' },
+      { regex: /\{font[:：].*?\}|\{\/font\}/g, color: settings.syntaxColors?.aozora || '#8e44ad' },
+      { regex: /\*\*.*?\*\*/g, color: settings.syntaxColors?.emphasis || '#c0392b' },
+    ];
+    const list = [];
+    charPositionsCache.visibleParagraphs.forEach(p => {
+      const pPositions = computeCharPositions(p.charArray, baseMetrics.maxPerLine, p.startLine).positions;
+      patterns.forEach(({ regex, color, isConversation }) => {
+        let match; regex.lastIndex = 0;
+        while ((match = regex.exec(p.text)) !== null) {
+          const preMatch = p.text.substring(0, match.index);
+          const pStartIdx = splitString(preMatch).length;
+          const pMatchLen = splitString(match[0]).length;
+          for (let i = 0; i < pMatchLen; i++) {
+            const pCoord = pPositions[pStartIdx + i];
+            if (pCoord) {
+              const x = isVert ? -pCoord.line * cell : (pCoord.pos * cell);
+              const y = isVert ? (pCoord.pos * cell) : (pCoord.line * cell);
+              list.push({ key: `h-${p.id}-${match.index}-${i}-${regex.source}`, x, y, color, isConversation: !!isConversation });
+            }
+          }
+        }
       });
-    },
-    jumpToPosition: (start, end) => {
-      const ta = textareaRef.current;
-      if (!ta) return;
-      const selEnd = end != null ? end : start;
-      scrollToCaretPosition(start);
-      requestAnimationFrame(() => {
-        const el = textareaRef.current;
-        if (!el) return;
-        el.focus();
-        el.setSelectionRange(start, selEnd);
-      });
+    });
+    jsTotalTimeRef.current += (performance.now() - t0);
+    return list;
+  }, [charPositionsCache, baseMetrics, settings.isVertical, settings.syntaxColors, settings.editorSyntaxColors]);
+
+  const ghostHighlights = useMemo(() => {
+    if (!ghostText || !debouncedValue || !paragraphIndex.length) return [];
+    const t0 = performance.now();
+    const { cell, maxPerLine } = baseMetrics;
+    const lastParagraph = paragraphIndex[paragraphIndex.length - 1];
+    const charArray = splitString(ghostText);
+    const startLine = lastParagraph.startLine + lastParagraph.lineCount - 1;
+    const positions = computeCharPositions(charArray, maxPerLine, lastParagraph.text.endsWith('\n') ? startLine + 1 : startLine).positions;
+    const list = [];
+    for (let i = 0; i < charArray.length; i++) {
+      const p = positions[i];
+      if (p) {
+        const x = settings.isVertical ? -p.line * cell : (p.pos * cell);
+        const y = settings.isVertical ? (p.pos * cell) : (p.line * cell);
+        list.push({ key: `ghost-${i}`, x, y, char: charArray[i] });
+      }
     }
-  }));
+    jsTotalTimeRef.current += (performance.now() - t0);
+    return list;
+  }, [debouncedValue, ghostText, paragraphIndex, baseMetrics, settings.isVertical]);
+
+  const correctionHighlights = useMemo(() => {
+    if (!corrections?.length || !paragraphIndex.length) return [];
+    const t0 = performance.now();
+    const { cell, maxPerLine } = baseMetrics;
+    const isVert = settings.isVertical;
+    const list = [];
+    const visibleParagraphs = charPositionsCache.visibleParagraphs || [];
+    corrections.forEach(corr => {
+      if (!corr.original) return;
+      visibleParagraphs.forEach(p => {
+        let index = p.text.indexOf(corr.original);
+        while (index !== -1) {
+          const pPositions = computeCharPositions(p.charArray, maxPerLine, p.startLine).positions;
+          const startIdx = splitString(p.text.substring(0, index)).length;
+          const len = splitString(corr.original).length;
+          for (let i = 0; i < len; i++) {
+            const pCoord = pPositions[startIdx + i];
+            if (pCoord) {
+              const x = isVert ? -pCoord.line * cell : (pCoord.pos * cell);
+              const y = isVert ? (pCoord.pos * cell) : (pCoord.line * cell);
+              list.push({ key: `corr-${corr.id}-${p.id}-${index}-${i}`, x, y, char: p.charArray[startIdx + i], color: 'red' });
+            }
+          }
+          index = p.text.indexOf(corr.original, index + 1);
+        }
+      });
+    });
+    jsTotalTimeRef.current += (performance.now() - t0);
+    return list;
+  }, [corrections, charPositionsCache, baseMetrics, settings.isVertical, paragraphIndex]);
+
+  // --- 7. スタイルメモ化 ---
 
   const isCleanMode = settings.paperStyle === 'clean';
-  const paperClass = isCleanMode ? 'paper-clean' :
-    settings.paperStyle === 'grid' ? 'paper-manuscript' :
-      settings.paperStyle === 'lined' ? 'paper-lined' : 'paper-plain';
-
-  // フォントスタイル（メモ化 — レンダリングごとの新規オブジェクト生成を回避）
+  const paperClass = isCleanMode ? 'paper-clean' : (settings.paperStyle === 'grid' ? 'paper-manuscript' : (settings.paperStyle === 'lined' ? 'paper-lined' : 'paper-plain'));
   const cleanFontFamily = settings.cleanFontFamily || 'var(--font-mincho)';
   const fontStyle = useMemo(() => isCleanMode ? {
-    fontFamily: `${cleanFontFamily}, serif`,
-    letterSpacing: '0em',
-    lineHeight: settings.isVertical ? 'normal' : '2.0',
-    fontVariantLigatures: 'common-ligatures',
-    fontKerning: 'auto',
-    fontFeatureSettings: settings.isVertical
-      ? '"kern" 1, "vert" 1, "vrt2" 1'
-      : '"kern" 1',
+    fontFamily: `${cleanFontFamily}, serif`, letterSpacing: '0em', fontVariantLigatures: 'common-ligatures', fontKerning: 'auto',
+    fontFeatureSettings: settings.isVertical ? '"kern" 1, "vert" 1, "vrt2" 1' : '"kern" 1',
   } : {
-    fontFamily: `${settings.fontFamily || 'var(--font-mincho)'}, serif`,
-    letterSpacing: `${metrics.letterSpacing}px`,
-    lineHeight: `${metrics.cell}px`,
-    fontVariantEastAsian: 'full-width',
-    fontVariantLigatures: 'none',
-    fontKerning: 'none',
-    textAutospace: 'no-autospace',
-    textSpacingTrim: 'space-all',
-    fontFeatureSettings: settings.isVertical
-      ? '"palt" 0, "halt" 0, "kern" 0, "vkrn" 0, "chws" 0, "liga" 0, "clig" 0, "calt" 0, "vert" 1, "vrt2" 1'
-      : '"palt" 0, "halt" 0, "kern" 0, "vkrn" 0, "chws" 0, "liga" 0, "clig" 0, "calt" 0, "vert" 0, "vrt2" 0',
+    fontFamily: `${settings.fontFamily || 'var(--font-mincho)'}, serif`, letterSpacing: `${metrics.letterSpacing}px`, lineHeight: `${metrics.cell}px`,
+    fontVariantEastAsian: 'full-width', fontVariantLigatures: 'none', fontKerning: 'none', textAutospace: 'no-autospace', textSpacingTrim: 'space-all',
+    fontFeatureSettings: settings.isVertical ? '"palt" 0, "halt" 0, "kern" 0, "vkrn" 0, "chws" 0, "liga" 0, "clig" 0, "calt" 0, "vert" 1, "vrt2" 1' : '"palt" 0, "halt" 0, "kern" 0, "vkrn" 0, "chws" 0, "liga" 0, "clig" 0, "calt" 0, "vert" 0, "vrt2" 0',
   }, [isCleanMode, cleanFontFamily, settings.isVertical, settings.fontFamily, metrics.letterSpacing, metrics.cell]);
 
-  // ★ textarea の style オブジェクトをメモ化（キー入力ごとの新規オブジェクト生成を回避）
   const textareaStyle = useMemo(() => isCleanMode ? {
-    fontSize: `${settings.fontSize || 16}px`,
-    width: settings.isVertical ? `${Math.max(5000, metrics.gridW + 200)}px` : '100%',
-    height: '100%',
-    maxWidth: settings.isVertical ? 'none'
-      : (settings.charsPerLine ? `${settings.charsPerLine * (parseInt(settings.fontSize) || 16) * 1.2 + 64}px` : 'none'),
-    margin: settings.isVertical ? '0' : (settings.charsPerLine ? '0 auto' : '0'),
-    padding: '40px 32px',
-    textAlign: 'start',
-    wordBreak: 'normal',
-    overflowWrap: 'break-word',
-    lineBreak: 'normal',
-    writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb',
-    textOrientation: settings.isVertical ? 'upright' : 'mixed',
-    overflowY: settings.isVertical ? 'hidden' : 'scroll',
-    overflowX: 'hidden',
-    resize: 'none',
-    background: 'transparent',
-    direction: 'ltr',
-    ...fontStyle
+    fontSize: `${settings.fontSize || 16}px`, width: settings.isVertical ? `${Math.max(5000, metrics.gridW + 200)}px` : '100%', height: '100%',
+    maxWidth: settings.isVertical ? 'none' : (settings.charsPerLine ? `${settings.charsPerLine * (parseInt(settings.fontSize) || 16) * 1.2 + 64}px` : 'none'),
+    margin: settings.isVertical ? '0' : (settings.charsPerLine ? '0 auto' : '0'), padding: '40px 32px', textAlign: 'start', wordBreak: 'normal', overflowWrap: 'break-word', lineBreak: 'normal',
+    writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb', textOrientation: settings.isVertical ? 'upright' : 'mixed', 
+    overflowY: settings.isVertical ? 'hidden' : 'auto', 
+    overflowX: settings.isVertical ? 'auto' : 'hidden', 
+    resize: 'none', background: 'transparent', direction: 'ltr', ...fontStyle
   } : {
     fontSize: `${metrics.fontSize}px`,
-    '--cell': `${metrics.cell}px`,
-    '--grid-w': `${metrics.gridW}px`,
-    '--grid-h': `${metrics.gridH}px`,
-    '--ls-half': `${Math.round(metrics.letterSpacing / 2)}px`,
-    width: settings.isVertical
-      ? `${metrics.gridW + (metrics.padding * 2) + metrics.cell + 2}px`
-      : `${metrics.gridW + (metrics.padding * 2) + 2}px`,
-    height: settings.isVertical
-      ? `${metrics.gridH + (metrics.padding * 2) + 2}px`
-      : `${metrics.gridH + (metrics.padding * 2) + metrics.cell + 2}px`,
-    padding: `${metrics.padding}px`,
-    textAlign: 'start',
-    wordBreak: 'break-all',
-    lineBreak: 'anywhere',
-    textOrientation: settings.isVertical ? 'upright' : 'mixed',
-    overflow: 'hidden',
-    resize: 'none',
-    ...fontStyle
+    width: settings.isVertical ? `${metrics.gridW + (metrics.padding * 2) + metrics.cell + 2}px` : `${metrics.gridW + (metrics.padding * 2) + 2}px`,
+    height: settings.isVertical ? `${metrics.gridH + (metrics.padding * 2) + 2}px` : `${metrics.gridH + (metrics.padding * 2) + metrics.cell + 2}px`,
+    padding: `${metrics.padding}px`, textAlign: 'start', wordBreak: 'break-all', lineBreak: 'anywhere', textOrientation: settings.isVertical ? 'upright' : 'mixed', 
+    overflowY: settings.isVertical ? 'hidden' : 'auto', 
+    overflowX: settings.isVertical ? 'auto' : 'hidden', 
+    position: 'relative', // 子要素の absolute 配置の基点にする
+    resize: 'none', ...fontStyle
   }, [isCleanMode, settings.fontSize, settings.isVertical, settings.charsPerLine, metrics, fontStyle]);
+  // --- 8. 副作用 (Effects) ---
 
-  // --- メモ化: シンタックスハイライト要素（ビューポート仮想化 — 可視範囲のみ描画） ---
-  // --- メモ化: シンタックスハイライト要素（ビューポート仮想化 — 可視範囲のみ描画） ---
-  // ★ viewport を ref で管理（setState による再レンダリングを回避 — カーソル飛びの原因だった）
-  const viewportRef = useRef({ width: 0, height: 0, scrollTop: 0, scrollLeft: 0 });
-  
+  useLayoutEffect(() => {
+    if (containerRef.current) {
+      viewportRef.current = {
+        scrollTop: containerRef.current.scrollTop,
+        scrollLeft: containerRef.current.scrollLeft,
+        height: containerRef.current.clientHeight,
+        width: containerRef.current.clientWidth
+      };
+    }
+    const now = performance.now();
+    const total = now - renderStartTimeRef.current;
+    
+    // 最小更新間隔（100ms）を設けて無限ループを回避しつつ、負荷状況を通知
+    if (now - lastLagUpdateRef.current > 100) {
+      if (Math.abs(lagStats.totalTime - total) > 0.5 || Math.abs(lagStats.jsTime - jsTotalTimeRef.current) > 0.5) {
+        lastLagUpdateRef.current = now;
+        setLagStats({ jsTime: jsTotalTimeRef.current, totalTime: total });
+      }
+    }
+  });
+
   useEffect(() => {
-    const container = textareaRef.current?.closest('.editor-container');
+    if (value === lastNotifiedValueRef.current) return;
+    if (value === localTextRef.current) return;
+    applyText(value);
+  }, [value, applyText]);
+
+  useEffect(() => {
+    if (Math.abs(value.length - localTextRef.current.length) > 100) initHistory(value);
+  }, [value, initHistory]);
+
+  useEffect(() => {
+    const container = containerRef.current;
     if (!container) return;
-    viewportRef.current = {
-      width: container.clientWidth,
-      height: container.clientHeight,
-      scrollTop: container.scrollTop,
-      scrollLeft: container.scrollLeft,
-    };
+    
     let rafId = null;
     const onScroll = () => {
-      if (rafId) return;
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        viewportRef.current = {
+      viewportRef.current = {
           width: container.clientWidth,
           height: container.clientHeight,
           scrollTop: container.scrollTop,
           scrollLeft: container.scrollLeft,
-        };
+      };
+      
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        setScrollForce(f => f + 1);
       });
     };
+    
+    // 縦書き時のスクロール方向変換 (マウスホイール)
+    // React の onWheel は passive: true になることがあるため直接登録する
+    const onWheel = (e) => {
+      if (!settings.isVertical) return;
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        container.scrollLeft -= e.deltaY;
+        e.preventDefault(); // passive: false なので成功する
+      }
+    };
+    
     container.addEventListener('scroll', onScroll, { passive: true });
+    container.addEventListener('wheel', onWheel, { passive: false });
     return () => {
       container.removeEventListener('scroll', onScroll);
+      container.removeEventListener('wheel', onWheel);
       if (rafId) cancelAnimationFrame(rafId);
     };
   }, [settings.isVertical]);
@@ -879,20 +839,20 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     // ★ ref から viewport を読む（ハイライト再計算時のスナップショット）
     //    スクロールだけでは再計算されない（highlights 変更時のみ）
     const vp = viewportRef.current;
-    const margin = cell * 3;
     let filtered;
     if (isVert) {
-      const sl = vp.scrollLeft;
-      const visRight = margin;
-      const visLeft = sl - margin;
-      filtered = highlights.filter(h => h.x >= visLeft && h.x <= visRight);
+      const visRight = -vp.scrollLeft;
+      const visLeft = -vp.scrollLeft + vp.width;
+      const buffer = vp.width * 2; // バッファ拡大
+      filtered = highlights.filter(h => -h.x >= visRight - buffer && -h.x <= visLeft + buffer);
     } else {
-      const visTop = vp.scrollTop - margin;
-      const visBottom = vp.scrollTop + vp.height + margin;
-      filtered = highlights.filter(h => h.y >= visTop && h.y <= visBottom);
+      const visTop = vp.scrollTop;
+      const visBottom = vp.scrollTop + vp.height;
+      const buffer = vp.height * 2; // バッファ拡大
+      filtered = highlights.filter(h => h.y >= visTop - buffer && h.y <= visBottom + buffer);
     }
 
-    const MAX_VISIBLE = 500;
+    const MAX_VISIBLE = 5000;
     const limited = filtered.length > MAX_VISIBLE ? filtered.slice(0, MAX_VISIBLE) : filtered;
     
     return limited.map((h) => (
@@ -908,7 +868,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         borderRadius: '2px'
       }} />
     ));
-  }, [highlights, settings.isVertical, settings.editorSyntaxColors, baseMetrics.cell]);
+  }, [highlights, baseMetrics, settings.isVertical, settings.editorSyntaxColors, scrollForce]);
 
   // --- ドラッグ&ドロップでの画像挿入 ---
   const handleDragOver = useCallback((e) => {
@@ -944,119 +904,129 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   }, [localOnChange, pushHistory, onImageDrop, onChange, applyText]);
 
   return (
-    <div lang="ja" className={`editor-container ${settings.isVertical ? 'vertical' : 'horizontal'} ${paperClass}`}>
-      {/* Underlay: skip in clean mode (proportional fonts can't align character-by-character) */}
-      {!isCleanMode && (
-        <div className="editor-underlay" style={{
-          top: `${metrics.padding - (settings.isVertical ? Math.round(metrics.letterSpacing / 2) : 0)}px`,
-          right: settings.isVertical ? `${metrics.padding}px` : 'auto',
-          left: settings.isVertical ? 'auto' : `${metrics.padding}px`,
-          writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb',
-          ...fontStyle,
-          fontSize: `${metrics.fontSize}px`,
-        }}>
-          {highlightElements}
-          {/* Ghost Text Overlay */}
-          {ghostHighlights.map((gh) => (
-            <div key={gh.key} style={{
-              position: 'absolute',
-              right: settings.isVertical ? `${-gh.x}px` : 'auto',
-              left: settings.isVertical ? 'auto' : `${gh.x}px`,
-              top: `${gh.y}px`,
-              width: `${baseMetrics.cell}px`,
-              height: `${baseMetrics.cell}px`,
-              color: '#aaa',
-              opacity: 0.6,
-              pointerEvents: 'none',
-              lineHeight: `${baseMetrics.cell}px`,
-              fontSize: `${baseMetrics.fontSize}px`,
-              fontFamily: fontStyle.fontFamily,
-              writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb',
-              ...fontStyle,
-            }}>
-              {gh.char}
-            </div>
-          ))}
-          {/* Correction Highlights */}
-          {correctionHighlights.map((ch) => (
-            <div key={ch.key} style={{
-              position: 'absolute',
-              right: settings.isVertical ? `${-ch.x}px` : 'auto',
-              left: settings.isVertical ? 'auto' : `${ch.x}px`,
-              top: `${ch.y}px`,
-              width: `${baseMetrics.cell}px`,
-              height: `${baseMetrics.cell}px`,
-              borderBottom: settings.isVertical ? 'none' : '2px wavy red',
-              borderLeft: settings.isVertical ? '2px wavy red' : 'none',
-              opacity: 0.7,
-              pointerEvents: 'none',
-            }} />
-          ))}
-        </div>
-      )}
+    <div ref={containerRef} lang="ja" className={`editor-container ${settings.isVertical ? 'vertical' : 'horizontal'} ${paperClass}`}>
 
-      <textarea
-        lang="ja"
-        ref={textareaRef}
-        className={`native-grid-editor ${paperClass}`}
-        defaultValue={useMemo(() => settings.isVertical ? toVerticalDisplay(value) : value, [])}
-        onChange={handleChange}
-        onCompositionStart={handleCompositionStart}
-        onCompositionEnd={handleCompositionEnd}
-        onCopy={handleCopy}
-        onCut={handleCut}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-        onKeyDown={(e) => {
-          if (ghostText) {
-            if (e.key === 'Tab') {
-              e.preventDefault();
-              // Accept Ghost Text
-              const ta = textareaRef.current;
-              const start = ta.selectionStart;
-              const val = ta.value;
-              const newValue = val.slice(0, start) + ghostText + val.slice(start);
-              pushHistory(localTextRef.current, newValue, start);
-              applyText(newValue, start + ghostText.length);
-              onChange(newValue); // ユーザー操作（GhostText受諾）なのでAppに通知
-              setGhostText('');
-              return;
-            }
-            if (e.key === 'Escape') {
-              e.preventDefault();
-              setGhostText('');
-              return;
-            }
-            // Any other key acts normally but clears ghost text (via App or here)
-            // App.jsx effect clears it on text change.
-            // But for navigation keys (Arrow), we might want to clear it too?
-            // Request says "Any other keypress: clear ghost text."
-            if (!['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) {
-              setGhostText('');
-            }
-          }
-          undoKeyDown(e);
-        }}
-        onScroll={handleCursor}
-        onSelect={handleCursor}
-        onClick={handleCursor}
-        onKeyUp={(e) => {
-          handleCursor(e);
-        }}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          const textarea = textareaRef.current;
-          const hasSelection = textarea && textarea.selectionStart !== textarea.selectionEnd;
-          setEditorContextMenu({
-            x: e.clientX,
-            y: e.clientY,
-            hasSelection
-          });
-        }}
-        spellCheck={false}
-        placeholder="ここから物語を紡ぎましょう..."
-        style={textareaStyle}
-      />
+      {/* チャンク化・仮想化されたエディタ本体 */}
+      <div className={`chunks-container ${paperClass}`} style={{ 
+        height: settings.isVertical ? '100%' : `${debouncedLineCount * baseMetrics.cell + (metrics.padding * 2)}px`,
+        width: settings.isVertical ? `${debouncedLineCount * baseMetrics.cell + (metrics.padding * 2)}px` : '100%',
+        padding: `${metrics.padding}px`,
+        minHeight: '100%',
+        position: 'relative',
+        zIndex: 1, // 入力レイヤーを前面に
+        pointerEvents: 'auto',
+        '--cell': `${metrics.cell}px`,
+        '--ls-half': `${metrics.letterSpacing / 2}px`,
+        '--grid-offset-x': '3px',
+        '--grid-offset-y': '2px'
+      }}>
+        {/* 共通描画ラッパー：すべてのレイヤーを一つのオフセット空間に閉じ込める */}
+        <div className="chunks-content-root">
+          {/* 背景グリッド専用レイヤー (最背面) */}
+          {!isCleanMode && (
+            <div className={`editor-grid-layer ${paperClass}`} style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              zIndex: 0,
+              pointerEvents: 'none'
+            }} />
+          )}
+
+          {/* Underlay: Moved inside container for better synchronization */}
+          {!isCleanMode && (
+            <div className="editor-underlay" style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              zIndex: 1, // グリッドとテキストの間
+              pointerEvents: 'none',
+              writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb',
+              fontFamily: `${settings.fontFamily || 'var(--font-mincho)'}, serif`,
+              letterSpacing: `${metrics.letterSpacing}px`,
+              lineHeight: `${metrics.cell}px`,
+              fontSize: `${metrics.fontSize}px`,
+              fontVariantEastAsian: 'full-width',
+              fontVariantLigatures: 'none',
+              fontKerning: 'none',
+              textAutospace: 'no-autospace',
+              textSpacingTrim: 'space-all',
+              fontFeatureSettings: settings.isVertical ? '"palt" 0, "halt" 0, "kern" 0, "vkrn" 0, "chws" 0, "liga" 0, "clig" 0, "calt" 0, "vert" 1, "vrt2" 1' : '"palt" 0, "halt" 0, "kern" 0, "vkrn" 0, "chws" 0, "liga" 0, "clig" 0, "calt" 0, "vert" 0, "vrt2" 0',
+            }}>
+              {highlightElements}
+              
+              {/* ゴーストハイライト (AI補完) */}
+              {ghostHighlights.map((h) => (
+                <div key={h.key} style={{
+                  position: 'absolute',
+                  right: settings.isVertical ? `${-h.x}px` : 'auto',
+                  left: settings.isVertical ? 'auto' : `${h.x}px`,
+                  top: `${h.y}px`,
+                  width: `${metrics.cell}px`,
+                  height: `${metrics.cell}px`,
+                  color: 'rgba(100, 100, 100, 0.4)',
+                  pointerEvents: 'none',
+                  fontSize: `${metrics.fontSize}px`,
+                  textAlign: 'start'
+                }}>
+                  {h.char}
+                </div>
+              ))}
+
+              {/* 校正ハイライト (赤背景) */}
+              {correctionHighlights.map((h) => (
+                <div key={h.key} style={{
+                  position: 'absolute',
+                  right: settings.isVertical ? `${-h.x}px` : 'auto',
+                  left: settings.isVertical ? 'auto' : `${h.x}px`,
+                  top: `${h.y}px`,
+                  width: `${metrics.cell}px`,
+                  height: `${metrics.cell}px`,
+                  backgroundColor: 'rgba(255, 0, 0, 0.2)',
+                  borderBottom: '2px solid red',
+                  pointerEvents: 'none',
+                  cursor: 'help'
+                }} title="校正の提案"/>
+              ))}
+            </div>
+          )}
+
+        {visibleChunks.map((chunk) => {
+          const idx = chunks.indexOf(chunk);
+          return (
+            <ChunkEditor
+              key={`${chunk.id}-${settings.isVertical ? 'v' : 'h'}`}
+              chunk={chunk}
+              idx={idx}
+              isVertical={settings.isVertical}
+              baseMetrics={baseMetrics}
+              paperClass={paperClass}
+              textareaStyle={textareaStyle}
+              ghostText={ghostText}
+              handleChunkChange={handleChunkChange}
+              setGhostText={setGhostText}
+              undoKeyDown={undoKeyDown}
+              handleCursor={handleCursor}
+              handleChange={handleChange}
+              handleCompositionStart={handleCompositionStart}
+              handleCompositionEnd={handleCompositionEnd}
+              handleCopy={handleCopy}
+              handleCut={handleCut}
+              handleDragOver={handleDragOver}
+              handleDrop={handleDrop}
+              setEditorContextMenu={setEditorContextMenu}
+              textareaRefs={textareaRefs}
+              textareaRef={textareaRef}
+              toVerticalDisplay={toVerticalDisplay}
+              chunks={chunks}
+            />
+          );
+        })}
+        </div>
+      </div>
+
       {editorContextMenu && ReactDOM.createPortal(
         <div className="context-menu" style={{
           position: 'fixed',
@@ -1079,7 +1049,6 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
           {editorContextMenu.hasSelection && (
             <>
               <div style={{ height: '1px', background: 'var(--border-color, #eee)', margin: '4px 0' }}></div>
-              {/* Font change submenu */}
               <div className="context-menu-item" style={{ position: 'relative' }}
                 onMouseEnter={(e) => {
                   const sub = e.currentTarget.querySelector('.font-submenu');
@@ -1116,17 +1085,22 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
                     { label: '紅道', name: '紅道' },
                   ].map(f => (
                     <div key={f.name} className="context-menu-item" onClick={() => {
-                      const ta = textareaRef.current;
+                      const ta = textareaRefs.current[editorContextMenu.chunkIdx];
                       if (!ta) return;
                       const start = ta.selectionStart;
                       const end = ta.selectionEnd;
                       const rawValue = settings.isVertical ? fromVerticalDisplay(ta.value) : ta.value;
                       const selected = rawValue.substring(start, end);
                       const wrapped = `{font:${f.name}}${selected}{/font}`;
-                      const newValue = rawValue.substring(0, start) + wrapped + rawValue.substring(end);
-                      pushHistory(localTextRef.current, newValue, start);
-                      applyText(newValue, start + wrapped.length);
-                      onChange(newValue);
+                      const newVal = rawValue.substring(0, start) + wrapped + rawValue.substring(end);
+                      
+                      const oldFull = localTextRef.current;
+                      handleChunkChange(editorContextMenu.chunkIdx, newVal);
+                      const newFull = localTextRef.current;
+                      
+                      const globalPos = (chunks[editorContextMenu.chunkIdx]?.startOffset || 0) + start;
+                      pushHistory(oldFull, newFull, globalPos + wrapped.length);
+                      
                       setEditorContextMenu(null);
                     }}>
                       {f.label}
@@ -1134,18 +1108,22 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
                   ))}
                   <div style={{ height: '1px', background: 'var(--border-color, #eee)', margin: '4px 0' }}></div>
                   <div className="context-menu-item" onClick={() => {
-                    const ta = textareaRef.current;
+                    const ta = textareaRefs.current[editorContextMenu.chunkIdx];
                     if (!ta) return;
                     const start = ta.selectionStart;
                     const end = ta.selectionEnd;
                     const rawValue = settings.isVertical ? fromVerticalDisplay(ta.value) : ta.value;
                     const selected = rawValue.substring(start, end);
-                    // Remove font tags from selection
                     const cleaned = selected.replace(/\{font[:：][^}]*\}/g, '').replace(/\{\/font\}/g, '');
-                    const newValue = rawValue.substring(0, start) + cleaned + rawValue.substring(end);
-                    pushHistory(localTextRef.current, newValue, start);
-                    applyText(newValue, start + cleaned.length);
-                    onChange(newValue);
+                    const newVal = rawValue.substring(0, start) + cleaned + rawValue.substring(end);
+
+                    const oldFull = localTextRef.current;
+                    handleChunkChange(editorContextMenu.chunkIdx, newVal);
+                    const newFull = localTextRef.current;
+                    
+                    const globalPos = (chunks[editorContextMenu.chunkIdx]?.startOffset || 0) + start;
+                    pushHistory(oldFull, newFull, globalPos + cleaned.length);
+
                     setEditorContextMenu(null);
                   }}>
                     ❌ フォント解除
@@ -1154,27 +1132,31 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
               </div>
               <div style={{ height: '1px', background: 'var(--border-color, #eee)', margin: '4px 0' }}></div>
               <div className="context-menu-item" onClick={() => {
-                const ta = textareaRef.current;
+                const ta = textareaRefs.current[editorContextMenu.chunkIdx];
                 if (ta) {
                   const selected = ta.value.substring(ta.selectionStart, ta.selectionEnd);
                   const original = settings.isVertical ? fromVerticalDisplay(selected) : selected;
                   addToClipboard(original);
                   navigator.clipboard.writeText(original).catch(() => {});
-                  // テキストから選択部分を削除
+                  
                   const cursorPos = ta.selectionStart;
                   const before = ta.value.substring(0, cursorPos);
                   const after = ta.value.substring(ta.selectionEnd);
-                  const newValue = settings.isVertical ? fromVerticalDisplay(before + after) : (before + after);
-                  pushHistory(localTextRef.current, newValue, cursorPos);
-                  applyText(newValue, cursorPos);
-                  onChange(newValue);
+                  const newVal = before + after;
+                  
+                  const oldFull = localTextRef.current;
+                  handleChunkChange(editorContextMenu.chunkIdx, newVal);
+                  const newFull = localTextRef.current;
+
+                  const globalPos = (chunks[editorContextMenu.chunkIdx]?.startOffset || 0) + cursorPos;
+                  pushHistory(oldFull, newFull, globalPos);
                 }
                 setEditorContextMenu(null);
               }}>
                 ✂️ 切り取り
               </div>
               <div className="context-menu-item" onClick={() => {
-                const ta = textareaRef.current;
+                const ta = textareaRefs.current[editorContextMenu.chunkIdx];
                 if (ta) {
                   const selected = ta.value.substring(ta.selectionStart, ta.selectionEnd);
                   const original = settings.isVertical ? fromVerticalDisplay(selected) : selected;
@@ -1190,7 +1172,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
             </>
           )}
           <div className="context-menu-item" onClick={() => {
-            const ta = textareaRef.current;
+            const ta = textareaRefs.current[editorContextMenu.chunkIdx];
             if (!ta) { setEditorContextMenu(null); return; }
             navigator.clipboard.readText().then(text => {
               if (!text) { setEditorContextMenu(null); return; }
@@ -1199,9 +1181,14 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
               const currentVal = ta.value;
               const rawVal = settings.isVertical ? fromVerticalDisplay(currentVal) : currentVal;
               const newValue = rawVal.substring(0, start) + text + rawVal.substring(end);
-              pushHistory(localTextRef.current, newValue, start);
-              applyText(newValue, start + text.length);
-              onChange(newValue);
+              
+              const oldFull = localTextRef.current;
+              handleChunkChange(editorContextMenu.chunkIdx, newValue);
+              const newFull = localTextRef.current;
+
+              const globalPos = (chunks[editorContextMenu.chunkIdx]?.startOffset || 0) + start;
+              pushHistory(oldFull, newFull, globalPos + text.length);
+              
               addToClipboard(text);
               requestAnimationFrame(() => {
                 ta.focus();
@@ -1216,6 +1203,26 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         </div>,
         document.body
       )}
+
+      {/* Lag Monitor Overlay */}
+      <div style={{
+        position: 'fixed',
+        bottom: '40px',
+        right: '250px',
+        background: 'rgba(0,0,0,0.7)',
+        color: '#0f0',
+        padding: '4px 8px',
+        borderRadius: '4px',
+        fontSize: '11px',
+        fontFamily: 'monospace',
+        zIndex: 100000,
+        pointerEvents: 'none',
+        display: 'flex',
+        gap: '10px'
+      }}>
+        <span>JS: {lagStats.jsTime.toFixed(1)}ms</span>
+        <span>Total: {lagStats.totalTime.toFixed(1)}ms</span>
+      </div>
 
     </div>
   );
