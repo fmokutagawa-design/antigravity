@@ -11,6 +11,16 @@ function extractName(p) {
   return p.split('/').pop().split('\\').pop();
 }
 
+/**
+ * Ensures we have a string path for Electron IPC.
+ * Supports both raw path strings and handle objects.
+ */
+function toPath(h) {
+  if (!h) return h;
+  if (typeof h === 'string') return h;
+  return h.handle || h.path || h;
+}
+
 export const electronFileSystem = {
   async openProjectDialog() {
     const path = await window.api.fs.selectFolder();
@@ -23,18 +33,18 @@ export const electronFileSystem = {
   },
 
   async readDirectory(dirHandle) {
-    return await window.api.fs.readDirectory(dirHandle.handle || dirHandle);
+    return await window.api.fs.readDirectory(toPath(dirHandle));
   },
 
   async getFileHandle(dirHandle, fileName, _options = { create: false }) {
-    const dirPath = dirHandle.handle || dirHandle;
+    const dirPath = toPath(dirHandle);
     const separator = pathSep(dirPath);
     const filePath = `${dirPath}${separator}${fileName}`;
     return { handle: filePath, name: fileName, kind: 'file' };
   },
 
   async getFile(dirHandle, fileName) {
-    const dirPath = dirHandle.handle || dirHandle;
+    const dirPath = toPath(dirHandle);
     const separator = pathSep(dirPath);
     const filePath = `${dirPath}${separator}${fileName}`;
     try {
@@ -46,7 +56,7 @@ export const electronFileSystem = {
   },
 
   async getOrCreateFile(dirHandle, fileName) {
-    const dirPath = dirHandle.handle || dirHandle;
+    const dirPath = toPath(dirHandle);
     const separator = pathSep(dirPath);
     const filePath = `${dirPath}${separator}${fileName}`;
     // Ensure file exists by attempting to write empty if not present
@@ -59,22 +69,22 @@ export const electronFileSystem = {
   },
 
   async readFile(fileHandle) {
-    return await window.api.fs.readFile(fileHandle.handle || fileHandle);
+    return await window.api.fs.readFile(toPath(fileHandle));
   },
 
   async writeFile(fileHandle, content) {
-    return await window.api.fs.writeFile(fileHandle.handle || fileHandle, content);
+    return await window.api.fs.writeFile(toPath(fileHandle), content);
   },
 
   async createFile(parentHandle, fileName, content = '') {
-    const path = await window.api.fs.createFile(parentHandle.handle || parentHandle, fileName, content);
+    const path = await window.api.fs.createFile(toPath(parentHandle), fileName, content);
     return { handle: path, name: extractName(path), kind: 'file' };
   },
 
   async createFolder(parentHandle, folderName) {
-    await window.api.fs.createFolder(parentHandle.handle || parentHandle, folderName);
+    const parentPath = toPath(parentHandle);
+    await window.api.fs.createFolder(parentPath, folderName);
 
-    const parentPath = parentHandle.handle || parentHandle;
     const separator = pathSep(parentPath);
     const cleanParent = parentPath.endsWith(separator) ? parentPath.slice(0, -1) : parentPath;
     const cleanFolder = folderName.replace(/^[/\\]/, '');
@@ -84,12 +94,13 @@ export const electronFileSystem = {
   },
 
   async rename(handle, newName) {
-    const newPath = await window.api.fs.rename(handle.handle || handle, newName);
-    return { handle: newPath, name: extractName(newPath), kind: handle.kind };
+    const oldPath = toPath(handle);
+    const newPath = await window.api.fs.rename(oldPath, newName);
+    return { handle: newPath, name: extractName(newPath), kind: handle.kind || 'file' };
   },
 
   async deleteEntry(handle) {
-    return await window.api.fs.delete(handle.handle || handle);
+    return await window.api.fs.delete(toPath(handle));
   },
 
   async deleteEntryWithParent(handle, _parentHandle) {
@@ -97,8 +108,8 @@ export const electronFileSystem = {
   },
 
   async moveFile(sourceHandle, targetDirHandle) {
-    const oldPath = sourceHandle.handle || sourceHandle;
-    const dirPath = targetDirHandle.handle || targetDirHandle;
+    const oldPath = toPath(sourceHandle);
+    const dirPath = toPath(targetDirHandle);
 
     let fileName;
     if (typeof oldPath === 'string') {
@@ -136,8 +147,8 @@ export const electronFileSystem = {
   },
 
   async resolvePath(rootHandle, targetHandle) {
-    const rootPath = rootHandle.handle || rootHandle;
-    const targetPath = targetHandle.handle || targetHandle;
+    const rootPath = toPath(rootHandle);
+    const targetPath = toPath(targetHandle);
 
     const normalize = p => p.replace(/\\/g, '/');
     const rootNorm = normalize(rootPath).toLowerCase();
@@ -155,7 +166,7 @@ export const electronFileSystem = {
   },
 
   async getDirectoryHandleFromPath(rootHandle, pathParts) {
-    const rootPath = rootHandle.handle || rootHandle;
+    const rootPath = toPath(rootHandle);
     const separator = pathSep(rootPath);
     const fullPath = [rootPath, ...pathParts].join(separator);
     const name = pathParts.length > 0 ? pathParts[pathParts.length - 1] : rootHandle.name;
@@ -163,7 +174,7 @@ export const electronFileSystem = {
   },
 
   async showInExplorer(handle) {
-    await window.api.fs.showInExplorer(handle.handle || handle);
+    await window.api.fs.showInExplorer(toPath(handle));
   },
 
   async saveFile(defaultPath) {

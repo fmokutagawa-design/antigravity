@@ -1,19 +1,21 @@
 const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
+const toPath = (p) => (p && typeof p === 'object' ? (p.handle || p.path || p) : p);
+
 contextBridge.exposeInMainWorld('api', {
     fs: {
         selectFolder: () => ipcRenderer.invoke('dialog:openDirectory'),
-        saveFile: (defaultPath) => ipcRenderer.invoke('dialog:save', defaultPath),
-        readDirectory: (path) => ipcRenderer.invoke('fs:readDirectory', path),
-        readFile: (path) => ipcRenderer.invoke('fs:readFile', path),
-        readFileBinary: (path) => ipcRenderer.invoke('fs:readFileBinary', path),
-        writeFile: (path, content) => ipcRenderer.invoke('fs:writeFile', path, content),
-        writeFileBinary: (path, buffer) => ipcRenderer.invoke('fs:writeFileBinary', path, buffer),
-        createFolder: (parentPath, name) => ipcRenderer.invoke('fs:createFolder', parentPath, name),
-        createFile: (parentPath, name, content) => ipcRenderer.invoke('fs:createFile', parentPath, name, content),
-        rename: (oldPath, newName) => ipcRenderer.invoke('fs:rename', oldPath, newName),
-        delete: (path) => ipcRenderer.invoke('fs:delete', path),
-        showInExplorer: (path) => ipcRenderer.invoke('fs:showInExplorer', path),
+        saveFile: (defaultPath) => ipcRenderer.invoke('dialog:save', toPath(defaultPath)),
+        readDirectory: (path) => ipcRenderer.invoke('fs:readDirectory', toPath(path)),
+        readFile: (path) => ipcRenderer.invoke('fs:readFile', toPath(path)),
+        readFileBinary: (path) => ipcRenderer.invoke('fs:readFileBinary', toPath(path)),
+        writeFile: (path, content) => ipcRenderer.invoke('fs:writeFile', toPath(path), content),
+        writeFileBinary: (path, buffer) => ipcRenderer.invoke('fs:writeFileBinary', toPath(path), buffer),
+        createFolder: (parentPath, name) => ipcRenderer.invoke('fs:createFolder', toPath(parentPath), name),
+        createFile: (parentPath, name, content) => ipcRenderer.invoke('fs:createFile', toPath(parentPath), name, content),
+        rename: (oldPath, newName) => ipcRenderer.invoke('fs:rename', toPath(oldPath), newName),
+        delete: (path) => ipcRenderer.invoke('fs:delete', toPath(path)),
+        showInExplorer: (path) => ipcRenderer.invoke('fs:showInExplorer', toPath(path)),
     },
     system: {
         getFonts: () => ipcRenderer.invoke('system:getFonts')

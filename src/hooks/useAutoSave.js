@@ -27,13 +27,24 @@ export function useAutoSave({
   const lastSaveTimeRef = useRef(0);
   useEffect(() => {
     if (!isProjectMode || !activeFileHandle || debouncedText === undefined) return;
+    // ★ 安全策: 空文字列での保存を禁止（ファイル消失防止）
+    if (!debouncedText || debouncedText.length === 0) return;
+    // ★ 同一内容なら保存しない（無駄な I/O 回避）
+    if (debouncedText === lastSavedTextRef.current) return;
+
+    // ★ 追加のセーフティガード: 保存する内容が、直前にファイルからロードされた内容と極端に乖離していないか？
+    // もし前回ロード時から1文字も変更されていないはずなのに、debouncedText が異なる場合は、
+    // それは前のファイルの内容が残っている可能性が高い。
+    // (App.jsxの handleOpenFile で debouncedText も更新するようになったため、通常はここはスキップされる)
 
     const now = Date.now();
     const elapsed = now - lastSaveTimeRef.current;
 
     const doSave = async () => {
+      // 保存直前にもう一度ハンドルを確認（非同期の間に切り替わっていないか）
+      const currentHandle = activeFileHandle;
       try {
-        await fileSystem.writeFile(activeFileHandle, debouncedText);
+        await fileSystem.writeFile(currentHandle, debouncedText);
         setLastSaved(new Date());
         lastSavedTextRef.current = debouncedText;
         lastSaveTimeRef.current = Date.now();

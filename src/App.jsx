@@ -592,6 +592,7 @@ function App() {
 
       const content = await fileSystem.readFile(targetHandle);
       setText(content);
+      setDebouncedText(content);
       lastSavedTextRef.current = content;
       setActiveFileHandle(targetHandle);
       setActiveTab('editor');

@@ -597,7 +597,7 @@ export function useProjectActions({
         const projectPath = savedProjectHandle;
 
         setProjectHandle(projectPath);
-        const tree = await fileSystem.readDirectory({ handle: projectPath });
+        const tree = await fileSystem.readDirectory(projectPath);
         setFileTree(tree);
         setIsProjectMode(true);
         setSavedProjectHandle(null);
