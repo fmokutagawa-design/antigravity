@@ -343,7 +343,13 @@ const Editor = forwardRef(({
     }
   }));
 
-  const paperClass = `paper-${settings.paperStyle || 'lined'}`;
+  const paperClass = settings.paperStyle === 'grid'
+    ? 'paper-manuscript'
+    : settings.paperStyle === 'clean'
+      ? 'paper-clean'
+      : settings.paperStyle === 'lined'
+        ? 'paper-lined'
+        : 'paper-plain';
   const isCleanMode = settings.paperStyle === 'clean';
 
   return (
@@ -362,7 +368,7 @@ const Editor = forwardRef(({
           '--grid-offset-y': '2px'
         }}
       >
-        <div className="chunks-content-root" style={{ position: 'relative', width: settings.isVertical ? 'auto' : '100%', height: settings.isVertical ? '100%' : 'auto', minHeight: '100%' }}>
+        <div className="chunks-content-root" style={{ position: 'relative', width: settings.isVertical ? `${baseMetrics.gridW + baseMetrics.padding * 2 + baseMetrics.cell + 2}px` : '100%', height: settings.isVertical ? '100%' : 'auto', minHeight: '100%' }}>
           {!isCleanMode && <div className={`editor-grid-layer ${paperClass}`} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, pointerEvents: 'none' }} />}
           {!isCleanMode && (
             <div className="editor-underlay" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb', fontSize: `${baseMetrics.fontSize}px`, lineHeight: `${baseMetrics.cell}px`, letterSpacing: `${baseMetrics.letterSpacing}px`, fontFamily: settings.fontFamily, color: 'transparent' }}>
