@@ -114,11 +114,24 @@ const Editor = forwardRef(({
   const baseMetrics = useMemo(() => {
     const fontSize = settings.fontSize || 18;
     const isManuscript = settings.paperStyle === 'grid';
-    const lineHeightRatio = isManuscript ? (settings.lineHeight || 1.65) : (settings.charSpacing || 1.4);
+    const lineHeightRatio = isManuscript
+      ? (settings.lineHeight || 1.65)
+      : (settings.charSpacing || 1.4);
     const cell = Math.floor(fontSize * lineHeightRatio);
     const padding = 40;
-    return { fontSize, cell, padding, letterSpacing: (cell - fontSize) };
-  }, [settings.fontSize, settings.lineHeight, settings.paperStyle, settings.charSpacing]);
+    const containerEl = containerRef.current;
+    const availableH = containerEl ? containerEl.clientHeight - padding * 2 : 600;
+    const availableW = containerEl ? containerEl.clientWidth - padding * 2 : 800;
+    const isVert = settings.isVertical;
+    const maxPerLine = settings.charsPerLine ||
+      Math.floor((isVert ? availableH : availableW) / cell) || 20;
+    const cols = isVert ? Math.ceil(400 / maxPerLine) + 2 : maxPerLine;
+    const rows = isVert ? maxPerLine : Math.ceil(400 / maxPerLine) + 2;
+    const gridW = cols * cell;
+    const gridH = rows * cell;
+    return { fontSize, cell, maxPerLine, padding, letterSpacing: cell - fontSize, cols, rows, gridW, gridH };
+  }, [settings.fontSize, settings.lineHeight, settings.paperStyle, settings.charSpacing,
+      settings.isVertical, settings.charsPerLine, scrollForce]);
 
   const textareaStyle = useMemo(() => ({
     fontFamily: `${settings.fontFamily || 'var(--font-mincho)'}, serif`,
@@ -128,9 +141,11 @@ const Editor = forwardRef(({
     padding: 0,
     border: 'none',
     outline: 'none',
-    color: settings.paperStyle === 'clean' ? 'var(--text-main)' : 'rgba(0,0,0,0.08)',
+    color: 'var(--text-main)',
     caretColor: 'var(--text-main)',
-    width: settings.isVertical ? 'auto' : '100%',
+    width: settings.isVertical
+      ? `${baseMetrics.gridW + baseMetrics.padding * 2 + baseMetrics.cell + 2}px`
+      : '100%',
     height: '100%',
     writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb',
     whiteSpace: 'pre-wrap',
@@ -338,7 +353,8 @@ const Editor = forwardRef(({
         className={`chunks-container ${paperClass}`} 
         style={{ 
           flex: 1, 
-          overflow: 'auto', 
+          overflowX: settings.isVertical ? 'auto' : 'hidden',
+          overflowY: settings.isVertical ? 'hidden' : 'auto',
           padding: `${baseMetrics.padding}px`, 
           position: 'relative', 
           '--cell': `${baseMetrics.cell}px`,
