@@ -121,28 +121,7 @@ const Editor = forwardRef(({
     setScrollForce(f => f + 1);
     if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
     scrollTimerRef.current = setTimeout(() => {
-      const full = fullTextRef.current;
-      if (full.length <= 30000) return;
-      const isVert = settings.isVertical;
-      const scrollPos = isVert ? container.scrollLeft : container.scrollTop;
-      const scrollMax = isVert
-        ? container.scrollWidth - container.clientWidth
-        : container.scrollHeight - container.clientHeight;
-      if (scrollMax <= 0) return;
-      const proportion = scrollPos / scrollMax;
-      const estimatedCenter = Math.floor(proportion * full.length);
-      const { start } = windowRef.current;
-      if (Math.abs(estimatedCenter - (start + 15000)) > 3000) {
-        const newStart = Math.max(0, estimatedCenter - 15000);
-        const newEnd = Math.min(full.length, newStart + 30000);
-        const windowText = full.slice(newStart, newEnd);
-        const ta = textareaRef.current;
-        if (ta) {
-          ta.value = isVert ? toVerticalDisplay(windowText) : windowText;
-          windowRef.current = { start: newStart, end: newEnd };
-          setDebouncedValue(windowText);
-        }
-      }
+      // no-op: window sliding is triggered by typing only
     }, 300);
   }, [settings.isVertical]);
 
@@ -278,6 +257,7 @@ const Editor = forwardRef(({
   // Props からの同期
   useEffect(() => {
     if (Math.abs(value.length - fullTextRef.current.length) > 100) {
+      if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
       isProcessingPropValueRef.current = true;
       fullTextRef.current = value;
       const newEnd = Math.min(30000, value.length);
