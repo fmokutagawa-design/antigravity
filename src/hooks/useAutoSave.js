@@ -44,6 +44,15 @@ export function useAutoSave({
       // 保存直前にもう一度ハンドルを確認（非同期の間に切り替わっていないか）
       const currentHandle = activeFileHandle;
       try {
+        // 安全ガード: 前回保存より50%以上短い場合は保存を拒否
+        if (
+          lastSavedTextRef.current.length > 1000 &&
+          debouncedText.length < lastSavedTextRef.current.length * 0.5
+        ) {
+          console.warn('自動保存をブロック: 内容が前回保存より極端に短い');
+          return;
+        }
+
         await fileSystem.writeFile(currentHandle, debouncedText);
         setLastSaved(new Date());
         lastSavedTextRef.current = debouncedText;
