@@ -153,9 +153,13 @@ const Editor = forwardRef(({
     });
   }, [debouncedValue, baseMetrics.maxPerLine]);
 
-  const totalLineCount = useMemo(() =>
-    paragraphIndex.reduce((sum, p) => sum + p.lineCount, 0) + 10,
-  [paragraphIndex]);
+  const totalLineCount = useMemo(() => {
+    const windowLines = paragraphIndex.reduce((sum, p) => sum + p.lineCount, 0);
+    const windowLen = windowRef.current.end - windowRef.current.start;
+    const fullLen = fullTextRef.current.length;
+    if (windowLen <= 0 || windowLines <= 0) return 50;
+    return Math.ceil(windowLines * fullLen / windowLen) + 20;
+  }, [paragraphIndex]);
 
   const textareaStyle = useMemo(() => ({
     fontFamily: `${settings.fontFamily || 'var(--font-mincho)'}, serif`,
@@ -255,6 +259,11 @@ const Editor = forwardRef(({
       containerRef.current.scrollLeft = containerRef.current.scrollWidth;
     }
   }, [settings.isVertical]);
+
+  useLayoutEffect(() => {
+    const timer = setTimeout(() => setScrollForce(f => f + 1), 150);
+    return () => clearTimeout(timer);
+  }, []);
   
   useEffect(() => {
     const container = containerRef.current;
