@@ -133,6 +133,30 @@ const Editor = forwardRef(({
   }, [settings.fontSize, settings.lineHeight, settings.paperStyle, settings.charSpacing,
       settings.isVertical, settings.charsPerLine, scrollForce]);
 
+  const paragraphIndex = useMemo(() => {
+    const text = debouncedValue;
+    if (!text) return [];
+    const lines = text.split(/\r?\n/);
+    let currentLine = 0;
+    return lines.map((lineText, idx) => {
+      const charArray = splitString(lineText + (idx < lines.length - 1 ? '\n' : ''));
+      const { totalLines } = computeCharPositions(charArray, baseMetrics.maxPerLine);
+      const entry = {
+        id: idx,
+        text: lineText,
+        charArray,
+        startLine: currentLine,
+        lineCount: totalLines
+      };
+      currentLine += totalLines;
+      return entry;
+    });
+  }, [debouncedValue, baseMetrics.maxPerLine]);
+
+  const totalLineCount = useMemo(() =>
+    paragraphIndex.reduce((sum, p) => sum + p.lineCount, 0) + 10,
+  [paragraphIndex]);
+
   const textareaStyle = useMemo(() => ({
     fontFamily: `${settings.fontFamily || 'var(--font-mincho)'}, serif`,
     fontSize: `${baseMetrics.fontSize}px`,
@@ -161,29 +185,7 @@ const Editor = forwardRef(({
     fontFeatureSettings: settings.isVertical ? '"palt" 0, "halt" 0, "kern" 0, "vkrn" 0, "chws" 0, "liga" 0, "clig" 0, "calt" 0, "vert" 1, "vrt2" 1' : '"palt" 0, "halt" 0, "kern" 0, "vkrn" 0, "chws" 0, "liga" 0, "clig" 0, "calt" 0, "vert" 0, "vrt2" 0',
   }), [settings.fontFamily, baseMetrics, settings.isVertical, settings.paperStyle, totalLineCount]);
 
-  const paragraphIndex = useMemo(() => {
-    const text = debouncedValue;
-    if (!text) return [];
-    const lines = text.split(/\r?\n/);
-    let currentLine = 0;
-    return lines.map((lineText, idx) => {
-      const charArray = splitString(lineText + (idx < lines.length - 1 ? '\n' : ''));
-      const { totalLines } = computeCharPositions(charArray, baseMetrics.maxPerLine);
-      const entry = {
-        id: idx,
-        text: lineText,
-        charArray,
-        startLine: currentLine,
-        lineCount: totalLines
-      };
-      currentLine += totalLines;
-      return entry;
-    });
-  }, [debouncedValue, baseMetrics.maxPerLine]);
 
-  const totalLineCount = useMemo(() =>
-    paragraphIndex.reduce((sum, p) => sum + p.lineCount, 0) + 10,
-  [paragraphIndex]);
 
   const charPositionsCache = useMemo(() => {
     if (paragraphIndex.length === 0) return { visibleParagraphs: [] };
