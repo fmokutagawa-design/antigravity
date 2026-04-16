@@ -42,6 +42,7 @@ import './components/LinkPanel.css';
 
 import { saveTextFile, loadTextFile } from './utils/fileUtils';
 import { fileSystem, isElectron, isNative } from './utils/fileSystem';
+import ManuscriptPanel from './components/ManuscriptPanel';
 import { generateEpub, downloadBlob } from './utils/epubExporter'; // EPUB Exporter
 import { generateDocx, downloadBlob as downloadDocxBlob } from './utils/docxExporter'; // DOCX Exporter
 // import {
@@ -1437,6 +1438,14 @@ function App() {
             <aside className="sidebar" style={{ width: '400px' }}>
               <div className="sidebar-nav">
                 <div
+                  className={`sidebar-nav-item ${sidebarTab === 'manuscript' ? 'active' : ''} `}
+                  onClick={() => setSidebarTab('manuscript')}
+                  title="原稿管理"
+                >
+                  📖
+                </div>
+
+                <div
                   className={`sidebar-nav-item ${sidebarTab === 'files' ? 'active' : ''} `}
                   onClick={() => setSidebarTab('files')}
                   title="ファイル"
@@ -2003,6 +2012,71 @@ function App() {
                       )}
                     />
 
+                  ) : sidebarTab === 'manuscript' ? (
+                    <ManuscriptPanel
+                      allFiles={allMaterialFiles}
+                      activeFile={activeFileHandle}
+                      onChapterSelect={async (handle) => {
+                        // オートセーブを待ってから切り替え
+                        if (activeFileHandle) await handleSaveFile();
+                        handleFileSelect(handle);
+                      }}
+                      onSplitDocument={async () => {
+                        if (!projectHandle) return;
+                        if (!text) return;
+                        if (!await requestConfirm("章分割の実行", "現在の原稿を章（# や第xx章）ごとに分割して manuscript フォルダへ保存しますか？\n（元のファイルは残ります）")) return;
+
+                        try {
+                          // manuscript フォルダを作成
+                          let manuscriptHandle;
+                          try {
+                            manuscriptHandle = await projectHandle.getDirectoryHandle('manuscript');
+                          } catch {
+                            manuscriptHandle = await projectHandle.getDirectoryHandle('manuscript', { create: true });
+                          }
+
+                          // 分割処理
+                          const lines = text.split('\n');
+                          const jpRegex = /^(第[0-9０-９一二三四五六七八九十百千万]+[章話節幕編部]).*/;
+                          let currentChapterText = [];
+                          let chapterCount = 0;
+                          let firstChapterName = "";
+
+                          const saveChapter = async (name, content) => {
+                            if (!content.trim()) return;
+                            const fileName = `${String(chapterCount).padStart(3, '0')}_${name.replace(/[\\/:*?"<>|]/g, '_')}.txt`;
+                            const fileHandle = await manuscriptHandle.getFileHandle(fileName, { create: true });
+                            const writable = await fileHandle.createWritable();
+                            await writable.write(content);
+                            await writable.close();
+                            if (!firstChapterName) firstChapterName = fileHandle;
+                          };
+
+                          let currentHeader = "序";
+                          for (const line of lines) {
+                            const isHeader = line.startsWith('#') || jpRegex.test(line);
+                            if (isHeader && currentChapterText.length > 0) {
+                              chapterCount++;
+                              await saveChapter(currentHeader, currentChapterText.join('\n'));
+                              currentChapterText = [];
+                              currentHeader = line.replace(/^#+\s*/, '').trim() || `第${chapterCount}章`;
+                            }
+                            currentChapterText.push(line);
+                          }
+                          if (currentChapterText.length > 0) {
+                            chapterCount++;
+                            await saveChapter(currentHeader, currentChapterText.join('\n'));
+                          }
+
+                          showToast(`${chapterCount}個の章に分割しました。`);
+                          refreshMaterials();
+                          setSidebarTab('manuscript');
+                        } catch (err) {
+                          showToast("分割失敗: " + err.message);
+                        }
+                      }}
+                    />
+
                   ) : sidebarTab === 'prizes' ? (
                     <PrizePanel
                       projectSettings={projectSettings}
@@ -2215,7 +2289,17 @@ function App() {
                 {isRapidMode && (
                   <span style={{ marginRight: '8px', padding: '1px 8px', background: '#2e7d32', color: '#fff', borderRadius: '10px', fontSize: '11px', fontWeight: 'bold', letterSpacing: '0.5px' }}>🚀 爆速</span>
                 )}
-                <span style={{ opacity: 0.6 }}>{footerStats.len} 文字</span>
+                <span style={{ opacity: 0.6 }}>
+                  {footerStats.len} 文字
+                  {(() => {
+                    const manuscriptFiles = allMaterialFiles.filter(f => f.path && f.path.startsWith('manuscript/'));
+                    if (manuscriptFiles.length > 0) {
+                      const total = manuscriptFiles.reduce((sum, f) => sum + (f.content?.length || 0), 0);
+                      return <span style={{ color: 'var(--accent-color)', fontWeight: 'bold' }}> (全体: {total.toLocaleString()}字)</span>;
+                    }
+                    return null;
+                  })()}
+                </span>
                 <span style={{ margin: '0 8px', opacity: 0.2 }}>|</span>
                 <span style={{ opacity: 0.6 }}>原稿用紙 {footerStats.pages} 枚</span>
                 <span style={{ margin: '0 8px', opacity: 0.2 }}>|</span>
