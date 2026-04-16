@@ -67,6 +67,7 @@ const Editor = forwardRef(({
   const highlightDebounceRef = useRef(null);
   const debouncePrevLenRef = useRef(value.length);
   const isProcessingPropValueRef = useRef(false);
+  const scrollTimerRef = useRef(null);
 
   // ステート
   const [scrollForce, setScrollForce] = useState(0);
@@ -106,9 +107,43 @@ const Editor = forwardRef(({
     setDebouncedValue(windowText);
     setScrollForce(f => f + 1);
 
-    setTimeout(() => {
-      if (textareaRef.current) textareaRef.current.focus();
-    }, 50);
+  }, [settings.isVertical]);
+
+  const handleContainerScroll = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    viewportRef.current = {
+      scrollTop: container.scrollTop,
+      scrollLeft: container.scrollLeft,
+      height: container.clientHeight,
+      width: container.clientWidth,
+    };
+    setScrollForce(f => f + 1);
+    if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+    scrollTimerRef.current = setTimeout(() => {
+      const full = fullTextRef.current;
+      if (full.length <= 30000) return;
+      const isVert = settings.isVertical;
+      const scrollPos = isVert ? container.scrollLeft : container.scrollTop;
+      const scrollMax = isVert
+        ? container.scrollWidth - container.clientWidth
+        : container.scrollHeight - container.clientHeight;
+      if (scrollMax <= 0) return;
+      const proportion = scrollPos / scrollMax;
+      const estimatedCenter = Math.floor(proportion * full.length);
+      const { start } = windowRef.current;
+      if (Math.abs(estimatedCenter - (start + 15000)) > 3000) {
+        const newStart = Math.max(0, estimatedCenter - 15000);
+        const newEnd = Math.min(full.length, newStart + 30000);
+        const windowText = full.slice(newStart, newEnd);
+        const ta = textareaRef.current;
+        if (ta) {
+          ta.value = isVert ? toVerticalDisplay(windowText) : windowText;
+          windowRef.current = { start: newStart, end: newEnd };
+          setDebouncedValue(windowText);
+        }
+      }
+    }, 300);
   }, [settings.isVertical]);
 
   const baseMetrics = useMemo(() => {
@@ -264,7 +299,17 @@ const Editor = forwardRef(({
   }, [settings.isVertical]);
 
   useLayoutEffect(() => {
-    const timer = setTimeout(() => setScrollForce(f => f + 1), 150);
+    const timer = setTimeout(() => {
+      if (containerRef.current) {
+        viewportRef.current = {
+          scrollTop: containerRef.current.scrollTop,
+          scrollLeft: containerRef.current.scrollLeft,
+          height: containerRef.current.clientHeight,
+          width: containerRef.current.clientWidth,
+        };
+      }
+      setScrollForce(f => f + 1);
+    }, 150);
     return () => clearTimeout(timer);
   }, []);
   
@@ -394,6 +439,7 @@ const Editor = forwardRef(({
     <div className="editor-root" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', background: 'var(--bg-paper)' }}>
       <div 
         ref={containerRef}
+        onScroll={handleContainerScroll}
         className={`chunks-container ${paperClass}`} 
         style={{ 
           flex: 1, 
@@ -411,7 +457,7 @@ const Editor = forwardRef(({
           {!isCleanMode && (
             <div className="editor-underlay" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 3, transform: 'none', pointerEvents: 'none', writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb', fontSize: `${baseMetrics.fontSize}px`, lineHeight: `${baseMetrics.cell}px`, letterSpacing: `${baseMetrics.letterSpacing}px`, fontFamily: settings.fontFamily, color: 'transparent' }}>
               {highlights.map(h => (
-                <div key={h.key} style={{ position: 'absolute', left: h.x, top: h.y, width: `${baseMetrics.cell}px`, height: `${baseMetrics.cell}px`, background: h.color, opacity: 0.15, borderRadius: '2px', pointerEvents: 'none' }} />
+                <div key={h.key} style={{ position: 'absolute', left: h.x, top: h.y, width: `${baseMetrics.cell}px`, height: `${baseMetrics.cell}px`, background: h.color, opacity: 0.35, borderRadius: '2px', pointerEvents: 'none' }} />
               ))}
             </div>
           )}
