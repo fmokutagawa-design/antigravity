@@ -144,9 +144,11 @@ const Editor = forwardRef(({
     color: 'var(--text-main)',
     caretColor: 'var(--text-main)',
     width: settings.isVertical
-      ? `${baseMetrics.gridW + baseMetrics.padding * 2 + baseMetrics.cell + 2}px`
+      ? `${totalLineCount * baseMetrics.cell + 2}px`
       : '100%',
-    height: '100%',
+    height: settings.isVertical
+      ? `${baseMetrics.maxPerLine * baseMetrics.cell + 2}px`
+      : '100%',
     writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb',
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-all',
@@ -157,7 +159,7 @@ const Editor = forwardRef(({
     textAutospace: 'no-autospace',
     textSpacingTrim: 'space-all',
     fontFeatureSettings: settings.isVertical ? '"palt" 0, "halt" 0, "kern" 0, "vkrn" 0, "chws" 0, "liga" 0, "clig" 0, "calt" 0, "vert" 1, "vrt2" 1' : '"palt" 0, "halt" 0, "kern" 0, "vkrn" 0, "chws" 0, "liga" 0, "clig" 0, "calt" 0, "vert" 0, "vrt2" 0',
-  }), [settings.fontFamily, baseMetrics, settings.isVertical, settings.paperStyle]);
+  }), [settings.fontFamily, baseMetrics, settings.isVertical, settings.paperStyle, totalLineCount]);
 
   const paragraphIndex = useMemo(() => {
     const text = debouncedValue;
@@ -178,6 +180,10 @@ const Editor = forwardRef(({
       return entry;
     });
   }, [debouncedValue, baseMetrics.maxPerLine]);
+
+  const totalLineCount = useMemo(() =>
+    paragraphIndex.reduce((sum, p) => sum + p.lineCount, 0) + 10,
+  [paragraphIndex]);
 
   const charPositionsCache = useMemo(() => {
     if (paragraphIndex.length === 0) return { visibleParagraphs: [] };
@@ -368,7 +374,7 @@ const Editor = forwardRef(({
           '--grid-offset-y': '2px'
         }}
       >
-        <div className="chunks-content-root" style={{ position: 'relative', width: settings.isVertical ? `${baseMetrics.gridW + baseMetrics.padding * 2 + baseMetrics.cell + 2}px` : '100%', height: settings.isVertical ? '100%' : 'auto', minHeight: '100%' }}>
+        <div className="chunks-content-root" style={{ position: 'relative', width: settings.isVertical ? `${totalLineCount * baseMetrics.cell + baseMetrics.padding * 2 + 2}px` : '100%', height: settings.isVertical ? `${baseMetrics.maxPerLine * baseMetrics.cell + baseMetrics.padding * 2 + 2}px` : 'auto', minHeight: '100%' }}>
           {!isCleanMode && <div className={`editor-grid-layer ${paperClass}`} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, pointerEvents: 'none' }} />}
           {!isCleanMode && (
             <div className="editor-underlay" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb', fontSize: `${baseMetrics.fontSize}px`, lineHeight: `${baseMetrics.cell}px`, letterSpacing: `${baseMetrics.letterSpacing}px`, fontFamily: settings.fontFamily, color: 'transparent' }}>
