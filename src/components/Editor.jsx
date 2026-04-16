@@ -179,6 +179,7 @@ const Editor = forwardRef(({
       : '100%',
     position: 'relative',
     zIndex: 2,
+    pointerEvents: 'auto',
     writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb',
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-all',
@@ -408,7 +409,7 @@ const Editor = forwardRef(({
         <div className="chunks-content-root" style={{ position: 'relative', width: settings.isVertical ? `${totalLineCount * baseMetrics.cell + baseMetrics.padding * 2 + 2}px` : '100%', height: settings.isVertical ? `${baseMetrics.maxPerLine * baseMetrics.cell + baseMetrics.padding * 2 + 2}px` : 'auto', minHeight: '100%' }}>
           {!isCleanMode && <div className={`editor-grid-layer ${paperClass}`} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, pointerEvents: 'none' }} />}
           {!isCleanMode && (
-            <div className="editor-underlay" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none', writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb', fontSize: `${baseMetrics.fontSize}px`, lineHeight: `${baseMetrics.cell}px`, letterSpacing: `${baseMetrics.letterSpacing}px`, fontFamily: settings.fontFamily, color: 'transparent' }}>
+            <div className="editor-underlay" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 3, pointerEvents: 'none', writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb', fontSize: `${baseMetrics.fontSize}px`, lineHeight: `${baseMetrics.cell}px`, letterSpacing: `${baseMetrics.letterSpacing}px`, fontFamily: settings.fontFamily, color: 'transparent' }}>
               {highlights.map(h => (
                 <div key={h.key} style={{ position: 'absolute', left: h.x, top: h.y, width: `${baseMetrics.cell}px`, height: `${baseMetrics.cell}px`, background: h.color, opacity: 0.15, borderRadius: '2px', pointerEvents: 'none' }} />
               ))}
