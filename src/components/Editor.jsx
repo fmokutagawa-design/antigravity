@@ -255,6 +255,18 @@ const Editor = forwardRef(({
       containerRef.current.scrollLeft = containerRef.current.scrollWidth;
     }
   }, [settings.isVertical]);
+  
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const onWheel = (e) => {
+      if (!settings.isVertical) return;
+      e.preventDefault();
+      container.scrollLeft -= e.deltaY;
+    };
+    container.addEventListener('wheel', onWheel, { passive: false });
+    return () => container.removeEventListener('wheel', onWheel);
+  }, [settings.isVertical]);
 
   const handleInput = useCallback((e) => {
     if (isComposingRef.current) return;
