@@ -264,9 +264,9 @@ const Editor = forwardRef(({
           for (let i = 0; i < pMatchLen; i++) {
             const pCoord = pPositions[pStartIdx + i];
             if (pCoord) {
-              const x = isVert ? -pCoord.line * cell : (pCoord.pos * cell);
-              const y = isVert ? (pCoord.pos * cell) : (pCoord.line * cell);
-              list.push({ key: `h-${p.id}-${match.index}-${i}`, x, y, color });
+              const blockStart = pCoord.line * cell;
+              const inlineStart = pCoord.pos * cell;
+              list.push({ key: `h-${p.id}-${match.index}-${i}`, blockStart, inlineStart, color });
             }
           }
         }
@@ -457,7 +457,7 @@ const Editor = forwardRef(({
           {!isCleanMode && (
             <div className="editor-underlay" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 3, transform: 'none', pointerEvents: 'none', writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb', fontSize: `${baseMetrics.fontSize}px`, lineHeight: `${baseMetrics.cell}px`, letterSpacing: `${baseMetrics.letterSpacing}px`, fontFamily: settings.fontFamily, color: 'transparent' }}>
               {highlights.map(h => (
-                <div key={h.key} style={{ position: 'absolute', left: h.x, top: h.y, width: `${baseMetrics.cell}px`, height: `${baseMetrics.cell}px`, background: h.color, opacity: 0.35, borderRadius: '2px', pointerEvents: 'none' }} />
+                <div key={h.key} style={{ position: 'absolute', insetBlockStart: `${h.blockStart}px`, insetInlineStart: `${h.inlineStart}px`, width: `${baseMetrics.cell}px`, height: `${baseMetrics.cell}px`, background: h.color, opacity: 0.35, borderRadius: '2px', pointerEvents: 'none' }} />
               ))}
             </div>
           )}
