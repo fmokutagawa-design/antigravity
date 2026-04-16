@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
 import ReactDOM from 'react-dom';
 import '../index.css';
 import { toVerticalDisplay, fromVerticalDisplay } from '../utils/verticalPunctuation';
@@ -249,6 +249,12 @@ const Editor = forwardRef(({
       setTimeout(() => { isProcessingPropValueRef.current = false; }, 0);
     }
   }, [value, initHistory, settings.isVertical]);
+
+  useLayoutEffect(() => {
+    if (settings.isVertical && containerRef.current) {
+      containerRef.current.scrollLeft = containerRef.current.scrollWidth;
+    }
+  }, [settings.isVertical]);
 
   const handleInput = useCallback((e) => {
     if (isComposingRef.current) return;
