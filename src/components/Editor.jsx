@@ -909,65 +909,15 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     ...fontStyle
   }, [isCleanMode, settings.fontSize, settings.isVertical, settings.charsPerLine, metrics, fontStyle]);
 
-  // --- メモ化: シンタックスハイライト要素（ビューポート仮想化 — 可視範囲のみ描画） ---
-  // --- メモ化: シンタックスハイライト要素（ビューポート仮想化 — 可視範囲のみ描画） ---
-  // ★ viewport を ref で管理（setState による再レンダリングを回避 — カーソル飛びの原因だった）
-  const viewportRef = useRef({ width: 0, height: 0, scrollTop: 0, scrollLeft: 0 });
-  
-  useEffect(() => {
-    const container = textareaRef.current?.closest('.editor-container');
-    if (!container) return;
-    viewportRef.current = {
-      width: container.clientWidth,
-      height: container.clientHeight,
-      scrollTop: container.scrollTop,
-      scrollLeft: container.scrollLeft,
-    };
-    let rafId = null;
-    const onScroll = () => {
-      if (rafId) return;
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        viewportRef.current = {
-          width: container.clientWidth,
-          height: container.clientHeight,
-          scrollTop: container.scrollTop,
-          scrollLeft: container.scrollLeft,
-        };
-      });
-    };
-    container.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      container.removeEventListener('scroll', onScroll);
-      if (rafId) cancelAnimationFrame(rafId);
-    };
-  }, [settings.isVertical]);
-
+  // --- メモ化: シンタックスハイライト要素 ---
   const highlightElements = useMemo(() => {
     if (settings.editorSyntaxColors === false || !highlights.length) return null;
     const cell = baseMetrics.cell;
     const isVert = settings.isVertical;
-    
-    // ★ ref から viewport を読む（ハイライト再計算時のスナップショット）
-    //    スクロールだけでは再計算されない（highlights 変更時のみ）
-    const vp = viewportRef.current;
-    const margin = cell * 3;
-    let filtered;
-    if (isVert) {
-      const sl = vp.scrollLeft;
-      const visRight = margin;
-      const visLeft = sl - margin;
-      filtered = highlights.filter(h => h.x >= visLeft && h.x <= visRight);
-    } else {
-      const visTop = vp.scrollTop - margin;
-      const visBottom = vp.scrollTop + vp.height + margin;
-      filtered = highlights.filter(h => h.y >= visTop && h.y <= visBottom);
-    }
-
-    const MAX_VISIBLE = 500;
-    const limited = filtered.length > MAX_VISIBLE ? filtered.slice(0, MAX_VISIBLE) : filtered;
-    
-    return limited.map((h, idx) => (
+    // viewport フィルタリングは廃止。
+    // スクロール位置と再計算タイミングのズレで「着色が半端・途中から消える」バグの原因だった。
+    // HIGHLIGHT_CHAR_LIMIT(100000字)で大規模テキストはスキップ済みなのでフィルタ不要。
+    return highlights.map((h, idx) => (
       <div key={`${h.type}-${h.start}-${h.end}-${h.x}-${h.y}-${idx}`} style={{
         position: 'absolute',
         right: isVert ? `${-h.x}px` : 'auto',
