@@ -68,6 +68,7 @@ const Editor = forwardRef(({
   const debouncePrevLenRef = useRef(value.length);
   const isProcessingPropValueRef = useRef(false);
   const scrollTimerRef = useRef(null);
+  const initialScrollDoneRef = useRef(false);
 
   // ステート
   const [scrollForce, setScrollForce] = useState(0);
@@ -247,9 +248,18 @@ const Editor = forwardRef(({
       : vp.scrollTop;
     const startVisibleLine = Math.floor(scrollPos / cell) - 10;
     const endVisibleLine = Math.ceil((scrollPos + viewportSize) / cell) + 10;
-    const visibleParagraphs = paragraphIndex.filter(p => (p.startLine + p.lineCount) >= startVisibleLine && p.startLine <= endVisibleLine);
-    return { visibleParagraphs };
-  }, [paragraphIndex, scrollForce, baseMetrics, settings.isVertical]);
+
+    const fullLen = fullTextRef.current.length;
+    const wsl = (fullLen > 0 && totalLineCount > 0)
+      ? Math.round((windowRef.current.start / fullLen) * totalLineCount)
+      : 0;
+    const adjStart = startVisibleLine - wsl;
+    const adjEnd = endVisibleLine - wsl;
+    const visibleParagraphs = paragraphIndex.filter(
+      p => (p.startLine + p.lineCount) >= adjStart && p.startLine <= adjEnd
+    );
+    return { visibleParagraphs, wsl };
+  }, [paragraphIndex, scrollForce, baseMetrics, settings.isVertical, totalLineCount]);
 
   const highlights = useMemo(() => {
     if (!charPositionsCache.visibleParagraphs.length) return [];
@@ -263,6 +273,11 @@ const Editor = forwardRef(({
       { regex: /［＃.*?］/g, color: settings.syntaxColors?.aozora || '#8e44ad' },
     ];
     const list = [];
+    const fullLen = fullTextRef.current.length;
+    const wsl = (fullLen > 0 && totalLineCount > 0)
+      ? Math.round((windowRef.current.start / fullLen) * totalLineCount)
+      : 0;
+
     charPositionsCache.visibleParagraphs.forEach(p => {
       const pPositions = computeCharPositions(p.charArray, baseMetrics.maxPerLine, p.startLine).positions;
       patterns.forEach(({ regex, color }) => {
@@ -273,7 +288,7 @@ const Editor = forwardRef(({
           for (let i = 0; i < pMatchLen; i++) {
             const pCoord = pPositions[pStartIdx + i];
             if (pCoord) {
-              const blockStart = pCoord.line * cell;
+              const blockStart = (pCoord.line + wsl) * cell;
               const inlineStart = pCoord.pos * cell;
               list.push({ key: `h-${p.id}-${match.index}-${i}`, blockStart, inlineStart, color });
             }
@@ -282,7 +297,7 @@ const Editor = forwardRef(({
       });
     });
     return list;
-  }, [charPositionsCache, baseMetrics, settings.isVertical, settings.syntaxColors]);
+  }, [charPositionsCache, baseMetrics, settings.isVertical, settings.syntaxColors, totalLineCount]);
 
   // Props からの同期
   useEffect(() => {
@@ -303,8 +318,9 @@ const Editor = forwardRef(({
   }, [value, initHistory, settings.isVertical]);
 
   useLayoutEffect(() => {
-    if (settings.isVertical && containerRef.current) {
+    if (settings.isVertical && containerRef.current && !initialScrollDoneRef.current) {
       containerRef.current.scrollLeft = containerRef.current.scrollWidth;
+      initialScrollDoneRef.current = true;
     }
   }, [settings.isVertical]);
 
