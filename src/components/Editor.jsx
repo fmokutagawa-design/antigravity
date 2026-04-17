@@ -885,6 +885,23 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     redo,
     // クリップボード履歴
     clipboardHistory,
+    // ★ テキスト挿入（Todoパネル・AI補完・スニペット挿入など）
+    //    文書モデル化に対応した差分更新方式
+    insertText: (text) => {
+      const ta = textareaRef.current;
+      if (!ta) return;
+      const start = ta.selectionStart;
+      const end = ta.selectionEnd;
+      const rawVal = settings.isVertical ? fromVerticalDisplay(ta.value) : ta.value;
+      const newValue = rawVal.substring(0, start) + text + rawVal.substring(end);
+      const newCursor = start + splitString(text).length;
+      pushHistory(localTextRef.current, newValue, newCursor);
+      nextCursorPos.current = newCursor;
+      const newDoc = updateDocument(localDocumentRef.current, newValue, newCursor);
+      setLocalDocument(newDoc);
+      if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
+      appNotifyTimerRef.current = setTimeout(() => onChange(documentToText(newDoc)), 500);
+    },
     pasteFromHistory: (text) => {
       const ta = textareaRef.current;
       if (!ta) return;
@@ -893,9 +910,14 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       const currentVal = ta.value;
       const rawVal = settings.isVertical ? fromVerticalDisplay(currentVal) : currentVal;
       const newValue = rawVal.substring(0, start) + text + rawVal.substring(end);
-      pushHistory(localText, newValue, start);
-      nextCursorPos.current = start + text.length;
-      localOnChange(newValue);
+      const newCursor = start + text.length;
+      pushHistory(localTextRef.current, newValue, newCursor);
+      nextCursorPos.current = newCursor;
+      // ★ localOnChange（全文再構築）→ 差分更新
+      const newDoc = updateDocument(localDocumentRef.current, newValue, newCursor);
+      setLocalDocument(newDoc);
+      if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
+      appNotifyTimerRef.current = setTimeout(() => onChange(documentToText(newDoc)), 500);
     },
     insertRuby: () => {
       const ta = textareaRef.current;
@@ -909,10 +931,14 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         ? `${selectedText}《》`
         : '《》';
       const newValue = rawValue.substring(0, start) + insertion + rawValue.substring(end);
-      pushHistory(localText, newValue, start);
-      // カーソルを《》の間に配置（読みを入力する位置）
-      nextCursorPos.current = start + (selectedText ? selectedText.length + 1 : 1);
-      localOnChange(newValue);
+      const newCursor = start + (selectedText ? selectedText.length + 1 : 1);
+      pushHistory(localTextRef.current, newValue, newCursor);
+      nextCursorPos.current = newCursor;
+      // ★ localOnChange（全文再構築）→ 差分更新
+      const newDoc = updateDocument(localDocumentRef.current, newValue, newCursor);
+      setLocalDocument(newDoc);
+      if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
+      appNotifyTimerRef.current = setTimeout(() => onChange(documentToText(newDoc)), 500);
       // useLayoutEffect だけでは縦書き時に復元されないことがあるため、明示的にフォーカス
       setTimeout(() => {
         const pos = start + (selectedText ? selectedText.length + 1 : 1);
@@ -944,7 +970,20 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         el.focus();
         el.setSelectionRange(start, selEnd);
       });
-    }
+    },
+    // ★ jumpToIndex: 検索結果ジャンプ（jumpToPositionの別名）
+    //    App.jsx が editorRef.current?.jumpToIndex(index) で呼んでいるが未定義だったため追加
+    jumpToIndex: (index) => {
+      const ta = textareaRef.current;
+      if (!ta) return;
+      scrollToCaretPosition(index);
+      requestAnimationFrame(() => {
+        const el = textareaRef.current;
+        if (!el) return;
+        el.focus();
+        el.setSelectionRange(index, index);
+      });
+    },
   }));
 
   const isCleanMode = settings.paperStyle === 'clean';
