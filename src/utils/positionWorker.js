@@ -103,8 +103,9 @@ function computeTotalLines(text, maxPerLine) {
 
 /**
  * メッセージハンドラ
- * type: 'positions' → charPositionsCache の計算
- * type: 'lineCount'  → computeTotalLines のみ
+ * type: 'positions'      → charPositionsCache の計算（全文モード）
+ * type: 'lineCount'       → computeTotalLines のみ
+ * type: 'para_positions'  → 段落単位の座標計算（文書モデル化用）
  */
 self.onmessage = (e) => {
   const { type, id, text, maxPerLine } = e.data;
@@ -128,6 +129,38 @@ self.onmessage = (e) => {
   if (type === 'lineCount') {
     const totalLines = computeTotalLines(text, maxPerLine);
     self.postMessage({ type: 'lineCount', id, totalLines });
+    return;
+  }
+
+  // 文書モデル化用：段落単位の座標計算
+  // 変更された段落だけ Worker に投げ、paraId をキーにキャッシュする。
+  // 各段落の lineOffset（全文中で何行目か）は呼び出し元が渡す。
+  if (type === 'para_positions') {
+    const { paraId, lineOffset } = e.data;
+    const charArray = Array.from(text);
+    const { positions, totalLines } = computeCharPositions(charArray, maxPerLine);
+
+    // 段落内の座標に lineOffset を加算して全文座標に変換
+    const adjustedPositions = positions.map(p =>
+      p == null ? null : { line: p.line + lineOffset, pos: p.pos }
+    );
+
+    const utf16ToCharIdxEntries = [];
+    let codeUnitOffset = 0;
+    for (let i = 0; i < charArray.length; i++) {
+      utf16ToCharIdxEntries.push([codeUnitOffset, i]);
+      codeUnitOffset += charArray[i].length;
+    }
+
+    self.postMessage({
+      type: 'para_positions',
+      id,
+      paraId,
+      positions: adjustedPositions,
+      totalLines,
+      charArray,
+      utf16ToCharIdxEntries,
+    });
     return;
   }
 };

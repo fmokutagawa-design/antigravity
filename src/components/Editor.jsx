@@ -5,6 +5,7 @@ import { toVerticalDisplay, fromVerticalDisplay } from '../utils/verticalPunctua
 import { useUndoHistory } from '../hooks/useUndoHistory';
 import { useClipboardHistory } from '../hooks/useClipboardHistory';
 import PositionWorker from '../utils/positionWorker?worker';
+import { textToDocument, documentToText, updateDocument } from '../utils/documentModel';
 
 
 /**
@@ -141,12 +142,19 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   const compositionTextRef = useRef(null); // composition 開始前のテキストを保持
 
   // ★ パフォーマンス根治: ローカルテキスト状態
-  // タイピング時は localText のみ更新（Editor 内部の再レンダリングだけ）
+  // タイピング時は localDocument のみ更新（Editor 内部の再レンダリングだけ）
   // App への通知（onChange）は 500ms デバウンスで行い、App の再レンダリングを回避
-  const [localText, setLocalText] = useState(value);
+  //
+  // ★ 文書モデル化：内部では段落配列（localDocument）を正として保持する。
+  //    localText は localDocument から派生する読み取り専用の値。
+  //    外部（App.jsx）とのインターフェースは従来どおり文字列のまま変わらない。
+  const [localDocument, setLocalDocument] = useState(() => textToDocument(value));
+  const localText = useMemo(() => documentToText(localDocument), [localDocument]);
   const appNotifyTimerRef = useRef(null);
   const localTextRef = useRef(localText); // ★ composition ハンドラ用（deps から localText を除外するため）
   localTextRef.current = localText;
+  const localDocumentRef = useRef(localDocument); // ★ handleChange 内で最新の localDocument を参照するため
+  localDocumentRef.current = localDocument;
 
   // ★ 外部からの value 変更（フォーマット適用・AI補完・検索置換等）を同期
   //    Editor → App → Editor の往復で value が debounce 遅延つきで戻ってくるため、
@@ -161,13 +169,13 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     // prev と value が同じであれば変化なし
     if (value === prev) return;
     // 外部から意図的に書き換えられた → 確実に反映する
-    setLocalText(value);
+    setLocalDocument(textToDocument(value));
   }, [value]);
 
   // --- Undo/Redo スタック ---
   const localOnChange = useCallback((newText) => {
-    // ローカル状態を即座に更新
-    setLocalText(newText);
+    // ローカル状態を即座に更新（文書モデルとして保持）
+    setLocalDocument(textToDocument(newText));
     // App への通知はデバウンス（500ms）
     if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
     appNotifyTimerRef.current = setTimeout(() => {
@@ -185,8 +193,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   // ファイル切替時: localText・undo履歴・debounce タイマーを確実にリセット
   // value ではなく fileId を監視することで「編集中の往復」と「ファイル切替」を明確に分離する
   useEffect(() => {
-    // App から渡された最新テキストで localText を強制上書き
-    setLocalText(value);
+    // App から渡された最新テキストで localDocument を強制上書き
+    setLocalDocument(textToDocument(value));
     // undo/redo 履歴を新ファイルで初期化（前ファイルの履歴混入を防ぐ）
     initHistory(value);
     // 進行中の App 通知タイマーをキャンセル（前ファイルの内容を App に送らない）
@@ -314,6 +322,11 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     () => ({ positions: [], charArray: [], utf16ToCharIdx: new Map() })
   );
 
+  // ★ 文書モデル化：段落ごとの座標キャッシュ（paraId → { positions, charArray, utf16ToCharIdx }）
+  // 変更された段落だけ Worker に投げて更新し、変わっていない段落は再計算しない。
+  const [paraPosCache, setParaPosCache] = useState(new Map());
+  const paraPosReqIdRef = useRef(new Map()); // paraId → 最新リクエスト id
+
   // Worker の初期化（マウント時に一度だけ）
   useEffect(() => {
     const worker = new PositionWorker();
@@ -323,11 +336,23 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       if (type === 'lineCount' && id === lineCountReqIdRef.current) {
         setDebouncedLineCount(e.data.totalLines);
       } else if (type === 'positions' && id === positionsReqIdRef.current) {
+        // 全文モード（フォールバック・互換）
         const { positions, charArray, utf16ToCharIdxEntries, totalLines } = e.data;
         const utf16ToCharIdx = new Map(utf16ToCharIdxEntries);
         setCharPositionsCache({ positions, charArray, utf16ToCharIdx });
-        // positions 計算と同時に totalLines も確定するので lineCount Worker を不要にする
         if (totalLines !== undefined) setDebouncedLineCount(totalLines);
+      } else if (type === 'para_positions') {
+        // 段落単位モード：最新リクエストのみ反映
+        const { paraId } = e.data;
+        const latestId = paraPosReqIdRef.current.get(paraId);
+        if (id !== latestId) return; // 古いリクエストは無視
+        const { positions, charArray, utf16ToCharIdxEntries, totalLines } = e.data;
+        const utf16ToCharIdx = new Map(utf16ToCharIdxEntries);
+        setParaPosCache(prev => {
+          const next = new Map(prev);
+          next.set(paraId, { positions, charArray, utf16ToCharIdx, totalLines });
+          return next;
+        });
       }
     };
     return () => worker.terminate();
@@ -372,33 +397,90 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     return { fontSize, cell, cols, rows, gridW, gridH, padding, letterSpacing };
   }, [debouncedLineCount, baseMetrics, settings.isVertical, settings.linesPerPage]);
 
-  // --- 共有キャラクター座標キャッシュ（Worker で計算） ---
+  // --- 文書モデル化：段落単位で Worker に座標計算を依頼 ---
+  // debouncedDocument（500ms 遅延）を監視し、キャッシュにない段落だけ Worker に投げる。
+  const [debouncedDocument, setDebouncedDocument] = useState(localDocument);
   useEffect(() => {
-    if (!debouncedValue) {
+    const timer = setTimeout(() => setDebouncedDocument(localDocument), 300);
+    return () => clearTimeout(timer);
+  }, [localDocument]);
+
+  useEffect(() => {
+    if (!debouncedDocument || debouncedDocument.length === 0) {
+      setParaPosCache(new Map());
+      return;
+    }
+    // lineOffset: 各段落が全文の何行目から始まるかを計算
+    // （前の段落の totalLines を累積する）
+    // まずキャッシュにある段落の行数を使い、ない段落は暫定0で計算する
+    let lineOffset = 0;
+    debouncedDocument.forEach((para) => {
+      if (paraPosCache.has(para.id)) {
+        // キャッシュ済み：Worker に再送不要（lineOffset のみ更新が必要な場合も後で対応）
+        const cached = paraPosCache.get(para.id);
+        lineOffset += cached.totalLines;
+      } else {
+        // 未キャッシュ：Worker に投げる
+        if (workerRef.current) {
+          const reqId = (paraPosReqIdRef.current.get(para.id) || 0) + 1;
+          paraPosReqIdRef.current.set(para.id, reqId);
+          workerRef.current.postMessage({
+            type: 'para_positions',
+            id: reqId,
+            paraId: para.id,
+            text: para.text,
+            maxPerLine: baseMetrics.maxPerLine,
+            lineOffset,
+          });
+        }
+        lineOffset += 1; // 暫定：計算完了後に更新される
+      }
+    });
+  }, [debouncedDocument, baseMetrics.maxPerLine]);
+
+  // --- 段落キャッシュ → charPositionsCache への合成 ---
+  // 全段落のキャッシュが揃ったら、全文の charPositionsCache を組み立てる。
+  // 1段落でも未キャッシュがある場合は前の状態を維持（チラつき防止）。
+  useEffect(() => {
+    if (!debouncedDocument || debouncedDocument.length === 0) {
       setCharPositionsCache({ positions: [], charArray: [], utf16ToCharIdx: new Map() });
       return;
     }
-    if (workerRef.current) {
-      positionsReqIdRef.current += 1;
-      workerRef.current.postMessage({
-        type: 'positions',
-        id: positionsReqIdRef.current,
-        text: debouncedValue,
-        maxPerLine: baseMetrics.maxPerLine,
+    // 全段落揃っているか確認
+    const allCached = debouncedDocument.every(p => paraPosCache.has(p.id));
+    if (!allCached) return; // 未完了なら前の状態を維持
+
+    // 段落キャッシュを全文座標に再組み立て
+    const allPositions = [];
+    const allCharArray = [];
+    const utf16ToCharIdx = new Map();
+    let utf16Offset = 0;
+    let lineOffset = 0;
+
+    debouncedDocument.forEach((para, paraIdx) => {
+      const cached = paraPosCache.get(para.id);
+      // 段落内のcharArrayをマージ
+      cached.charArray.forEach((ch, i) => {
+        // lineOffset を加算して全文座標に変換
+        const pos = cached.positions[i];
+        allPositions.push(pos == null ? null : { line: pos.line - (cached.positions[0]?.line ?? 0) + lineOffset, pos: pos.pos });
+        utf16ToCharIdx.set(utf16Offset, allCharArray.length);
+        utf16Offset += ch.length;
+        allCharArray.push(ch);
       });
-    } else {
-      // Worker が使えない環境ではフォールバック（従来の同期計算）
-      const charArray = splitString(debouncedValue);
-      const { positions } = computeCharPositions(charArray, baseMetrics.maxPerLine);
-      const utf16ToCharIdx = new Map();
-      let codeUnitOffset = 0;
-      for (let i = 0; i < charArray.length; i++) {
-        utf16ToCharIdx.set(codeUnitOffset, i);
-        codeUnitOffset += charArray[i].length;
+      lineOffset += cached.totalLines;
+
+      // 段落区切りの \n（最終段落以外）
+      if (paraIdx < debouncedDocument.length - 1) {
+        allPositions.push(null); // \n は null
+        utf16ToCharIdx.set(utf16Offset, allCharArray.length);
+        utf16Offset += 1;
+        allCharArray.push('\n');
       }
-      setCharPositionsCache({ positions, charArray, utf16ToCharIdx });
-    }
-  }, [debouncedValue, baseMetrics.maxPerLine]);
+    });
+
+    setCharPositionsCache({ positions: allPositions, charArray: allCharArray, utf16ToCharIdx });
+  }, [paraPosCache, debouncedDocument]);
 
   // --- 2. アンダーレイ（座標マップ）の生成（デバウンス） ---
   // ★ 大規模テキスト（20000文字超≒原稿用紙100枚超）ではハイライトを自動停止
@@ -521,17 +603,26 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     const cursorPos = ta.selectionStart;
 
     if (isComposingRef.current) {
-      // ★ IME 変換中: localText は更新する（React が DOM を上書きしないように）
+      // ★ IME 変換中: localDocument は更新する（React が DOM を上書きしないように）
       //    ただし undo 履歴と App への通知はスキップ（確定時に handleCompositionEnd で行う）
-      setLocalText(restored);
+      //    差分更新で IME 中間状態も正しく反映する。
+      const newDoc = updateDocument(localDocumentRef.current, restored, cursorPos);
+      setLocalDocument(newDoc);
       return;
     }
 
-    pushHistory(localTextRef.current, restored, cursorPos);
+    // ★ 文書モデル化：変更された段落だけを更新（全文再構築は段落数変化時のみ）
+    const newDoc = updateDocument(localDocumentRef.current, restored, cursorPos);
+    const newText = documentToText(newDoc);
+    pushHistory(localTextRef.current, newText, cursorPos);
     if (currentCursorRef) currentCursorRef.current = cursorPos;
     nextCursorPos.current = cursorPos;
-    localOnChange(restored);
-  }, [localOnChange, settings.isVertical, pushHistory, currentCursorRef]);
+    // localDocument を即座に差分更新（setLocalDocument直接呼び、localOnChange 経由はしない）
+    setLocalDocument(newDoc);
+    // App への通知はデバウンスで
+    if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
+    appNotifyTimerRef.current = setTimeout(() => { onChange(newText); }, 500);
+  }, [settings.isVertical, pushHistory, currentCursorRef, onChange]);
 
   // ★ IME composition ハンドラ
   // localTextRef 経由で参照することで、useCallback の deps から localText を除外
