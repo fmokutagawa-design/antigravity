@@ -1183,14 +1183,18 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
           if (ghostText) {
             if (e.key === 'Tab') {
               e.preventDefault();
-              // Accept Ghost Text
+              // Accept Ghost Text（★ localOnChange → 差分更新）
               const ta = textareaRef.current;
               const start = ta.selectionStart;
-              const val = ta.value;
+              const val = settings.isVertical ? fromVerticalDisplay(ta.value) : ta.value;
               const newValue = val.slice(0, start) + ghostText + val.slice(start);
-              pushHistory(val, newValue);
-              nextCursorPos.current = start + ghostText.length;
-              localOnChange(newValue);
+              const newCursor = start + ghostText.length;
+              pushHistory(localTextRef.current, newValue, newCursor);
+              nextCursorPos.current = newCursor;
+              const newDoc = updateDocument(localDocumentRef.current, newValue, newCursor);
+              setLocalDocument(newDoc);
+              if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
+              appNotifyTimerRef.current = setTimeout(() => onChange(documentToText(newDoc)), 500);
               setGhostText('');
               return;
             }
