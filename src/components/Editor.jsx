@@ -148,20 +148,20 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   const localTextRef = useRef(localText); // ★ composition ハンドラ用（deps から localText を除外するため）
   localTextRef.current = localText;
 
-  // ★ 外部からの value 変更（ファイル切替、フォーマット適用等）を同期
-  //    問題: Editor → App → Editor の往復で value が debounce 遅延つきで戻ってくるため、
-  //    localText を上書きするとカーソル位置がリセットされる。
-  //    解決: 大幅な変更（ファイル切替等）のみ同期し、通常の往復は無視する。
+  // ★ 外部からの value 変更（フォーマット適用・AI補完・検索置換等）を同期
+  //    Editor → App → Editor の往復で value が debounce 遅延つきで戻ってくるため、
+  //    localText と value が一致している場合は何もしない（カーソル位置を守る）。
+  //    ファイル切替は fileId の useEffect で処理するため、ここでは扱わない。
   const prevValueRef2 = useRef(value);
   useEffect(() => {
     const prev = prevValueRef2.current;
     prevValueRef2.current = value;
-    // ★ 小さな差分（通常の入力→App→Editor の往復）は無視
-    //    大きな差分（ファイル切替、外部からのテキスト置換等）のみ同期
-    if (Math.abs(value.length - prev.length) > 100 || 
-        (value.length > 0 && prev.length > 0 && value.slice(0, 64) !== prev.slice(0, 64))) {
-      setLocalText(value);
-    }
+    // localText と value が既に一致していれば往復なので無視
+    if (value === localTextRef.current) return;
+    // prev と value が同じであれば変化なし
+    if (value === prev) return;
+    // 外部から意図的に書き換えられた → 確実に反映する
+    setLocalText(value);
   }, [value]);
 
   // --- Undo/Redo スタック ---
@@ -179,18 +179,21 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   // --- クリップボード履歴 ---
   const { clipboardHistory, addToClipboard } = useClipboardHistory();
 
-  // ファイル切替時に履歴をリセット
-  const prevValueRef = useRef(value);
-  useEffect(() => {
-    // 値が大きく変わった場合（ファイル切替）は履歴リセット
-    if (Math.abs(value.length - prevValueRef.current.length) > 100) {
-      initHistory(value);
-    }
-    prevValueRef.current = value;
-  }, [value, initHistory]);
-
   // カーソル位置を追跡するref（全てのonChange呼び出しで更新）
   const nextCursorPos = useRef(null);
+
+  // ファイル切替時: localText・undo履歴・debounce タイマーを確実にリセット
+  // value ではなく fileId を監視することで「編集中の往復」と「ファイル切替」を明確に分離する
+  useEffect(() => {
+    // App から渡された最新テキストで localText を強制上書き
+    setLocalText(value);
+    // undo/redo 履歴を新ファイルで初期化（前ファイルの履歴混入を防ぐ）
+    initHistory(value);
+    // 進行中の App 通知タイマーをキャンセル（前ファイルの内容を App に送らない）
+    if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
+    // カーソル位置リセット
+    nextCursorPos.current = null;
+  }, [fileId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // React再レンダリング直後にカーソル位置を復元（useLayoutEffectでペイント前に実行）
   // ★ IME 変換中はカーソル復元をスキップ（変換カーソルを破壊しないため）
@@ -228,9 +231,10 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   }, []);
 
   // ファイル切替時にdebouncedValueを即座に更新（前ファイルの着色残留を防止）
+  // localText ではなく value を参照（fileId useEffect で setLocalText が走る前に読む可能性があるため）
   useEffect(() => {
-    setDebouncedValue(localText);
-  }, [fileId]);
+    setDebouncedValue(value);
+  }, [fileId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ファイル切替・縦横切替時の初期スクロール（文頭＝縦書き右端へ）
   useEffect(() => {
