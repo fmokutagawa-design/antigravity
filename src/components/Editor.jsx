@@ -1,339 +1,239 @@
-import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
-import ReactDOM from 'react-dom';
+import React, { useRef, useImperativeHandle, forwardRef, useMemo, useEffect, useCallback, useLayoutEffect, useState } from 'react';
 import '../index.css';
+// ★ 約物フィルターを無効化したい場合、この import をコメントアウトしてください
 import { toVerticalDisplay, fromVerticalDisplay } from '../utils/verticalPunctuation';
 import { useUndoHistory } from '../hooks/useUndoHistory';
-import SelectionToolbar from './SelectionToolbar';
+import { useClipboardHistory } from '../hooks/useClipboardHistory';
 
-const splitString = (str) => Array.from(str || "");
+
+/**
+ * Editor Component
+ * 「見た目の1文字＝1マス」を物理的に強制する究極の安定化エディタ。
+ */
+
+// --- 禁則処理の文字セット ---
+// ★ エディタでは無効化（プレビューで禁則処理を適用）
+// アンダーレイ座標が break-all/anywhere の単純折り返しと同期するため
+const KINSOKU_ENABLED = false;
+
+// 行頭禁止 (Gyoto): これらの文字で行を始めてはいけない
+const GYOTO_CHARS = new Set([
+  '、', '。', '，', '．', '！', '？', '!', '?', '‼', '⁇', '⁈', '⁉',
+  '）', ']', '｝', '〉', '》', '｣', '』', '】', '〕', "\u201D", "\u2019", '」',
+  'っ', 'ゃ', 'ゅ', 'ょ', 'ぁ', 'ぃ', 'ぅ', 'ぇ', 'ぉ',
+  'ッ', 'ャ', 'ュ', 'ョ', 'ァ', 'ィ', 'ゥ', 'ェ', 'ォ',
+  'ゝ', 'ゞ', '々', 'ー',
+  // 約物フィルターの縦書き専用字形も登録
+  '︙', '︱',
+]);
+
+// 行末禁止 (Gyomatsu): これらの文字で行を終えてはいけない
+const GYOMATSU_CHARS = new Set([
+  '（', '［', '｛', '〈', '《', '｢', '『', '【', '〔', "\u201C", "\u2018", '「', '[',
+]);
+
+// ぶら下げ (Hanging): 行末からはみ出してもOK
+const HANGING_CHARS = new Set(['、', '。', '，', '．']);
 
 /**
  * 禁則処理付きの文字位置計算
+ * CSS lineBreak: strict と同じルールを JS で再現し、
  * グリッド座標とテキスト折り返しを完全に同期させる。
  */
-function computeCharPositions(charArray, maxPerLine, startLine = 0) {
+function computeCharPositions(charArray, maxPerLine) {
   const positions = new Array(charArray.length);
-  let line = startLine;
+  let line = 0;
   let pos = 0;
+  let allowHanging = false;
+
   for (let i = 0; i < charArray.length; i++) {
     const char = charArray[i];
+
     if (char === '\n') {
       positions[i] = null;
       line++;
       pos = 0;
+      allowHanging = false;
       continue;
     }
-    if (pos >= maxPerLine) {
+
+    // 通常の折り返し（ぶら下げ許可時はスキップ）
+    if (pos >= maxPerLine && !allowHanging) {
       line++;
       pos = 0;
     }
+
+    // ぶら下げ文字の配置
+    if (allowHanging && pos >= maxPerLine) {
+      positions[i] = { line, pos };
+      line++;
+      pos = 0;
+      allowHanging = false;
+      continue;
+    }
+
+    allowHanging = false;
+
+    // 文字を配置
     positions[i] = { line, pos };
     pos++;
+
+    // 禁則処理: 行末に達したら次の文字をチェック
+    if (KINSOKU_ENABLED && pos >= maxPerLine && i + 1 < charArray.length && charArray[i + 1] !== '\n') {
+      const nextChar = charArray[i + 1];
+
+      // 1. ぶら下げ: 。、は行末からはみ出してもOK
+      if (HANGING_CHARS.has(nextChar)) {
+        allowHanging = true;
+        continue;
+      }
+
+      // 2. 行頭禁止 (追い出し): 次の文字が行頭に来れない → 現在の文字を次の行に送る
+      if (GYOTO_CHARS.has(nextChar)) {
+        pos--;
+        line++;
+        positions[i] = { line, pos: 0 };
+        pos = 1;
+        continue;
+      }
+
+      // 3. 行末禁止: 現在の文字が行末に来れない → 次の行に送る
+      if (GYOMATSU_CHARS.has(char)) {
+        pos--;
+        line++;
+        positions[i] = { line, pos: 0 };
+        pos = 1;
+        continue;
+      }
+    }
   }
+
   return { positions, totalLines: line + 1 };
 }
 
 /**
- * Editor Component
+ * 軽量版: 行数だけを計算（座標配列を生成しない）
+ * metrics の gridW/gridH 計算用。Array.from() による配列生成を回避。
  */
-const Editor = forwardRef(({
-  value,
-  onChange,
-  settings,
-  onCursorStats,
-  onImageDrop,
-  onInsertRuby,
-  onInsertLink,
-  onContextMenu,
-  allFiles = [],
-  corrections = [],
-  ghostText = '',
-  setGhostText,
-  fileId = ''
-}, ref) => {
+function computeTotalLines(text, maxPerLine) {
+  if (!text || maxPerLine <= 0) return 1;
+  let line = 0;
+  let pos = 0;
+  for (const char of text) {
+    if (char === '\n') { line++; pos = 0; continue; }
+    if (pos >= maxPerLine) { line++; pos = 0; }
+    pos++;
+  }
+  return line + 1;
+}
+
+
+import ReactDOM from 'react-dom';
+
+const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertRuby, onInsertLink, onLaunchAI, ghostText, setGhostText, corrections = [], onImageDrop, fileId = '' }, ref) => {
   const textareaRef = useRef(null);
-  const containerRef = useRef(null);
-  const viewportRef = useRef({ scrollTop: 0, scrollLeft: 0, height: 800, width: 1000 });
+  const [editorContextMenu, setEditorContextMenu] = React.useState(null);
 
-  // 全文をメモリ上に保持（Reactのstateには載せない）
-  const fullTextRef = useRef(value);
-
-  // 窓の位置（全文上のバイトオフセット）
-  const windowRef = useRef({ start: 0, end: Math.min(30000, value.length) });
-
-  // 各種 Ref (内部状態・タイマー)
+  // ★ IME（日本語入力）変換中フラグ
+  // composition 中は React の state 更新をスキップし、IME バッファを破壊しない
   const isComposingRef = useRef(false);
-  const compositionTextRef = useRef(null);
+  const compositionTextRef = useRef(null); // composition 開始前のテキストを保持
+
+  // ★ パフォーマンス根治: ローカルテキスト状態
+  // タイピング時は localText のみ更新（Editor 内部の再レンダリングだけ）
+  // App への通知（onChange）は 500ms デバウンスで行い、App の再レンダリングを回避
+  const [localText, setLocalText] = useState(value);
   const appNotifyTimerRef = useRef(null);
-  const highlightDebounceRef = useRef(null);
-  const debouncePrevLenRef = useRef(value.length);
-  const isProcessingPropValueRef = useRef(false);
-  const scrollTimerRef = useRef(null);
+  const localTextRef = useRef(localText); // ★ composition ハンドラ用（deps から localText を除外するため）
+  localTextRef.current = localText;
 
-  // ステート
-  const [scrollForce, setScrollForce] = useState(0);
-  const [debouncedValue, setDebouncedValue] = useState(value.slice(0, Math.min(30000, value.length)));
-  const [editorContextMenu, setEditorContextMenu] = useState(null);
-  const [selectionToolbar, setSelectionToolbar] = useState({ visible: false, position: { x: 0, y: 0 }, text: '' });
-
-  // 履歴管理
-  const { initHistory, pushHistory, undo, redo, handleKeyDown } = useUndoHistory((newText) => {
-    fullTextRef.current = newText;
-    const { start } = windowRef.current;
-    const windowText = newText.slice(start, start + 30000);
-    const ta = textareaRef.current;
-    if (ta) {
-      ta.value = settings.isVertical ? toVerticalDisplay(windowText) : windowText;
-      setDebouncedValue(windowText);
+  // ★ 外部からの value 変更（ファイル切替、フォーマット適用等）を同期
+  //    問題: Editor → App → Editor の往復で value が debounce 遅延つきで戻ってくるため、
+  //    localText を上書きするとカーソル位置がリセットされる。
+  //    解決: 大幅な変更（ファイル切替等）のみ同期し、通常の往復は無視する。
+  const prevValueRef2 = useRef(value);
+  useEffect(() => {
+    const prev = prevValueRef2.current;
+    prevValueRef2.current = value;
+    // ★ 小さな差分（通常の入力→App→Editor の往復）は無視
+    //    大きな差分（ファイル切替、外部からのテキスト置換等）のみ同期
+    if (Math.abs(value.length - prev.length) > 100 || 
+        (value.length > 0 && prev.length > 0 && value.slice(0, 64) !== prev.slice(0, 64))) {
+      setLocalText(value);
     }
-    onChange(newText);
+  }, [value]);
+
+  // --- Undo/Redo スタック ---
+  const localOnChange = useCallback((newText) => {
+    // ローカル状態を即座に更新
+    setLocalText(newText);
+    // App への通知はデバウンス（500ms）
+    if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
+    appNotifyTimerRef.current = setTimeout(() => {
+      onChange(newText);
+    }, 500);
+  }, [onChange]);
+
+  const { initHistory, pushHistory, undo, redo, handleKeyDown: undoKeyDown, pendingCursor: pendingCursorRef, currentCursor: currentCursorRef } = useUndoHistory(localOnChange);
+  // --- クリップボード履歴 ---
+  const { clipboardHistory, addToClipboard } = useClipboardHistory();
+
+  // ファイル切替時に履歴をリセット
+  const prevValueRef = useRef(value);
+  useEffect(() => {
+    // 値が大きく変わった場合（ファイル切替）は履歴リセット
+    if (Math.abs(value.length - prevValueRef.current.length) > 100) {
+      initHistory(value);
+    }
+    prevValueRef.current = value;
+  }, [value, initHistory]);
+
+  // カーソル位置を追跡するref（全てのonChange呼び出しで更新）
+  const nextCursorPos = useRef(null);
+
+  // React再レンダリング直後にカーソル位置を復元（useLayoutEffectでペイント前に実行）
+  // ★ IME 変換中はカーソル復元をスキップ（変換カーソルを破壊しないため）
+  useLayoutEffect(() => {
+    if (isComposingRef.current) return;
+    // undo/redo後のカーソル復元
+    if (pendingCursorRef && pendingCursorRef.current != null && textareaRef.current) {
+      const pos = pendingCursorRef.current;
+      pendingCursorRef.current = null;
+      textareaRef.current.setSelectionRange(pos, pos);
+      return;
+    }
+    // 通常編集後のカーソル復元
+    if (nextCursorPos.current != null && textareaRef.current) {
+      const pos = nextCursorPos.current;
+      nextCursorPos.current = null;
+      textareaRef.current.setSelectionRange(pos, pos);
+    }
   });
 
-  // 窓をスライドする関数
-  const slideWindow = useCallback((cursorPosInFull) => {
-    if (isComposingRef.current) return;
-    const full = fullTextRef.current;
-    const HALF = 15000;
-    const newStart = Math.max(0, cursorPosInFull - HALF);
-    const newEnd = Math.min(full.length, newStart + 30000);
-    const windowText = full.slice(newStart, newEnd);
-
-    const ta = textareaRef.current;
-    if (!ta) return;
-    const cursorInWindow = cursorPosInFull - newStart;
-    ta.value = settings.isVertical ? toVerticalDisplay(windowText) : windowText;
-    ta.setSelectionRange(cursorInWindow, cursorInWindow);
-    windowRef.current = { start: newStart, end: newEnd };
-
-    setDebouncedValue(windowText);
-    setScrollForce(f => f + 1);
-
-  }, [settings.isVertical]);
-
-  const handleContainerScroll = useCallback(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    viewportRef.current = {
-      scrollTop: container.scrollTop,
-      scrollLeft: container.scrollLeft,
-      height: container.clientHeight,
-      width: container.clientWidth,
-    };
-    setScrollForce(f => f + 1);
-    if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
-    scrollTimerRef.current = setTimeout(() => {
-      const full = fullTextRef.current;
-      if (full.length <= 30000) return;
-      const isVert = settings.isVertical;
-      const scrollPos = isVert
-        ? container.scrollLeft
-        : container.scrollTop;
-      const scrollMax = isVert
-        ? container.scrollWidth - container.clientWidth
-        : container.scrollHeight - container.clientHeight;
-      if (scrollMax <= 0) return;
-      const proportion = isVert
-        ? 1 - scrollPos / scrollMax
-        : scrollPos / scrollMax;
-      const estimatedCenter = Math.floor(proportion * full.length);
-      const { start } = windowRef.current;
-      if (Math.abs(estimatedCenter - (start + 15000)) > 5000) {
-        const newStart = Math.max(0, estimatedCenter - 15000);
-        const newEnd = Math.min(full.length, newStart + 30000);
-        const windowText = full.slice(newStart, newEnd);
-        const ta = textareaRef.current;
-        if (ta) {
-          ta.value = isVert
-            ? toVerticalDisplay(windowText)
-            : windowText;
-          windowRef.current = { start: newStart, end: newEnd };
-          // ※ setDebouncedValue は呼ばない（ファイル破壊防止）
-          setScrollForce(f => f + 1);
-        }
-      }
-    }, 300);
-  }, [settings.isVertical]);
-
-  const baseMetrics = useMemo(() => {
-    const fontSize = settings.fontSize || 18;
-    const isManuscript = settings.paperStyle === 'grid';
-    const lineHeightRatio = isManuscript
-      ? (settings.lineHeight || 1.65)
-      : (settings.charSpacing || 1.4);
-    const cell = Math.floor(fontSize * lineHeightRatio);
-    const padding = 40;
-    const containerEl = containerRef.current;
-    const availableH = containerEl ? containerEl.clientHeight - padding * 2 : 600;
-    const availableW = containerEl ? containerEl.clientWidth - padding * 2 : 800;
-    const isVert = settings.isVertical;
-    const maxPerLine = settings.charsPerLine ||
-      Math.floor((isVert ? availableH : availableW) / cell) || 20;
-    const cols = isVert ? Math.ceil(400 / maxPerLine) + 2 : maxPerLine;
-    const rows = isVert ? maxPerLine : Math.ceil(400 / maxPerLine) + 2;
-    const gridW = cols * cell;
-    const gridH = rows * cell;
-    return { fontSize, cell, maxPerLine, padding, letterSpacing: cell - fontSize, cols, rows, gridW, gridH };
-  }, [settings.fontSize, settings.lineHeight, settings.paperStyle, settings.charSpacing,
-      settings.isVertical, settings.charsPerLine, scrollForce]);
-
-  const paragraphIndex = useMemo(() => {
-    const text = debouncedValue;
-    if (!text) return [];
-    const lines = text.split(/\r?\n/);
-    
-    // ウィンドウ内の行数を先に計算して全体行数を推定
-    let windowLines = 0;
-    const tempEntries = lines.map((lineText, idx) => {
-      const charArray = splitString(lineText + (idx < lines.length - 1 ? '\n' : ''));
-      const { totalLines } = computeCharPositions(charArray, baseMetrics.maxPerLine);
-      windowLines += totalLines;
-      return { id: idx, text: lineText, charArray, lineCount: totalLines };
-    });
-
-    let currentLine = 0;
-    return tempEntries.map(e => {
-      const entry = { ...e, startLine: currentLine };
-      currentLine += e.lineCount;
-      return entry;
-    });
-  }, [debouncedValue, baseMetrics.maxPerLine]);
-
-  const totalLineCount = useMemo(() => {
-    const windowLines = paragraphIndex.reduce((sum, p) => sum + p.lineCount, 0);
-    const windowLen = windowRef.current.end - windowRef.current.start;
-    const fullLen = fullTextRef.current.length;
-    if (windowLen <= 0 || windowLines <= 0) return 50;
-    return Math.ceil(windowLines * fullLen / windowLen) + 20;
-  }, [paragraphIndex]);
-
-  const textareaStyle = useMemo(() => ({
-    fontFamily: `${settings.fontFamily || 'var(--font-mincho)'}, serif`,
-    fontSize: `${baseMetrics.fontSize}px`,
-    lineHeight: `${baseMetrics.cell}px`,
-    letterSpacing: `${baseMetrics.letterSpacing}px`,
-    padding: 0,
-    border: 'none',
-    outline: 'none',
-    color: 'var(--text-main)',
-    caretColor: 'var(--text-main)',
-    width: settings.isVertical
-      ? `${totalLineCount * baseMetrics.cell + 2}px`
-      : '100%',
-    height: settings.isVertical
-      ? `${baseMetrics.maxPerLine * baseMetrics.cell + 2}px`
-      : `${totalLineCount * baseMetrics.cell + 2}px`,
-    position: 'relative',
-    zIndex: 2,
-    pointerEvents: 'auto',
-    writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb',
-    whiteSpace: 'pre-wrap',
-    wordBreak: 'break-all',
-    overflow: 'hidden',
-    fontVariantEastAsian: 'full-width',
-    fontVariantLigatures: 'none',
-    fontKerning: 'none',
-    textAutospace: 'no-autospace',
-    textSpacingTrim: 'space-all',
-    fontFeatureSettings: settings.isVertical ? '"palt" 0, "halt" 0, "kern" 0, "vkrn" 0, "chws" 0, "liga" 0, "clig" 0, "calt" 0, "vert" 1, "vrt2" 1' : '"palt" 0, "halt" 0, "kern" 0, "vkrn" 0, "chws" 0, "liga" 0, "clig" 0, "calt" 0, "vert" 0, "vrt2" 0',
-  }), [settings.fontFamily, baseMetrics, settings.isVertical, settings.paperStyle, totalLineCount]);
-
-
-
-  const charPositionsCache = useMemo(() => {
-    if (paragraphIndex.length === 0) return { visibleParagraphs: [] };
-    const { cell } = baseMetrics;
-    const isVert = settings.isVertical;
-    const vp = viewportRef.current;
-    const viewportSize = isVert ? vp.width : vp.height;
-    const scrollPos = isVert
-      ? (baseMetrics.padding + totalLineCount * baseMetrics.cell - vp.scrollLeft - vp.width)
-      : vp.scrollTop;
-    const startVisibleLine = Math.floor(scrollPos / cell) - 10;
-    const endVisibleLine = Math.ceil((scrollPos + viewportSize) / cell) + 10;
-
-    const visibleParagraphs = paragraphIndex.filter(
-      p => (p.startLine + p.lineCount) >= startVisibleLine && p.startLine <= endVisibleLine
-    );
-    return { visibleParagraphs };
-  }, [paragraphIndex, scrollForce, baseMetrics, settings.isVertical, totalLineCount]);
-
-  const highlights = useMemo(() => {
-    if (!charPositionsCache.visibleParagraphs.length) return [];
-    const { cell } = baseMetrics;
-    const isVert = settings.isVertical;
-    const patterns = [
-      { regex: /[[［［].*?[\]］］]/g, color: settings.syntaxColors?.link || '#2980b9' },
-      { regex: /『.*?』/g, color: settings.syntaxColors?.emphasis || '#c0392b' },
-      { regex: /「.*?」/g, color: settings.syntaxColors?.conversation || '#27ae60' },
-      { regex: /《.*?》/g, color: settings.syntaxColors?.ruby || '#e67e22' },
-      { regex: /［＃.*?］/g, color: settings.syntaxColors?.aozora || '#8e44ad' },
-    ];
-    const list = [];
-
-    charPositionsCache.visibleParagraphs.forEach(p => {
-      const pPositions = computeCharPositions(p.charArray, baseMetrics.maxPerLine, p.startLine).positions;
-      patterns.forEach(({ regex, color }) => {
-        let match; regex.lastIndex = 0;
-        while ((match = regex.exec(p.text)) !== null) {
-          const pStartIdx = splitString(p.text.substring(0, match.index)).length;
-          const pMatchLen = splitString(match[0]).length;
-          for (let i = 0; i < pMatchLen; i++) {
-            const pCoord = pPositions[pStartIdx + i];
-            if (pCoord) {
-              const blockStart = pCoord.line * cell;
-              const inlineStart = pCoord.pos * cell;
-              list.push({ key: `h-${windowRef.current.start}-${p.id}-${match.index}-${i}`, blockStart, inlineStart, color });
-            }
-          }
-        }
-      });
-    });
-    return list;
-  }, [charPositionsCache, baseMetrics, settings.isVertical, settings.syntaxColors, totalLineCount, fileId]);
-
-  // Props からの同期
+  // Context Menu Close Handler
   useEffect(() => {
-    if (Math.abs(value.length - fullTextRef.current.length) > 100) {
-      if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
-      isProcessingPropValueRef.current = true;
-      fullTextRef.current = value;
-      const newEnd = Math.min(30000, value.length);
-      windowRef.current = { start: 0, end: newEnd };
-      const windowText = value.slice(0, newEnd);
-      if (textareaRef.current) {
-        textareaRef.current.value = settings.isVertical ? toVerticalDisplay(windowText) : windowText;
-      }
-      setDebouncedValue(windowText);
-      initHistory(value);
-      setTimeout(() => { isProcessingPropValueRef.current = false; }, 0);
+    const close = () => setEditorContextMenu(null);
+    if (editorContextMenu) {
+      document.addEventListener('click', close);
+      return () => document.removeEventListener('click', close);
     }
-  }, [value, initHistory, settings.isVertical]);
+  }, [editorContextMenu]);
 
-
-  useLayoutEffect(() => {
-    const timer = setTimeout(() => {
-      if (containerRef.current) {
-        viewportRef.current = {
-          scrollTop: containerRef.current.scrollTop,
-          scrollLeft: containerRef.current.scrollLeft,
-          height: containerRef.current.clientHeight,
-          width: containerRef.current.clientWidth,
-        };
-      }
-      setScrollForce(f => f + 1);
-    }, 150);
-    return () => clearTimeout(timer);
+  // cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
+    };
   }, []);
 
+  // ファイル切替時にdebouncedValueを即座に更新（前ファイルの着色残留を防止）
   useEffect(() => {
-    setDebouncedValue(fullTextRef.current.slice(
-      windowRef.current.start,
-      windowRef.current.end
-    ));
+    setDebouncedValue(localText);
   }, [fileId]);
 
+  // ファイル切替・縦横切替時の初期スクロール（文頭＝縦書き右端へ）
   useEffect(() => {
-    const container = containerRef.current;
+    const container = textareaRef.current?.closest('.editor-container');
     if (!container) return;
     if (settings.isVertical) {
       let attempts = 0;
@@ -351,228 +251,1002 @@ const Editor = forwardRef(({
       container.scrollLeft = 0;
     }
   }, [fileId, settings.isVertical]);
-  
+
+
+  const splitString = (str) => Array.from(str || "");
+
+  // --- パフォーマンス最適化: ハイライト用デバウンス（ローカルテキストベース）---
+  const [debouncedValue, setDebouncedValue] = useState(localText);
+  const debouncePrevLenRef = useRef(localText.length);
+
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const onWheel = (e) => {
-      if (!settings.isVertical) return;
-      e.preventDefault();
-      container.scrollLeft -= e.deltaY;
-    };
-    container.addEventListener('wheel', onWheel, { passive: false });
-    return () => container.removeEventListener('wheel', onWheel);
-  }, [settings.isVertical]);
+    // 大きな変更（ファイル切替等）は即座に反映
+    if (Math.abs(localText.length - debouncePrevLenRef.current) > 100) {
+      setDebouncedValue(localText);
+      debouncePrevLenRef.current = localText.length;
+      return;
+    }
+    debouncePrevLenRef.current = localText.length;
+    const timer = setTimeout(() => setDebouncedValue(localText), 300);
+    return () => clearTimeout(timer);
+  }, [localText]);
 
-  const handleInput = useCallback((e) => {
-    if (isComposingRef.current) return;
-    const ta = e.target;
-    const rawVal = ta.value;
-    const windowText = settings.isVertical ? fromVerticalDisplay(rawVal) : rawVal;
-    const { start } = windowRef.current;
-    const oldEnd = windowRef.current.end;
+  // --- 1a. ベース寸法（設定のみ依存、valueに依存しない） ---
+  const baseMetrics = useMemo(() => {
+    const fontSize = parseInt(settings.fontSize) || 18;
+    const isManuscript = settings.paperStyle === 'grid';
+    const lineHeightRatio = isManuscript
+      ? (settings.lineHeight || 1.65)
+      : (settings.charSpacing || 1.4);
+    const cell = Math.floor(fontSize * lineHeightRatio);
+    const PADDING = 10;
 
-    const oldFull = fullTextRef.current;
-    fullTextRef.current = oldFull.slice(0, start) + windowText + oldFull.slice(oldEnd);
-    windowRef.current.end = start + windowText.length;
-
-    const globalCursor = start + ta.selectionStart;
-    pushHistory(oldFull, fullTextRef.current, globalCursor);
-
-    if (highlightDebounceRef.current) clearTimeout(highlightDebounceRef.current);
-    if (Math.abs(windowText.length - (debouncePrevLenRef.current || 0)) < 2) {
-      setDebouncedValue(windowText);
-      debouncePrevLenRef.current = windowText.length;
+    let maxPerLine;
+    if (settings.isVertical) {
+      const winH = window.innerHeight;
+      const availableH = winH - (PADDING * 2) - 28 - 40;
+      maxPerLine = settings.charsPerLine || Math.floor(availableH / cell);
+      if (maxPerLine < 5) maxPerLine = 20;
     } else {
-      highlightDebounceRef.current = setTimeout(() => {
-        setDebouncedValue(windowText);
-        debouncePrevLenRef.current = windowText.length;
-      }, 100);
+      const winW = window.innerWidth;
+      const availableW = winW - 320 - (PADDING * 2);
+      maxPerLine = settings.charsPerLine || Math.floor(availableW / cell);
+      if (maxPerLine < 5) maxPerLine = 20;
     }
 
-    if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
-    appNotifyTimerRef.current = setTimeout(() => {
-      if (!isProcessingPropValueRef.current) onChange(fullTextRef.current);
-    }, 500);
+    return { fontSize, cell, maxPerLine, padding: PADDING, letterSpacing: cell - fontSize };
+  }, [settings.fontSize, settings.lineHeight, settings.isVertical, settings.charsPerLine, settings.paperStyle, settings.charSpacing]);
 
-    const cursorInWindow = ta.selectionStart;
-    if (cursorInWindow < 5000 || cursorInWindow > windowText.length - 5000) {
-      slideWindow(start + cursorInWindow);
+  // --- 1b. グリッド寸法（デバウンス値に依存 — 毎キー入力での全文走査を回避） ---
+  const [debouncedLineCount, setDebouncedLineCount] = useState(() => computeTotalLines(localText, baseMetrics.maxPerLine));
+  const lineCountTimerRef = useRef(null);
+  useEffect(() => {
+    // 大きな変更は即座に反映
+    if (Math.abs(localText.length - (debouncePrevLenRef.current || 0)) > 50) {
+      setDebouncedLineCount(computeTotalLines(localText, baseMetrics.maxPerLine));
+      return;
     }
-  }, [settings.isVertical, slideWindow, onChange, pushHistory]);
+    if (lineCountTimerRef.current) clearTimeout(lineCountTimerRef.current);
+    lineCountTimerRef.current = setTimeout(() => {
+      setDebouncedLineCount(computeTotalLines(localText, baseMetrics.maxPerLine));
+    }, 300);
+    return () => { if (lineCountTimerRef.current) clearTimeout(lineCountTimerRef.current); };
+  }, [localText, baseMetrics.maxPerLine]);
 
-  const handleCursor = (e) => {
-    const container = containerRef.current;
-    if (container) {
-      if (Math.abs(container.scrollTop - viewportRef.current.scrollTop) > 5 || 
-          Math.abs(container.scrollLeft - viewportRef.current.scrollLeft) > 5) {
-        viewportRef.current = { 
-          scrollTop: container.scrollTop, 
-          scrollLeft: container.scrollLeft, 
-          height: container.clientHeight, 
-          width: container.clientWidth 
-        };
-        setScrollForce(f => f + 1);
+  const metrics = useMemo(() => {
+    const { fontSize, cell, maxPerLine, padding, letterSpacing } = baseMetrics;
+    const totalLines = debouncedLineCount;
+
+    let cols, rows, gridW, gridH;
+    if (settings.isVertical) {
+      rows = maxPerLine;
+      cols = Math.max(totalLines, settings.linesPerPage || 10);
+      gridH = rows * cell;
+      gridW = cols * cell;
+    } else {
+      cols = maxPerLine;
+      rows = Math.max(totalLines, settings.linesPerPage || 10);
+      gridW = cols * cell;
+      gridH = rows * cell;
+    }
+
+    return { fontSize, cell, cols, rows, gridW, gridH, padding, letterSpacing };
+  }, [debouncedLineCount, baseMetrics, settings.isVertical, settings.linesPerPage]);
+
+  // --- 共有キャラクター座標キャッシュ（デバウンス値 + 安定した maxPerLine） ---
+  const charPositionsCache = useMemo(() => {
+    if (!debouncedValue) return { positions: [], charArray: [], utf16ToCharIdx: new Map() };
+    const charArray = splitString(debouncedValue);
+    const { positions } = computeCharPositions(charArray, baseMetrics.maxPerLine);
+
+    // UTF-16インデックス → 文字インデックスのマッピングを事前計算
+    const utf16ToCharIdx = new Map();
+    let codeUnitOffset = 0;
+    for (let i = 0; i < charArray.length; i++) {
+      utf16ToCharIdx.set(codeUnitOffset, i);
+      codeUnitOffset += charArray[i].length;
+    }
+
+    return { positions, charArray, utf16ToCharIdx };
+  }, [debouncedValue, baseMetrics.maxPerLine]);
+
+  // --- 2. アンダーレイ（座標マップ）の生成（デバウンス） ---
+  // ★ 大規模テキスト（20000文字超≒原稿用紙100枚超）ではハイライトを自動停止
+  const HIGHLIGHT_CHAR_LIMIT = 200000;
+  const highlights = useMemo(() => {
+    if (settings.editorSyntaxColors === false) return [];
+    if (!debouncedValue) return [];
+    if (debouncedValue.length > HIGHLIGHT_CHAR_LIMIT) return [];
+    const { cell } = baseMetrics;
+    const { positions, utf16ToCharIdx } = charPositionsCache;
+    const isVert = settings.isVertical;
+
+    const patterns = [
+      { regex: /\[\[.*?\]\]|［［.*?］］/g, color: settings.syntaxColors?.link || '#2980b9' },
+      { regex: /『.*?』/g, color: settings.syntaxColors?.emphasis || '#c0392b' },
+      { regex: /「.*?」/g, color: settings.syntaxColors?.conversation || '#27ae60', isConversation: true },
+      { regex: /《.*?》/g, color: settings.syntaxColors?.ruby || '#e67e22' },
+      { regex: /［＃.*?］/g, color: settings.syntaxColors?.aozora || '#8e44ad' },
+      { regex: /\{font[:：].*?\}|\{\/font\}/g, color: settings.syntaxColors?.aozora || '#8e44ad' },
+      { regex: /\*\*.*?\*\*/g, color: settings.syntaxColors?.emphasis || '#c0392b' },
+    ];
+
+    const list = [];
+    patterns.forEach(({ regex, color, isConversation }) => {
+      let match;
+      while ((match = regex.exec(debouncedValue)) !== null) {
+        const visualStart = utf16ToCharIdx.get(match.index) ?? splitString(debouncedValue.substring(0, match.index)).length;
+        const visualLen = splitString(match[0]).length;
+        for (let i = 0; i < visualLen; i++) {
+          const p = positions[visualStart + i];
+          if (p) {
+            // ★ 中間配列を省略: positions から直接画面座標を算出
+            const x = isVert ? -p.line * cell : (p.pos * cell);
+            const y = isVert ? (p.pos * cell) : (p.line * cell);
+            list.push({ key: `${visualStart + i}-${regex.source}`, x, y, color, isConversation: !!isConversation });
+          }
+        }
+      }
+    });
+    return list;
+  }, [charPositionsCache, debouncedValue, baseMetrics, settings.isVertical, settings.syntaxColors, settings.editorSyntaxColors]);
+
+  // --- 3a. ゴーストテキスト座標計算 ---
+  const ghostHighlights = useMemo(() => {
+    if (!ghostText || !value) return [];
+
+    const fullText = value + ghostText;
+    const charArray = splitString(fullText);
+    const valueLen = splitString(value).length;
+    const ghostLen = splitString(ghostText).length;
+
+    const { cell, maxPerLine } = baseMetrics;
+    const { positions } = computeCharPositions(charArray, maxPerLine);
+
+    const list = [];
+    for (let i = 0; i < ghostLen; i++) {
+      const idx = valueLen + i;
+      const p = positions[idx];
+      if (p) {
+        const x = settings.isVertical ? -p.line * cell : (p.pos * cell);
+        const y = settings.isVertical ? (p.pos * cell) : (p.line * cell);
+        list.push({ key: `ghost-${i}`, x, y, char: charArray[idx] });
       }
     }
-    if (onCursorStats && textareaRef.current) {
-      onCursorStats({
-        start: textareaRef.current.selectionStart + windowRef.current.start,
-        end: textareaRef.current.selectionEnd + windowRef.current.start,
-        total: fullTextRef.current.length
-      });
-    }
-  };
+    return list;
+  }, [value, ghostText, baseMetrics, settings.isVertical]);
 
+  // --- 3b. 校正ハイライト座標計算（デバウンス + キャッシュ共有） ---
+  const correctionHighlights = useMemo(() => {
+    if (!corrections || corrections.length === 0 || !debouncedValue) return [];
+
+    const { charArray, positions } = charPositionsCache;
+    const { cell } = baseMetrics;
+
+    const list = [];
+
+    corrections.forEach(corr => {
+      if (!corr.original) return;
+      let searchIndex = 0;
+      let index = debouncedValue.indexOf(corr.original, searchIndex);
+
+      while (index !== -1) {
+        const len = splitString(corr.original).length;
+        const preStr = debouncedValue.slice(0, index);
+        const startCharIdx = splitString(preStr).length;
+
+        for (let i = 0; i < len; i++) {
+          const p = positions[startCharIdx + i];
+          if (p) {
+            const x = settings.isVertical ? -p.line * cell : (p.pos * cell);
+            const y = settings.isVertical ? (p.pos * cell) : (p.line * cell);
+            list.push({
+              key: `corr-${corr.id}-${index}-${i}`,
+              x, y,
+              char: charArray[startCharIdx + i],
+              color: 'red'
+            });
+          }
+        }
+        break;
+      }
+    });
+
+    return list;
+  }, [debouncedValue, corrections, charPositionsCache, baseMetrics, settings.isVertical]);
+
+
+
+  // --- 3. 約物フィルター (縦書き時のみ — メモ化でローカルテキストベース) ---
+  const displayValue = useMemo(() => {
+    return settings.isVertical ? toVerticalDisplay(localText) : localText;
+  }, [localText, settings.isVertical]);
+
+  const handleChange = useCallback((e) => {
+    const ta = e.target;
+    const raw = ta.value;
+    const restored = settings.isVertical ? fromVerticalDisplay(raw) : raw;
+    const cursorPos = ta.selectionStart;
+
+    if (isComposingRef.current) {
+      // ★ IME 変換中: localText は更新する（React が DOM を上書きしないように）
+      //    ただし undo 履歴と App への通知はスキップ（確定時に handleCompositionEnd で行う）
+      setLocalText(restored);
+      return;
+    }
+
+    pushHistory(localTextRef.current, restored, cursorPos);
+    if (currentCursorRef) currentCursorRef.current = cursorPos;
+    nextCursorPos.current = cursorPos;
+    localOnChange(restored);
+  }, [localOnChange, settings.isVertical, pushHistory, currentCursorRef]);
+
+  // ★ IME composition ハンドラ
+  // localTextRef 経由で参照することで、useCallback の deps から localText を除外
+  // → キー入力ごとのコールバック再生成を回避
   const handleCompositionStart = useCallback(() => {
     isComposingRef.current = true;
-    compositionTextRef.current = fullTextRef.current;
+    compositionTextRef.current = localTextRef.current;
   }, []);
 
   const handleCompositionEnd = useCallback((e) => {
     isComposingRef.current = false;
+    // composition 終了時に最終テキストを確定
     const ta = e.target;
     const raw = ta.value;
-    const windowText = settings.isVertical ? fromVerticalDisplay(raw) : raw;
-    const { start, end } = windowRef.current;
-    fullTextRef.current = fullTextRef.current.slice(0, start) + windowText + fullTextRef.current.slice(end);
-    windowRef.current.end = start + windowText.length;
-    const globalCursor = start + ta.selectionStart;
-    pushHistory(compositionTextRef.current ?? fullTextRef.current, fullTextRef.current, globalCursor);
+    const restored = settings.isVertical ? fromVerticalDisplay(raw) : raw;
+    const cursorPos = ta.selectionStart;
+    // 変換開始前のテキストから undo 履歴を記録（中間状態は記録しない）
+    const beforeComposition = compositionTextRef.current ?? localTextRef.current;
+    pushHistory(beforeComposition, restored, cursorPos);
+    if (currentCursorRef) currentCursorRef.current = cursorPos;
+    nextCursorPos.current = cursorPos;
+    localOnChange(restored);
     compositionTextRef.current = null;
-    setDebouncedValue(windowText);
-    if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
-    appNotifyTimerRef.current = setTimeout(() => {
-      if (!isProcessingPropValueRef.current) onChange(fullTextRef.current);
-    }, 500);
-  }, [settings.isVertical, onChange, pushHistory]);
+  }, [localOnChange, settings.isVertical, pushHistory, currentCursorRef]);
+
+  const handleCopy = useCallback((e) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const selected = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
+    if (selected) {
+      const original = settings.isVertical ? fromVerticalDisplay(selected) : selected;
+      // クリップボード履歴に追加
+      addToClipboard(original);
+      if (settings.isVertical) {
+        // clipboardData が使える場合は同期APIで書き込む
+        if (e.clipboardData) {
+          try {
+            e.clipboardData.setData('text/plain', original);
+            e.preventDefault();
+          } catch (err) {
+            // 別ウィンドウ等で clipboardData が無効な場合、非同期APIにフォールバック
+            e.preventDefault();
+            navigator.clipboard.writeText(original).catch(() => {});
+          }
+        } else {
+          // clipboardData 自体がない場合
+          e.preventDefault();
+          navigator.clipboard.writeText(original).catch(() => {});
+        }
+      }
+    }
+  }, [settings.isVertical, addToClipboard]);
+
+  const handleCut = useCallback((e) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const selected = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
+    if (selected) {
+      const original = settings.isVertical ? fromVerticalDisplay(selected) : selected;
+      // クリップボード履歴に追加
+      addToClipboard(original);
+      if (settings.isVertical) {
+        e.clipboardData.setData('text/plain', original);
+        e.preventDefault();
+        const cursorPos = textarea.selectionStart;
+        const before = textarea.value.substring(0, cursorPos);
+        const after = textarea.value.substring(textarea.selectionEnd);
+        const newValue = fromVerticalDisplay(before + after);
+        pushHistory(localTextRef.current, newValue, cursorPos);
+        nextCursorPos.current = cursorPos;
+        localOnChange(newValue);
+      }
+    }
+  }, [localOnChange, settings.isVertical, addToClipboard, pushHistory]);
+
+  // --- 4. ハンドラ ---
+  const handleCursor = () => {
+    if (onCursorStats && textareaRef.current) {
+      onCursorStats({
+        start: textareaRef.current.selectionStart,
+        end: textareaRef.current.selectionEnd,
+        total: localText.length
+      });
+    }
+  };
+
+  const handleWheel = useCallback((e) => {
+    if (!settings.isVertical) return;
+    // Only convert vertical wheel → horizontal scroll
+    // Let deltaX pass through to native browser scrolling
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+      const container = textareaRef.current?.closest('.editor-container');
+      if (container) {
+        container.scrollLeft -= e.deltaY;
+        e.preventDefault();
+      }
+    }
+  }, [settings.isVertical]);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (el && settings.isVertical) {
+      el.addEventListener('wheel', handleWheel, { passive: false });
+      return () => el.removeEventListener('wheel', handleWheel);
+    }
+  }, [settings.isVertical, handleWheel]);
+
+  // ★ コンテナにスクロールバーを強制表示（縦書き・横書き両対応）
+  useEffect(() => {
+    const container = textareaRef.current?.closest('.editor-container');
+    if (!container) return;
+
+    // 親フレックスコンテナに合わせる
+    container.style.height = '100%';
+
+    if (settings.isVertical) {
+      container.style.overflowX = 'scroll';
+      container.style.overflowY = 'hidden';
+    } else {
+      container.style.overflowX = 'hidden';
+      container.style.overflowY = 'scroll';
+    }
+
+    // -webkit-scrollbar 用の動的スタイルを注入
+    const styleId = 'nexus-scrollbar-style';
+    let styleEl = document.getElementById(styleId);
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = styleId;
+      document.head.appendChild(styleEl);
+    }
+    const darkMode = document.body.classList.contains('dark-mode');
+    const thumbColor = darkMode ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)';
+    const thumbHover = darkMode ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.55)';
+    const trackColor = darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+    const scrollbarCSS = `
+      background: ${thumbColor} !important;
+      border-radius: 7px !important;
+      border: 2px solid transparent !important;
+      background-clip: padding-box !important;
+    `;
+    styleEl.textContent = `
+      .editor-container.vertical,
+      .editor-container.horizontal {
+        height: 100% !important;
+      }
+      .editor-container.vertical {
+        overflow-x: scroll !important;
+        overflow-y: hidden !important;
+      }
+      .editor-container.horizontal {
+        overflow-y: scroll !important;
+        overflow-x: hidden !important;
+      }
+      .editor-container::-webkit-scrollbar { width: 14px !important; height: 14px !important; }
+      .editor-container::-webkit-scrollbar-track { background: ${trackColor} !important; }
+      .editor-container::-webkit-scrollbar-thumb { ${scrollbarCSS} }
+      .editor-container::-webkit-scrollbar-thumb:hover { background: ${thumbHover} !important; }
+    `;
+
+    return () => {
+      if (container) {
+        container.style.overflowX = '';
+        container.style.overflowY = '';
+        container.style.height = '';
+      }
+    };
+  }, [settings.isVertical]);
+
+  const scrollToCaretPosition = useCallback((charIndex) => {
+    const ta = textareaRef.current;
+    const container = ta?.closest('.editor-container');
+    if (!ta || !container) return;
+
+    const isClean = settings.paperStyle === 'clean';
+
+    if (isClean) {
+      const origWidth = ta.style.width;
+      const origHeight = ta.style.height;
+      const origOverflow = ta.style.overflow;
+
+      ta.style.overflow = 'auto';
+      ta.style.width = '1px';
+      ta.style.height = '1px';
+
+      ta.focus();
+      ta.setSelectionRange(charIndex, charIndex);
+
+      const innerTop = ta.scrollTop;
+      const innerLeft = ta.scrollLeft;
+
+      if (settings.isVertical) {
+        container.scrollLeft = innerLeft;
+      } else {
+        container.scrollTop = innerTop;
+      }
+
+      ta.scrollTop = 0;
+      ta.scrollLeft = 0;
+      ta.style.width = origWidth;
+      ta.style.height = origHeight;
+      ta.style.overflow = origOverflow;
+
+      return;
+    }
+
+    const { maxPerLine, cell, padding } = baseMetrics;
+    const text = settings.isVertical ? toVerticalDisplay(localText) : localText;
+
+    let line = 0;
+    let pos = 0;
+    for (let i = 0; i < charIndex && i < text.length; i++) {
+      if (text[i] === '\n') {
+        line++;
+        pos = 0;
+      } else {
+        if (pos >= maxPerLine) {
+          line++;
+          pos = 0;
+        }
+        pos++;
+      }
+    }
+
+    if (settings.isVertical) {
+      const caretOffsetFromRight = line * cell + padding;
+      const viewCenter = container.clientWidth / 2;
+      const targetScrollLeft = -(caretOffsetFromRight - viewCenter);
+      const minScrollLeft = -(container.scrollWidth - container.clientWidth);
+      const clampedScrollLeft = Math.max(minScrollLeft, Math.min(0, targetScrollLeft));
+      container.scrollLeft = clampedScrollLeft;
+    } else {
+      const caretY = line * cell + padding;
+      const viewCenter = container.clientHeight / 2;
+      const targetScrollTop = Math.max(0, caretY - viewCenter);
+      container.scrollTop = targetScrollTop;
+    }
+  }, [localText, settings.isVertical, settings.paperStyle, baseMetrics]);
 
   useImperativeHandle(ref, () => ({
+    focus: () => textareaRef.current?.focus(),
+    textarea: textareaRef.current,
     textareaRef,
-    getFullText: () => fullTextRef.current,
-    jumpToOffset: (offset) => slideWindow(offset),
-    insertText: (text) => {
+    // Undo/Redo
+    undo,
+    redo,
+    // クリップボード履歴
+    clipboardHistory,
+    pasteFromHistory: (text) => {
       const ta = textareaRef.current;
       if (!ta) return;
       const start = ta.selectionStart;
-      const newVal = ta.value.substring(0, start) + text + ta.value.substring(ta.selectionEnd);
-      ta.value = newVal;
-      handleInput({ target: ta });
+      const end = ta.selectionEnd;
+      const currentVal = ta.value;
+      const rawVal = settings.isVertical ? fromVerticalDisplay(currentVal) : currentVal;
+      const newValue = rawVal.substring(0, start) + text + rawVal.substring(end);
+      pushHistory(localText, newValue, start);
+      nextCursorPos.current = start + text.length;
+      localOnChange(newValue);
+    },
+    insertRuby: () => {
+      const ta = textareaRef.current;
+      if (!ta) return;
+      const start = ta.selectionStart;
+      const end = ta.selectionEnd;
+      const currentValue = ta.value;
+      const rawValue = settings.isVertical ? fromVerticalDisplay(currentValue) : currentValue;
+      const selectedText = rawValue.substring(start, end);
+      const insertion = selectedText
+        ? `${selectedText}《》`
+        : '《》';
+      const newValue = rawValue.substring(0, start) + insertion + rawValue.substring(end);
+      pushHistory(localText, newValue, start);
+      // カーソルを《》の間に配置（読みを入力する位置）
+      nextCursorPos.current = start + (selectedText ? selectedText.length + 1 : 1);
+      localOnChange(newValue);
+      // useLayoutEffect だけでは縦書き時に復元されないことがあるため、明示的にフォーカス
       setTimeout(() => {
+        const pos = start + (selectedText ? selectedText.length + 1 : 1);
         ta.focus();
-        ta.setSelectionRange(start + text.length, start + text.length);
+        ta.setSelectionRange(pos, pos);
       }, 0);
+    },
+    setCursorPosition: (position) => {
+      const ta = textareaRef.current;
+      if (!ta) return;
+      // まずスクロール（focus前にやることで画面移動を確実に）
+      scrollToCaretPosition(position);
+      // 次フレームで focus + selection
+      requestAnimationFrame(() => {
+        const el = textareaRef.current;
+        if (!el) return;
+        el.focus();
+        el.setSelectionRange(position, position);
+      });
+    },
+    jumpToPosition: (start, end) => {
+      const ta = textareaRef.current;
+      if (!ta) return;
+      const selEnd = end != null ? end : start;
+      scrollToCaretPosition(start);
+      requestAnimationFrame(() => {
+        const el = textareaRef.current;
+        if (!el) return;
+        el.focus();
+        el.setSelectionRange(start, selEnd);
+      });
     }
   }));
 
-  const paperClass = settings.paperStyle === 'grid'
-    ? 'paper-manuscript'
-    : settings.paperStyle === 'clean'
-      ? 'paper-clean'
-      : settings.paperStyle === 'lined'
-        ? 'paper-lined'
-        : 'paper-plain';
   const isCleanMode = settings.paperStyle === 'clean';
+  const paperClass = isCleanMode ? 'paper-clean' :
+    settings.paperStyle === 'grid' ? 'paper-manuscript' :
+      settings.paperStyle === 'lined' ? 'paper-lined' : 'paper-plain';
+
+  // フォントスタイル（メモ化 — レンダリングごとの新規オブジェクト生成を回避）
+  const cleanFontFamily = settings.cleanFontFamily || 'var(--font-mincho)';
+  const fontStyle = useMemo(() => isCleanMode ? {
+    fontFamily: `${cleanFontFamily}, serif`,
+    letterSpacing: '0em',
+    lineHeight: settings.isVertical ? 'normal' : '2.0',
+    fontVariantLigatures: 'common-ligatures',
+    fontKerning: 'auto',
+    fontFeatureSettings: settings.isVertical
+      ? '"kern" 1, "vert" 1, "vrt2" 1'
+      : '"kern" 1',
+  } : {
+    fontFamily: `${settings.fontFamily || 'var(--font-mincho)'}, serif`,
+    letterSpacing: `${metrics.letterSpacing}px`,
+    lineHeight: `${metrics.cell}px`,
+    fontVariantEastAsian: 'full-width',
+    fontVariantLigatures: 'none',
+    fontKerning: 'none',
+    textAutospace: 'no-autospace',
+    textSpacingTrim: 'space-all',
+    fontFeatureSettings: settings.isVertical
+      ? '"palt" 0, "halt" 0, "kern" 0, "vkrn" 0, "chws" 0, "liga" 0, "clig" 0, "calt" 0, "vert" 1, "vrt2" 1'
+      : '"palt" 0, "halt" 0, "kern" 0, "vkrn" 0, "chws" 0, "liga" 0, "clig" 0, "calt" 0, "vert" 0, "vrt2" 0',
+  }, [isCleanMode, cleanFontFamily, settings.isVertical, settings.fontFamily, metrics.letterSpacing, metrics.cell]);
+
+  // ★ textarea の style オブジェクトをメモ化（キー入力ごとの新規オブジェクト生成を回避）
+  const textareaStyle = useMemo(() => isCleanMode ? {
+    fontSize: `${settings.fontSize || 16}px`,
+    width: settings.isVertical ? `${Math.max(5000, metrics.gridW + 200)}px` : '100%',
+    height: '100%',
+    maxWidth: settings.isVertical ? 'none'
+      : (settings.charsPerLine ? `${settings.charsPerLine * (parseInt(settings.fontSize) || 16) * 1.2 + 64}px` : 'none'),
+    margin: settings.isVertical ? '0' : (settings.charsPerLine ? '0 auto' : '0'),
+    padding: '40px 32px',
+    textAlign: 'start',
+    wordBreak: 'normal',
+    overflowWrap: 'break-word',
+    lineBreak: 'normal',
+    writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb',
+    textOrientation: settings.isVertical ? 'upright' : 'mixed',
+    overflowY: settings.isVertical ? 'hidden' : 'scroll',
+    overflowX: 'hidden',
+    resize: 'none',
+    background: 'transparent',
+    direction: 'ltr',
+    ...fontStyle
+  } : {
+    fontSize: `${metrics.fontSize}px`,
+    '--cell': `${metrics.cell}px`,
+    '--grid-w': `${metrics.gridW}px`,
+    '--grid-h': `${metrics.gridH}px`,
+    '--ls-half': `${Math.round(metrics.letterSpacing / 2)}px`,
+    width: settings.isVertical
+      ? `${metrics.gridW + (metrics.padding * 2) + metrics.cell + 2}px`
+      : `${metrics.gridW + (metrics.padding * 2) + 2}px`,
+    height: settings.isVertical
+      ? `${metrics.gridH + (metrics.padding * 2) + 2}px`
+      : `${metrics.gridH + (metrics.padding * 2) + metrics.cell + 2}px`,
+    padding: `${metrics.padding}px`,
+    textAlign: 'start',
+    wordBreak: 'break-all',
+    lineBreak: 'anywhere',
+    textOrientation: settings.isVertical ? 'upright' : 'mixed',
+    overflow: 'hidden',
+    resize: 'none',
+    ...fontStyle
+  }, [isCleanMode, settings.fontSize, settings.isVertical, settings.charsPerLine, metrics, fontStyle]);
+
+  // --- メモ化: シンタックスハイライト要素（ビューポート仮想化 — 可視範囲のみ描画） ---
+  // --- メモ化: シンタックスハイライト要素（ビューポート仮想化 — 可視範囲のみ描画） ---
+  // ★ viewport を ref で管理（setState による再レンダリングを回避 — カーソル飛びの原因だった）
+  const viewportRef = useRef({ width: 0, height: 0, scrollTop: 0, scrollLeft: 0 });
+  
+  useEffect(() => {
+    const container = textareaRef.current?.closest('.editor-container');
+    if (!container) return;
+    viewportRef.current = {
+      width: container.clientWidth,
+      height: container.clientHeight,
+      scrollTop: container.scrollTop,
+      scrollLeft: container.scrollLeft,
+    };
+    let rafId = null;
+    const onScroll = () => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        viewportRef.current = {
+          width: container.clientWidth,
+          height: container.clientHeight,
+          scrollTop: container.scrollTop,
+          scrollLeft: container.scrollLeft,
+        };
+      });
+    };
+    container.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      container.removeEventListener('scroll', onScroll);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [settings.isVertical]);
+
+  const highlightElements = useMemo(() => {
+    if (settings.editorSyntaxColors === false || !highlights.length) return null;
+    const cell = baseMetrics.cell;
+    const isVert = settings.isVertical;
+    
+    // ★ ref から viewport を読む（ハイライト再計算時のスナップショット）
+    //    スクロールだけでは再計算されない（highlights 変更時のみ）
+    const vp = viewportRef.current;
+    const margin = cell * 3;
+    let filtered;
+    if (isVert) {
+      const sl = vp.scrollLeft;
+      const visRight = margin;
+      const visLeft = sl - margin;
+      filtered = highlights.filter(h => h.x >= visLeft && h.x <= visRight);
+    } else {
+      const visTop = vp.scrollTop - margin;
+      const visBottom = vp.scrollTop + vp.height + margin;
+      filtered = highlights.filter(h => h.y >= visTop && h.y <= visBottom);
+    }
+
+    const MAX_VISIBLE = 500;
+    const limited = filtered.length > MAX_VISIBLE ? filtered.slice(0, MAX_VISIBLE) : filtered;
+    
+    return limited.map((h) => (
+      <div key={h.key} style={{
+        position: 'absolute',
+        right: isVert ? `${-h.x}px` : 'auto',
+        left: isVert ? 'auto' : `${h.x}px`,
+        top: `${h.y}px`,
+        width: `${cell}px`,
+        height: `${cell}px`,
+        backgroundColor: h.color,
+        opacity: h.isConversation ? 0.5 : 0.25,
+        borderRadius: '2px'
+      }} />
+    ));
+  }, [highlights, settings.isVertical, settings.editorSyntaxColors, baseMetrics.cell]);
+
+  // --- ドラッグ&ドロップでの画像挿入 ---
+  const handleDragOver = useCallback((e) => {
+    // 画像ファイルのドラッグのみ受け入れる
+    if (e.dataTransfer.types.includes('Files')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  }, []);
+
+  const handleDrop = useCallback(async (e) => {
+    const files = Array.from(e.dataTransfer.files);
+    const imageFile = files.find(f => f.type.startsWith('image/'));
+    if (!imageFile) return;
+
+    e.preventDefault();
+
+    // App.jsx から渡された onImageDrop で画像を保存
+    if (onImageDrop) {
+      const fileName = await onImageDrop(imageFile);
+      if (fileName) {
+        // カーソル位置に挿絵記法を挿入
+        const ta = textareaRef.current;
+        const pos = ta.selectionStart;
+        // 前後が改行されていない場合は改行で挟むなどの調整が可能（今回はシンプルに改行挟み）
+        const insertion = `\n［＃挿絵（${fileName}）入る］\n`;
+        const newValue = localText.substring(0, pos) + insertion + localText.substring(pos);
+        pushHistory(localText, newValue, pos);
+        nextCursorPos.current = pos + insertion.length;
+        localOnChange(newValue);
+      }
+    }
+  }, [localText, localOnChange, pushHistory, onImageDrop]);
 
   return (
-    <div className="editor-root" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', background: 'var(--bg-paper)' }}>
-      <div 
-        ref={containerRef}
-        onScroll={handleContainerScroll}
-        className={`chunks-container ${paperClass}`} 
-        style={{ 
-          flex: 1, 
-          overflowX: settings.isVertical ? 'auto' : 'hidden',
-          overflowY: settings.isVertical ? 'hidden' : 'auto',
-          padding: `${baseMetrics.padding}px`, 
-          position: 'relative', 
-          '--cell': `${baseMetrics.cell}px`,
-          '--grid-offset-x': '3px',
-          '--grid-offset-y': '2px'
-        }}
-      >
-        <div className="chunks-content-root" style={{ position: 'relative', width: settings.isVertical ? `${totalLineCount * baseMetrics.cell + baseMetrics.padding * 2 + 2}px` : '100%', height: settings.isVertical ? `${baseMetrics.maxPerLine * baseMetrics.cell + baseMetrics.padding * 2 + 2}px` : 'auto', minHeight: '100%' }}>
-          {!isCleanMode && <div className={`editor-grid-layer ${paperClass}`} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, pointerEvents: 'none' }} />}
-          {!isCleanMode && (
-            <div className="editor-underlay" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 3, transform: 'none', pointerEvents: 'none', fontSize: `${baseMetrics.fontSize}px`, lineHeight: `${baseMetrics.cell}px`, letterSpacing: `${baseMetrics.letterSpacing}px`, fontFamily: settings.fontFamily, color: 'transparent' }}>
-              {highlights.map(h => (
-                <div key={h.key} style={{ 
-                  position: 'absolute', 
-                  ...(settings.isVertical
-                    ? { right: `${h.blockStart}px`, top: `${h.inlineStart}px` }
-                    : { left: `${h.inlineStart}px`, top: `${h.blockStart}px` }
-                  ),
-                  width: `${baseMetrics.cell}px`, 
-                  height: `${baseMetrics.cell}px`, 
-                  background: h.color, 
-                  opacity: 0.35, 
-                  borderRadius: '2px', 
-                  pointerEvents: 'none' 
-                }} />
-              ))}
+    <div lang="ja" className={`editor-container ${settings.isVertical ? 'vertical' : 'horizontal'} ${paperClass}`}>
+      {/* Underlay: skip in clean mode (proportional fonts can't align character-by-character) */}
+      {!isCleanMode && (
+        <div className="editor-underlay" style={{
+          top: `${metrics.padding - (settings.isVertical ? Math.round(metrics.letterSpacing / 2) : 0)}px`,
+          right: settings.isVertical ? `${metrics.padding}px` : 'auto',
+          left: settings.isVertical ? 'auto' : `${metrics.padding}px`,
+          writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb',
+          ...fontStyle,
+          fontSize: `${metrics.fontSize}px`,
+        }}>
+          {highlightElements}
+          {/* Ghost Text Overlay */}
+          {ghostHighlights.map((gh) => (
+            <div key={gh.key} style={{
+              position: 'absolute',
+              right: settings.isVertical ? `${-gh.x}px` : 'auto',
+              left: settings.isVertical ? 'auto' : `${gh.x}px`,
+              top: `${gh.y}px`,
+              width: `${baseMetrics.cell}px`,
+              height: `${baseMetrics.cell}px`,
+              color: '#aaa',
+              opacity: 0.6,
+              pointerEvents: 'none',
+              lineHeight: `${baseMetrics.cell}px`,
+              fontSize: `${baseMetrics.fontSize}px`,
+              fontFamily: fontStyle.fontFamily,
+              writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb',
+              ...fontStyle,
+            }}>
+              {gh.char}
             </div>
-          )}
-          <textarea
-            lang="ja"
-            ref={textareaRef}
-            className={`native-grid-editor ${paperClass}`}
-            defaultValue={settings.isVertical ? toVerticalDisplay(fullTextRef.current.slice(0, Math.min(30000, fullTextRef.current.length))) : fullTextRef.current.slice(0, Math.min(30000, fullTextRef.current.length))}
-            onInput={handleInput}
-            onCompositionStart={handleCompositionStart}
-            onCompositionEnd={handleCompositionEnd}
-            onScroll={handleCursor}
-            onSelect={handleCursor}
-            onClick={handleCursor}
-            onKeyUp={handleCursor}
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
-                e.preventDefault();
-                const ta = textareaRef.current;
-                if (!ta) return;
-                const full = fullTextRef.current;
-                ta.value = settings.isVertical ? toVerticalDisplay(full) : full;
-                windowRef.current = { start: 0, end: full.length };
-                ta.select();
-                setDebouncedValue(full);
-                return;
-              }
-              handleKeyDown(e);
-            }}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              setEditorContextMenu({ x: e.clientX, y: e.clientY });
-            }}
-            spellCheck={false}
-            style={textareaStyle}
-          />
+          ))}
+          {/* Correction Highlights */}
+          {correctionHighlights.map((ch) => (
+            <div key={ch.key} style={{
+              position: 'absolute',
+              right: settings.isVertical ? `${-ch.x}px` : 'auto',
+              left: settings.isVertical ? 'auto' : `${ch.x}px`,
+              top: `${ch.y}px`,
+              width: `${baseMetrics.cell}px`,
+              height: `${baseMetrics.cell}px`,
+              borderBottom: settings.isVertical ? 'none' : '2px wavy red',
+              borderLeft: settings.isVertical ? '2px wavy red' : 'none',
+              opacity: 0.7,
+              pointerEvents: 'none',
+            }} />
+          ))}
         </div>
-      </div>
+      )}
+
+      <textarea
+        lang="ja"
+        ref={textareaRef}
+        className={`native-grid-editor ${paperClass}`}
+        value={displayValue}
+        onChange={handleChange}
+        onCompositionStart={handleCompositionStart}
+        onCompositionEnd={handleCompositionEnd}
+        onCopy={handleCopy}
+        onCut={handleCut}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        onKeyDown={(e) => {
+          if (ghostText) {
+            if (e.key === 'Tab') {
+              e.preventDefault();
+              // Accept Ghost Text
+              const ta = textareaRef.current;
+              const start = ta.selectionStart;
+              const val = ta.value;
+              const newValue = val.slice(0, start) + ghostText + val.slice(start);
+              pushHistory(val, newValue);
+              nextCursorPos.current = start + ghostText.length;
+              localOnChange(newValue);
+              setGhostText('');
+              return;
+            }
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              setGhostText('');
+              return;
+            }
+            // Any other key acts normally but clears ghost text (via App or here)
+            // App.jsx effect clears it on text change.
+            // But for navigation keys (Arrow), we might want to clear it too?
+            // Request says "Any other keypress: clear ghost text."
+            if (!['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) {
+              setGhostText('');
+            }
+          }
+          undoKeyDown(e);
+        }}
+        onScroll={handleCursor}
+        onSelect={handleCursor}
+        onClick={handleCursor}
+        onKeyUp={(e) => {
+          handleCursor(e);
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          const textarea = textareaRef.current;
+          const hasSelection = textarea && textarea.selectionStart !== textarea.selectionEnd;
+          setEditorContextMenu({
+            x: e.clientX,
+            y: e.clientY,
+            hasSelection
+          });
+        }}
+        spellCheck={false}
+        placeholder="ここから物語を紡ぎましょう..."
+        style={textareaStyle}
+      />
       {editorContextMenu && ReactDOM.createPortal(
-        <div className="context-menu" style={{ position: 'fixed', left: editorContextMenu.x, top: editorContextMenu.y, zIndex: 100000 }} onMouseLeave={() => setEditorContextMenu(null)}>
+        <div className="context-menu" style={{
+          position: 'fixed',
+          top: editorContextMenu.y,
+          left: editorContextMenu.x,
+          zIndex: 99999
+        }} onClick={(e) => e.stopPropagation()}>
+          <div className="context-menu-item" onClick={() => {
+            if (onInsertRuby) onInsertRuby();
+            setEditorContextMenu(null);
+          }}>
+            ルビ挿入
+          </div>
+          <div className="context-menu-item" onClick={() => {
+            if (onInsertLink) onInsertLink();
+            setEditorContextMenu(null);
+          }}>
+            🔗 リンク挿入
+          </div>
+          {editorContextMenu.hasSelection && (
+            <>
+              <div style={{ height: '1px', background: 'var(--border-color, #eee)', margin: '4px 0' }}></div>
+              {/* Font change submenu */}
+              <div className="context-menu-item" style={{ position: 'relative' }}
+                onMouseEnter={(e) => {
+                  const sub = e.currentTarget.querySelector('.font-submenu');
+                  if (sub) sub.style.display = 'block';
+                }}
+                onMouseLeave={(e) => {
+                  const sub = e.currentTarget.querySelector('.font-submenu');
+                  if (sub) sub.style.display = 'none';
+                }}
+              >
+                🔤 フォント変更 ▸
+                <div className="font-submenu context-menu" style={{
+                  display: 'none',
+                  position: 'absolute',
+                  left: '100%',
+                  top: 0,
+                  minWidth: '140px',
+                  zIndex: 100000,
+                  maxHeight: '300px',
+                  overflowY: 'auto'
+                }}>
+                  {[
+                    { label: '明朝', name: '明朝' },
+                    { label: 'ゴシック', name: 'ゴシック' },
+                    { label: 'ヒラギノ明朝', name: 'ヒラギノ明朝' },
+                    { label: '筑紫A', name: '筑紫A' },
+                    { label: '筑紫B', name: '筑紫B' },
+                    { label: 'クレー', name: 'クレー' },
+                    { label: '游明朝', name: '游明朝' },
+                    { label: 'Noto明朝', name: 'Noto明朝' },
+                    { label: 'キウイ丸', name: 'キウイ丸' },
+                    { label: 'ひな明朝', name: 'ひな明朝' },
+                    { label: 'うつくし明朝', name: 'うつくし明朝' },
+                    { label: '紅道', name: '紅道' },
+                  ].map(f => (
+                    <div key={f.name} className="context-menu-item" onClick={() => {
+                      const ta = textareaRef.current;
+                      if (!ta) return;
+                      const start = ta.selectionStart;
+                      const end = ta.selectionEnd;
+                      const rawValue = settings.isVertical ? fromVerticalDisplay(ta.value) : ta.value;
+                      const selected = rawValue.substring(start, end);
+                      const wrapped = `{font:${f.name}}${selected}{/font}`;
+                      const newValue = rawValue.substring(0, start) + wrapped + rawValue.substring(end);
+                      pushHistory(localText, newValue, start);
+                      nextCursorPos.current = start + wrapped.length;
+                      localOnChange(newValue);
+                      setEditorContextMenu(null);
+                    }}>
+                      {f.label}
+                    </div>
+                  ))}
+                  <div style={{ height: '1px', background: 'var(--border-color, #eee)', margin: '4px 0' }}></div>
+                  <div className="context-menu-item" onClick={() => {
+                    const ta = textareaRef.current;
+                    if (!ta) return;
+                    const start = ta.selectionStart;
+                    const end = ta.selectionEnd;
+                    const rawValue = settings.isVertical ? fromVerticalDisplay(ta.value) : ta.value;
+                    const selected = rawValue.substring(start, end);
+                    // Remove font tags from selection
+                    const cleaned = selected.replace(/\{font[:：][^}]*\}/g, '').replace(/\{\/font\}/g, '');
+                    const newValue = rawValue.substring(0, start) + cleaned + rawValue.substring(end);
+                    pushHistory(localText, newValue, start);
+                    nextCursorPos.current = start + cleaned.length;
+                    localOnChange(newValue);
+                    setEditorContextMenu(null);
+                  }}>
+                    ❌ フォント解除
+                  </div>
+                </div>
+              </div>
+              <div style={{ height: '1px', background: 'var(--border-color, #eee)', margin: '4px 0' }}></div>
+              <div className="context-menu-item" onClick={() => {
+                const ta = textareaRef.current;
+                if (ta) {
+                  const selected = ta.value.substring(ta.selectionStart, ta.selectionEnd);
+                  const original = settings.isVertical ? fromVerticalDisplay(selected) : selected;
+                  addToClipboard(original);
+                  navigator.clipboard.writeText(original).catch(() => {});
+                  // テキストから選択部分を削除
+                  const cursorPos = ta.selectionStart;
+                  const before = ta.value.substring(0, cursorPos);
+                  const after = ta.value.substring(ta.selectionEnd);
+                  const newValue = settings.isVertical ? fromVerticalDisplay(before + after) : (before + after);
+                  pushHistory(localText, newValue, cursorPos);
+                  localOnChange(newValue);
+                }
+                setEditorContextMenu(null);
+              }}>
+                ✂️ 切り取り
+              </div>
+              <div className="context-menu-item" onClick={() => {
+                const ta = textareaRef.current;
+                if (ta) {
+                  const selected = ta.value.substring(ta.selectionStart, ta.selectionEnd);
+                  const original = settings.isVertical ? fromVerticalDisplay(selected) : selected;
+                  addToClipboard(original);
+                  navigator.clipboard.writeText(original).catch(() => {
+                    document.execCommand('copy');
+                  });
+                }
+                setEditorContextMenu(null);
+              }}>
+                📋 コピー
+              </div>
+            </>
+          )}
           <div className="context-menu-item" onClick={() => {
             const ta = textareaRef.current;
-            if (ta) {
-              const selected = ta.value.substring(ta.selectionStart, ta.selectionEnd);
-              navigator.clipboard.writeText(settings.isVertical ? fromVerticalDisplay(selected) : selected);
-            }
+            if (!ta) { setEditorContextMenu(null); return; }
+            navigator.clipboard.readText().then(text => {
+              if (!text) { setEditorContextMenu(null); return; }
+              const start = ta.selectionStart;
+              const end = ta.selectionEnd;
+              const currentVal = ta.value;
+              const rawVal = settings.isVertical ? fromVerticalDisplay(currentVal) : currentVal;
+              const newValue = rawVal.substring(0, start) + text + rawVal.substring(end);
+              pushHistory(localText, newValue, start);
+              nextCursorPos.current = start + text.length;
+              localOnChange(newValue);
+              addToClipboard(text);
+              requestAnimationFrame(() => {
+                ta.focus();
+              });
+            }).catch(() => {
+              ta.focus();
+            });
             setEditorContextMenu(null);
-          }}>📋 コピー</div>
-          <div className="context-menu-item" onClick={() => { setEditorContextMenu(null); textareaRef.current.focus(); }}>📌 貼り付け</div>
+          }}>
+            📌 貼り付け
+          </div>
         </div>,
         document.body
       )}
-      {ReactDOM.createPortal(
-        <SelectionToolbar
-          visible={selectionToolbar.visible}
-          position={selectionToolbar.position}
-          text={selectionToolbar.text}
-          onClose={() => setSelectionToolbar({ ...selectionToolbar, visible: false })}
-        />,
-        document.body
-      )}
+
     </div>
   );
 });
 
 Editor.displayName = 'Editor';
-export default Editor;
+const MemoEditor = React.memo(Editor);
+MemoEditor.displayName = 'Editor';
+export default MemoEditor;
