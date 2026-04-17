@@ -4,6 +4,7 @@ import '../index.css';
 import { toVerticalDisplay, fromVerticalDisplay } from '../utils/verticalPunctuation';
 import { useUndoHistory } from '../hooks/useUndoHistory';
 import { useClipboardHistory } from '../hooks/useClipboardHistory';
+import PositionWorker from '../utils/positionWorker?worker';
 
 
 /**
@@ -260,12 +261,6 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   const debouncePrevLenRef = useRef(localText.length);
 
   useEffect(() => {
-    // 大きな変更（ファイル切替等）は即座に反映
-    if (Math.abs(localText.length - debouncePrevLenRef.current) > 100) {
-      setDebouncedValue(localText);
-      debouncePrevLenRef.current = localText.length;
-      return;
-    }
     debouncePrevLenRef.current = localText.length;
     const timer = setTimeout(() => setDebouncedValue(localText), 300);
     return () => clearTimeout(timer);
@@ -297,18 +292,40 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     return { fontSize, cell, maxPerLine, padding: PADDING, letterSpacing: cell - fontSize };
   }, [settings.fontSize, settings.lineHeight, settings.isVertical, settings.charsPerLine, settings.paperStyle, settings.charSpacing]);
 
-  // --- 1b. グリッド寸法（デバウンス値に依存 — 毎キー入力での全文走査を回避） ---
+  // --- 1b. グリッド寸法（Web Worker で計算 — UIスレッドをブロックしない） ---
   const [debouncedLineCount, setDebouncedLineCount] = useState(() => computeTotalLines(localText, baseMetrics.maxPerLine));
   const lineCountTimerRef = useRef(null);
+  const lineCountWorkerRef = useRef(null);
+  const lineCountReqIdRef = useRef(0);
+
+  // Worker の初期化（マウント時に一度だけ）
   useEffect(() => {
-    // 大きな変更は即座に反映
-    if (Math.abs(localText.length - (debouncePrevLenRef.current || 0)) > 50) {
-      setDebouncedLineCount(computeTotalLines(localText, baseMetrics.maxPerLine));
-      return;
-    }
+    const worker = new PositionWorker();
+    lineCountWorkerRef.current = worker;
+    worker.onmessage = (e) => {
+      if (e.data.type === 'lineCount' && e.data.id === lineCountReqIdRef.current) {
+        setDebouncedLineCount(e.data.totalLines);
+      }
+    };
+    return () => worker.terminate();
+  }, []);
+
+  useEffect(() => {
     if (lineCountTimerRef.current) clearTimeout(lineCountTimerRef.current);
     lineCountTimerRef.current = setTimeout(() => {
-      setDebouncedLineCount(computeTotalLines(localText, baseMetrics.maxPerLine));
+      if (lineCountWorkerRef.current) {
+        // Worker に計算を依頼（UIスレッドはブロックしない）
+        lineCountReqIdRef.current += 1;
+        lineCountWorkerRef.current.postMessage({
+          type: 'lineCount',
+          id: lineCountReqIdRef.current,
+          text: localText,
+          maxPerLine: baseMetrics.maxPerLine,
+        });
+      } else {
+        // Worker が使えない環境ではフォールバック
+        setDebouncedLineCount(computeTotalLines(localText, baseMetrics.maxPerLine));
+      }
     }, 300);
     return () => { if (lineCountTimerRef.current) clearTimeout(lineCountTimerRef.current); };
   }, [localText, baseMetrics.maxPerLine]);
@@ -333,21 +350,53 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     return { fontSize, cell, cols, rows, gridW, gridH, padding, letterSpacing };
   }, [debouncedLineCount, baseMetrics, settings.isVertical, settings.linesPerPage]);
 
-  // --- 共有キャラクター座標キャッシュ（デバウンス値 + 安定した maxPerLine） ---
-  const charPositionsCache = useMemo(() => {
-    if (!debouncedValue) return { positions: [], charArray: [], utf16ToCharIdx: new Map() };
-    const charArray = splitString(debouncedValue);
-    const { positions } = computeCharPositions(charArray, baseMetrics.maxPerLine);
+  // --- 共有キャラクター座標キャッシュ（Web Worker で計算 — UIスレッドをブロックしない） ---
+  const [charPositionsCache, setCharPositionsCache] = useState(
+    () => ({ positions: [], charArray: [], utf16ToCharIdx: new Map() })
+  );
+  const positionsWorkerRef = useRef(null);
+  const positionsReqIdRef = useRef(0);
 
-    // UTF-16インデックス → 文字インデックスのマッピングを事前計算
-    const utf16ToCharIdx = new Map();
-    let codeUnitOffset = 0;
-    for (let i = 0; i < charArray.length; i++) {
-      utf16ToCharIdx.set(codeUnitOffset, i);
-      codeUnitOffset += charArray[i].length;
+  // Worker の初期化（マウント時に一度だけ）
+  useEffect(() => {
+    const worker = new PositionWorker();
+    positionsWorkerRef.current = worker;
+    worker.onmessage = (e) => {
+      if (e.data.type === 'positions' && e.data.id === positionsReqIdRef.current) {
+        const { positions, charArray, utf16ToCharIdxEntries } = e.data;
+        const utf16ToCharIdx = new Map(utf16ToCharIdxEntries);
+        setCharPositionsCache({ positions, charArray, utf16ToCharIdx });
+      }
+    };
+    return () => worker.terminate();
+  }, []);
+
+  useEffect(() => {
+    if (!debouncedValue) {
+      setCharPositionsCache({ positions: [], charArray: [], utf16ToCharIdx: new Map() });
+      return;
     }
-
-    return { positions, charArray, utf16ToCharIdx };
+    if (positionsWorkerRef.current) {
+      // Worker に計算を依頼（UIスレッドはブロックしない）
+      positionsReqIdRef.current += 1;
+      positionsWorkerRef.current.postMessage({
+        type: 'positions',
+        id: positionsReqIdRef.current,
+        text: debouncedValue,
+        maxPerLine: baseMetrics.maxPerLine,
+      });
+    } else {
+      // Worker が使えない環境ではフォールバック（従来の同期計算）
+      const charArray = splitString(debouncedValue);
+      const { positions } = computeCharPositions(charArray, baseMetrics.maxPerLine);
+      const utf16ToCharIdx = new Map();
+      let codeUnitOffset = 0;
+      for (let i = 0; i < charArray.length; i++) {
+        utf16ToCharIdx.set(codeUnitOffset, i);
+        codeUnitOffset += charArray[i].length;
+      }
+      setCharPositionsCache({ positions, charArray, utf16ToCharIdx });
+    }
   }, [debouncedValue, baseMetrics.maxPerLine]);
 
   // --- 2. アンダーレイ（座標マップ）の生成（デバウンス） ---
