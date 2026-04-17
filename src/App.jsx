@@ -2576,6 +2576,11 @@ function App() {
           text={editorValue}
           settings={settings}
           onClose={() => setShowReader(false)}
+          cursorOffset={editorRef.current?.textareaRef?.current?.selectionStart ?? 0}
+          onJumpToEditor={(offset) => {
+            setShowReader(false);
+            setTimeout(() => editorRef.current?.jumpToIndex(offset), 100);
+          }}
         />
       )}
     </div >

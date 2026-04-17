@@ -14,7 +14,7 @@ const FONT_OPTIONS = [
 
 const SIZE_OPTIONS = [14, 16, 18, 20, 22, 24, 28, 32];
 
-const ReaderView = ({ text, settings, onClose }) => {
+const ReaderView = ({ text, settings, onClose, cursorOffset = 0, onJumpToEditor }) => {
     const containerRef = useRef(null);
     const [showTOC, setShowTOC] = useState(false);
     const [showToolbar, setShowToolbar] = useState(true);
@@ -25,6 +25,10 @@ const ReaderView = ({ text, settings, onClose }) => {
     const [readerVertical, setReaderVertical] = useState(settings.isVertical ?? true);
     const [readerTheme, setReaderTheme] = useState(settings.colorTheme || 'light');
 
+    // 検索
+    const [searchTerm, setSearchTerm] = useState('');
+    const [searchResultIndex, setSearchResultIndex] = useState(0);
+
     // ブロック解析
     const blocks = useMemo(() => parseBlocks(text), [text]);
 
@@ -34,6 +38,16 @@ const ReaderView = ({ text, settings, onClose }) => {
             .map((b, i) => ({ ...b, index: i }))
             .filter(b => b.isHeader);
     }, [blocks]);
+
+    // 検索結果（ブロックインデックス配列）
+    const searchResults = useMemo(() => {
+        if (!searchTerm) return [];
+        const lower = searchTerm.toLowerCase();
+        return blocks.reduce((acc, b, i) => {
+            if (b.content && b.content.toLowerCase().includes(lower)) acc.push(i);
+            return acc;
+        }, []);
+    }, [blocks, searchTerm]);
 
     // 章ジャンプ
     const jumpToChapter = useCallback((index) => {
@@ -53,6 +67,22 @@ const ReaderView = ({ text, settings, onClose }) => {
         }
         setShowTOC(false);
     }, [readerVertical]);
+
+    // 初回マウント時：cursorOffset に最も近いブロックにスクロール
+    useEffect(() => {
+        if (!blocks.length) return;
+        // cursorOffset に最も近い（超えない最大の textOffset を持つ）ブロックを探す
+        let closestIdx = 0;
+        for (let i = 0; i < blocks.length; i++) {
+            if (blocks[i].textOffset != null && blocks[i].textOffset <= cursorOffset) {
+                closestIdx = i;
+            }
+        }
+        // 少し遅延させてDOMが揃ってからスクロール
+        const timer = setTimeout(() => jumpToChapter(closestIdx), 100);
+        return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // 初回のみ
 
     // 縦書き時ホイール変換
     useEffect(() => {
@@ -91,6 +121,21 @@ const ReaderView = ({ text, settings, onClose }) => {
         return () => window.removeEventListener('keydown', handleKey);
     }, [onClose]);
 
+    // 検索ナビゲーション
+    const searchPrev = useCallback(() => {
+        if (!searchResults.length) return;
+        const idx = (searchResultIndex - 1 + searchResults.length) % searchResults.length;
+        setSearchResultIndex(idx);
+        jumpToChapter(searchResults[idx]);
+    }, [searchResults, searchResultIndex, jumpToChapter]);
+
+    const searchNext = useCallback(() => {
+        if (!searchResults.length) return;
+        const idx = (searchResultIndex + 1) % searchResults.length;
+        setSearchResultIndex(idx);
+        jumpToChapter(searchResults[idx]);
+    }, [searchResults, searchResultIndex, jumpToChapter]);
+
     return (
         <div
             className={`reader-overlay theme-${readerTheme}`}
@@ -107,6 +152,23 @@ const ReaderView = ({ text, settings, onClose }) => {
                             ☰ 目次
                         </button>
                     )}
+                    {/* 検索バー */}
+                    <div className="reader-search-bar">
+                        <input
+                            type="text"
+                            className="reader-search-input"
+                            placeholder="検索..."
+                            value={searchTerm}
+                            onChange={(e) => { setSearchTerm(e.target.value); setSearchResultIndex(0); }}
+                        />
+                        {searchResults.length > 0 && (
+                            <span className="reader-search-count">
+                                {searchResultIndex + 1}/{searchResults.length}
+                            </span>
+                        )}
+                        <button className="reader-btn" onClick={searchPrev} disabled={!searchResults.length}>↑</button>
+                        <button className="reader-btn" onClick={searchNext} disabled={!searchResults.length}>↓</button>
+                    </div>
                 </div>
 
                 <div className="reader-toolbar-center">
@@ -204,14 +266,19 @@ const ReaderView = ({ text, settings, onClose }) => {
                             style.textAlign = 'center';
                         }
 
+                        const isSearchHit = searchTerm && searchResults.includes(i);
                         const content = block.content || '\u00A0';
 
                         return (
                             <Tag
                                 key={i}
                                 id={`reader-block-${i}`}
-                                className={`reader-paragraph ${block.isHeader ? 'reader-heading' : ''}`}
-                                style={style}
+                                className={`reader-paragraph ${block.isHeader ? 'reader-heading' : ''} ${isSearchHit ? 'reader-search-hit' : ''}`}
+                                style={{
+                                    ...style,
+                                    cursor: onJumpToEditor ? 'pointer' : undefined,
+                                }}
+                                onClick={onJumpToEditor ? () => onJumpToEditor(block.textOffset ?? 0) : undefined}
                             >
                                 {renderInline(content)}
                             </Tag>

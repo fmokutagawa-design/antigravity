@@ -269,3 +269,7 @@ h4.reader-paragraph {
     font-size: 0.6em;
     text-align: center;
 }
+
+.reader-search-hit {
+  background: rgba(255, 200, 0, 0.3);
+}

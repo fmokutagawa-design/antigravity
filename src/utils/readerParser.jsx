@@ -18,13 +18,19 @@ export function parseBlocks(text) {
     let blockIndent = 0;
     let blockFont = null;
 
+    // textOffset: 各行が全文テキストの何文字目から始まるかを追跡
+    // （\n区切りなので行長+1ずつ累積する）
+    let currentOffset = 0;
+
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i];
         const originalLen = line.length;
+        const lineOffset = currentOffset; // この行の全文オフセット（行頭）
+        currentOffset += originalLen + 1; // 次の行へ（+1は\nの分）
 
         // --- 改ページ ---
         if (/^\s*-{5,}\s*$/.test(line) || /［＃改ページ］/.test(line)) {
-            blocks.push({ type: 'break' });
+            blocks.push({ type: 'break', textOffset: lineOffset });
             continue;
         }
 
@@ -113,6 +119,7 @@ export function parseBlocks(text) {
                 indent: blockIndent,
                 font: blockFont,
                 align: null,
+                textOffset: lineOffset,
             });
             continue;
         }
@@ -125,6 +132,7 @@ export function parseBlocks(text) {
             indent: lineIndent,
             font: lineFont,
             align,
+            textOffset: lineOffset,
         });
     }
     return blocks;
