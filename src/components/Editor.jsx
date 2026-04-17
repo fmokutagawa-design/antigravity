@@ -131,7 +131,9 @@ const Editor = forwardRef(({
         ? container.scrollWidth - container.clientWidth
         : container.scrollHeight - container.clientHeight;
       if (scrollMax <= 0) return;
-      const proportion = scrollPos / scrollMax;
+      const proportion = isVert
+        ? 1 - scrollPos / scrollMax
+        : scrollPos / scrollMax;
       const estimatedCenter = Math.floor(proportion * full.length);
       const { start } = windowRef.current;
       if (Math.abs(estimatedCenter - (start + 15000)) > 5000) {
@@ -240,7 +242,9 @@ const Editor = forwardRef(({
     const isVert = settings.isVertical;
     const vp = viewportRef.current;
     const viewportSize = isVert ? vp.width : vp.height;
-    const scrollPos = isVert ? -vp.scrollLeft : vp.scrollTop;
+    const scrollPos = isVert
+      ? (baseMetrics.padding + totalLineCount * baseMetrics.cell - vp.scrollLeft - vp.width)
+      : vp.scrollTop;
     const startVisibleLine = Math.floor(scrollPos / cell) - 10;
     const endVisibleLine = Math.ceil((scrollPos + viewportSize) / cell) + 10;
     const visibleParagraphs = paragraphIndex.filter(p => (p.startLine + p.lineCount) >= startVisibleLine && p.startLine <= endVisibleLine);
