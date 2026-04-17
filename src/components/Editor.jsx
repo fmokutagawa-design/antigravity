@@ -275,9 +275,7 @@ const Editor = forwardRef(({
     ];
     const list = [];
 
-    let paragraphOffset = 0;
     charPositionsCache.visibleParagraphs.forEach(p => {
-      const globalParaOffset = windowRef.current.start + paragraphOffset;
       const pPositions = computeCharPositions(p.charArray, baseMetrics.maxPerLine, p.startLine).positions;
       patterns.forEach(({ regex, color }) => {
         let match; regex.lastIndex = 0;
@@ -289,12 +287,11 @@ const Editor = forwardRef(({
             if (pCoord) {
               const blockStart = pCoord.line * cell;
               const inlineStart = pCoord.pos * cell;
-              list.push({ key: `h-${globalParaOffset}-${match.index}-${i}`, blockStart, inlineStart, color });
+              list.push({ key: `h-${windowRef.current.start}-${p.id}-${match.index}-${i}`, blockStart, inlineStart, color });
             }
           }
         }
       });
-      paragraphOffset += p.text.length + 1;
     });
     return list;
   }, [charPositionsCache, baseMetrics, settings.isVertical, settings.syntaxColors, totalLineCount]);
