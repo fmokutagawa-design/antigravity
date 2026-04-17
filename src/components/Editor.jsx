@@ -292,38 +292,48 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     return { fontSize, cell, maxPerLine, padding: PADDING, letterSpacing: cell - fontSize };
   }, [settings.fontSize, settings.lineHeight, settings.isVertical, settings.charsPerLine, settings.paperStyle, settings.charSpacing]);
 
-  // --- 1b. グリッド寸法（Web Worker で計算 — UIスレッドをブロックしない） ---
+  // --- 共有 Web Worker（lineCount / positions を1つのWorkerで処理） ---
+  const workerRef = useRef(null);
+  const lineCountReqIdRef = useRef(0);
+  const positionsReqIdRef = useRef(0);
+
   const [debouncedLineCount, setDebouncedLineCount] = useState(() => computeTotalLines(localText, baseMetrics.maxPerLine));
   const lineCountTimerRef = useRef(null);
-  const lineCountWorkerRef = useRef(null);
-  const lineCountReqIdRef = useRef(0);
+
+  const [charPositionsCache, setCharPositionsCache] = useState(
+    () => ({ positions: [], charArray: [], utf16ToCharIdx: new Map() })
+  );
 
   // Worker の初期化（マウント時に一度だけ）
   useEffect(() => {
     const worker = new PositionWorker();
-    lineCountWorkerRef.current = worker;
+    workerRef.current = worker;
     worker.onmessage = (e) => {
-      if (e.data.type === 'lineCount' && e.data.id === lineCountReqIdRef.current) {
+      const { type, id } = e.data;
+      if (type === 'lineCount' && id === lineCountReqIdRef.current) {
         setDebouncedLineCount(e.data.totalLines);
+      } else if (type === 'positions' && id === positionsReqIdRef.current) {
+        const { positions, charArray, utf16ToCharIdxEntries } = e.data;
+        const utf16ToCharIdx = new Map(utf16ToCharIdxEntries);
+        setCharPositionsCache({ positions, charArray, utf16ToCharIdx });
       }
     };
     return () => worker.terminate();
   }, []);
 
+  // --- 1b. グリッド寸法（Worker で計算） ---
   useEffect(() => {
     if (lineCountTimerRef.current) clearTimeout(lineCountTimerRef.current);
     lineCountTimerRef.current = setTimeout(() => {
-      if (lineCountWorkerRef.current) {
-        // Worker に計算を依頼（UIスレッドはブロックしない）
+      if (workerRef.current) {
         lineCountReqIdRef.current += 1;
-        lineCountWorkerRef.current.postMessage({
+        workerRef.current.postMessage({
           type: 'lineCount',
           id: lineCountReqIdRef.current,
           text: localText,
           maxPerLine: baseMetrics.maxPerLine,
         });
       } else {
-        // Worker が使えない環境ではフォールバック
         setDebouncedLineCount(computeTotalLines(localText, baseMetrics.maxPerLine));
       }
     }, 300);
@@ -350,36 +360,15 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     return { fontSize, cell, cols, rows, gridW, gridH, padding, letterSpacing };
   }, [debouncedLineCount, baseMetrics, settings.isVertical, settings.linesPerPage]);
 
-  // --- 共有キャラクター座標キャッシュ（Web Worker で計算 — UIスレッドをブロックしない） ---
-  const [charPositionsCache, setCharPositionsCache] = useState(
-    () => ({ positions: [], charArray: [], utf16ToCharIdx: new Map() })
-  );
-  const positionsWorkerRef = useRef(null);
-  const positionsReqIdRef = useRef(0);
-
-  // Worker の初期化（マウント時に一度だけ）
-  useEffect(() => {
-    const worker = new PositionWorker();
-    positionsWorkerRef.current = worker;
-    worker.onmessage = (e) => {
-      if (e.data.type === 'positions' && e.data.id === positionsReqIdRef.current) {
-        const { positions, charArray, utf16ToCharIdxEntries } = e.data;
-        const utf16ToCharIdx = new Map(utf16ToCharIdxEntries);
-        setCharPositionsCache({ positions, charArray, utf16ToCharIdx });
-      }
-    };
-    return () => worker.terminate();
-  }, []);
-
+  // --- 共有キャラクター座標キャッシュ（Worker で計算） ---
   useEffect(() => {
     if (!debouncedValue) {
       setCharPositionsCache({ positions: [], charArray: [], utf16ToCharIdx: new Map() });
       return;
     }
-    if (positionsWorkerRef.current) {
-      // Worker に計算を依頼（UIスレッドはブロックしない）
+    if (workerRef.current) {
       positionsReqIdRef.current += 1;
-      positionsWorkerRef.current.postMessage({
+      workerRef.current.postMessage({
         type: 'positions',
         id: positionsReqIdRef.current,
         text: debouncedValue,
