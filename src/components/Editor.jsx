@@ -289,7 +289,7 @@ const Editor = forwardRef(({
       });
     });
     return list;
-  }, [charPositionsCache, baseMetrics, settings.isVertical, settings.syntaxColors, totalLineCount]);
+  }, [charPositionsCache, baseMetrics, settings.isVertical, settings.syntaxColors, totalLineCount, fileId]);
 
   // Props からの同期
   useEffect(() => {
@@ -326,14 +326,30 @@ const Editor = forwardRef(({
   }, []);
 
   useEffect(() => {
-    if (!settings.isVertical) return;
+    setDebouncedValue(fullTextRef.current.slice(
+      windowRef.current.start,
+      windowRef.current.end
+    ));
+  }, [fileId]);
+
+  useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    // DOMが安定するまで少し待ってから文頭（右端）にスクロール
-    const timer = setTimeout(() => {
-      container.scrollLeft = container.scrollWidth;
-    }, 50);
-    return () => clearTimeout(timer);
+    if (settings.isVertical) {
+      let attempts = 0;
+      const tryScroll = () => {
+        if (container.scrollWidth > container.clientWidth) {
+          container.scrollLeft = container.scrollWidth;
+        } else if (attempts < 10) {
+          attempts++;
+          setTimeout(tryScroll, 50);
+        }
+      };
+      setTimeout(tryScroll, 50);
+    } else {
+      container.scrollTop = 0;
+      container.scrollLeft = 0;
+    }
   }, [fileId, settings.isVertical]);
   
   useEffect(() => {
