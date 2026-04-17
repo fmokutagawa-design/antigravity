@@ -313,9 +313,11 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       if (type === 'lineCount' && id === lineCountReqIdRef.current) {
         setDebouncedLineCount(e.data.totalLines);
       } else if (type === 'positions' && id === positionsReqIdRef.current) {
-        const { positions, charArray, utf16ToCharIdxEntries } = e.data;
+        const { positions, charArray, utf16ToCharIdxEntries, totalLines } = e.data;
         const utf16ToCharIdx = new Map(utf16ToCharIdxEntries);
         setCharPositionsCache({ positions, charArray, utf16ToCharIdx });
+        // positions 計算と同時に totalLines も確定するので lineCount Worker を不要にする
+        if (totalLines !== undefined) setDebouncedLineCount(totalLines);
       }
     };
     return () => worker.terminate();
@@ -400,28 +402,30 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     const isVert = settings.isVertical;
 
     const patterns = [
-      { regex: /\[\[.*?\]\]|［［.*?］］/g, color: settings.syntaxColors?.link || '#2980b9' },
-      { regex: /『.*?』/g, color: settings.syntaxColors?.emphasis || '#c0392b' },
-      { regex: /「.*?」/g, color: settings.syntaxColors?.conversation || '#27ae60', isConversation: true },
-      { regex: /《.*?》/g, color: settings.syntaxColors?.ruby || '#e67e22' },
-      { regex: /［＃.*?］/g, color: settings.syntaxColors?.aozora || '#8e44ad' },
-      { regex: /\{font[:：].*?\}|\{\/font\}/g, color: settings.syntaxColors?.aozora || '#8e44ad' },
-      { regex: /\*\*.*?\*\*/g, color: settings.syntaxColors?.emphasis || '#c0392b' },
+      { type: 'link',         regex: /\[\[.*?\]\]|［［.*?］］/g, color: settings.syntaxColors?.link || '#2980b9' },
+      { type: 'emphasis',     regex: /『.*?』/g,                  color: settings.syntaxColors?.emphasis || '#c0392b' },
+      { type: 'conversation', regex: /「.*?」/g,                  color: settings.syntaxColors?.conversation || '#27ae60', isConversation: true },
+      { type: 'ruby',         regex: /《.*?》/g,                  color: settings.syntaxColors?.ruby || '#e67e22' },
+      { type: 'aozora',       regex: /［＃.*?］/g,                color: settings.syntaxColors?.aozora || '#8e44ad' },
+      { type: 'font',         regex: /\{font[:：].*?\}|\{\/font\}/g, color: settings.syntaxColors?.aozora || '#8e44ad' },
+      { type: 'bold',         regex: /\*\*.*?\*\*/g,             color: settings.syntaxColors?.emphasis || '#c0392b' },
     ];
 
     const list = [];
-    patterns.forEach(({ regex, color, isConversation }) => {
+    patterns.forEach(({ type, regex, color, isConversation }) => {
       let match;
       while ((match = regex.exec(debouncedValue)) !== null) {
-        const visualStart = utf16ToCharIdx.get(match.index) ?? splitString(debouncedValue.substring(0, match.index)).length;
+        const matchStart = match.index;
+        const matchEnd = match.index + match[0].length;
+        const visualStart = utf16ToCharIdx.get(matchStart) ?? splitString(debouncedValue.substring(0, matchStart)).length;
         const visualLen = splitString(match[0]).length;
         for (let i = 0; i < visualLen; i++) {
           const p = positions[visualStart + i];
           if (p) {
-            // ★ 中間配列を省略: positions から直接画面座標を算出
             const x = isVert ? -p.line * cell : (p.pos * cell);
             const y = isVert ? (p.pos * cell) : (p.line * cell);
-            list.push({ key: `${visualStart + i}-${regex.source}`, x, y, color, isConversation: !!isConversation });
+            // key: type + match開始位置 + 文字オフセットで完全一意に
+            list.push({ type, start: matchStart, end: matchEnd, x, y, color, isConversation: !!isConversation });
           }
         }
       }
@@ -448,7 +452,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       if (p) {
         const x = settings.isVertical ? -p.line * cell : (p.pos * cell);
         const y = settings.isVertical ? (p.pos * cell) : (p.line * cell);
-        list.push({ key: `ghost-${i}`, x, y, char: charArray[idx] });
+        list.push({ x, y, char: charArray[idx], charIdx: idx });
       }
     }
     return list;
@@ -959,8 +963,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     const MAX_VISIBLE = 500;
     const limited = filtered.length > MAX_VISIBLE ? filtered.slice(0, MAX_VISIBLE) : filtered;
     
-    return limited.map((h) => (
-      <div key={h.key} style={{
+    return limited.map((h, idx) => (
+      <div key={`${h.type}-${h.start}-${h.end}-${h.x}-${h.y}-${idx}`} style={{
         position: 'absolute',
         right: isVert ? `${-h.x}px` : 'auto',
         left: isVert ? 'auto' : `${h.x}px`,
@@ -1021,8 +1025,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         }}>
           {highlightElements}
           {/* Ghost Text Overlay */}
-          {ghostHighlights.map((gh) => (
-            <div key={gh.key} style={{
+          {ghostHighlights.map((gh, idx) => (
+            <div key={`ghost-${gh.charIdx}-${gh.x}-${gh.y}-${idx}`} style={{
               position: 'absolute',
               right: settings.isVertical ? `${-gh.x}px` : 'auto',
               left: settings.isVertical ? 'auto' : `${gh.x}px`,
@@ -1042,8 +1046,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
             </div>
           ))}
           {/* Correction Highlights */}
-          {correctionHighlights.map((ch) => (
-            <div key={ch.key} style={{
+          {correctionHighlights.map((ch, idx) => (
+            <div key={`corr-${ch.x}-${ch.y}-${idx}`} style={{
               position: 'absolute',
               right: settings.isVertical ? `${-ch.x}px` : 'auto',
               left: settings.isVertical ? 'auto' : `${ch.x}px`,
