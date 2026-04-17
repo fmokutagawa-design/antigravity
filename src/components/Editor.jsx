@@ -230,9 +230,15 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     };
   }, []);
 
-  // ファイル切替時にdebouncedValueを即座に更新（前ファイルの着色残留を防止）
+  // ファイル切替時にdebouncedValueをリセットし、Worker の古い計算結果が適用されないようにする。
+  // ① charPositionsCache を即座に空にして前ファイルの着色を消去
+  // ② positionsReqIdRef をインクリメントして飛行中の Worker 結果を無効化
+  // ③ debouncedValue を新ファイルの内容で上書き（Worker が正しいテキストで再計算するように）
   // localText ではなく value を参照（fileId useEffect で setLocalText が走る前に読む可能性があるため）
   useEffect(() => {
+    positionsReqIdRef.current += 1;
+    lineCountReqIdRef.current += 1;
+    setCharPositionsCache({ positions: [], charArray: [], utf16ToCharIdx: new Map() });
     setDebouncedValue(value);
   }, [fileId]); // eslint-disable-line react-hooks/exhaustive-deps
 
