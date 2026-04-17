@@ -352,7 +352,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
 
   // --- 2. アンダーレイ（座標マップ）の生成（デバウンス） ---
   // ★ 大規模テキスト（20000文字超≒原稿用紙100枚超）ではハイライトを自動停止
-  const HIGHLIGHT_CHAR_LIMIT = 200000;
+  const HIGHLIGHT_CHAR_LIMIT = 100000;
   const highlights = useMemo(() => {
     if (settings.editorSyntaxColors === false) return [];
     if (!debouncedValue) return [];

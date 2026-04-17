@@ -161,15 +161,13 @@ function App() {
   // Memoize editor value to avoid re-parsing on every render and stabilize reference for React.memo
   // ★ parseNote は debouncedText ベース → 毎キー入力での14万字パースを回避
   //    Editor 側は localText で即時描画するため、ここが debounce でも体感遅延はない
-  const editorValue = useMemo(() => {
-    if (showMetadata) return debouncedText;
-    return parseNote(debouncedText).body;
-  }, [debouncedText, showMetadata]);
-
-  // ★ parseNote の結果を一度だけ計算してキャッシュ（サイドバー・フッターで使い回す）
   const parsedNote = useMemo(() => {
     try { return parseNote(debouncedText); } catch { return { body: debouncedText, metadata: {} }; }
   }, [debouncedText]);
+
+  const editorValue = useMemo(() => {
+    return showMetadata ? debouncedText : parsedNote.body;
+  }, [parsedNote, showMetadata, debouncedText]);
 
   // AI Connection (hook)
   const { aiModel, setAiModel, localModels, selectedLocalModel, setSelectedLocalModel, isLocalConnected, checkLocalConnection } = useAIConnection();
