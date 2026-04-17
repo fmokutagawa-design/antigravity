@@ -483,7 +483,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
             const x = settings.isVertical ? -p.line * cell : (p.pos * cell);
             const y = settings.isVertical ? (p.pos * cell) : (p.line * cell);
             list.push({
-              key: `corr-${corr.id}-${index}-${i}`,
+              corrId: corr.id, matchIndex: index, charOffset: i,
               x, y,
               char: charArray[startCharIdx + i],
               color: 'red'
@@ -1047,7 +1047,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
           ))}
           {/* Correction Highlights */}
           {correctionHighlights.map((ch, idx) => (
-            <div key={`corr-${ch.x}-${ch.y}-${idx}`} style={{
+            <div key={`corr-${ch.corrId}-${ch.matchIndex}-${ch.charOffset}-${idx}`} style={{
               position: 'absolute',
               right: settings.isVertical ? `${-ch.x}px` : 'auto',
               left: settings.isVertical ? 'auto' : `${ch.x}px`,
