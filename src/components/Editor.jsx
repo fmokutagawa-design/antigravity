@@ -526,28 +526,38 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
 
   // --- 3a. ゴーストテキスト座標計算 ---
   const ghostHighlights = useMemo(() => {
-    if (!ghostText || !value) return [];
+    if (!ghostText || !charPositionsCache.charArray.length) return [];
 
-    const fullText = value + ghostText;
-    const charArray = splitString(fullText);
-    const valueLen = splitString(value).length;
-    const ghostLen = splitString(ghostText).length;
-
+    // ★ 全文再計算を廃止。charPositionsCache の末尾座標を起点に ghost 部分だけ計算する。
+    //    value（42万字）を毎回 Array.from + computeCharPositions するのを防ぐ。
     const { cell, maxPerLine } = baseMetrics;
-    const { positions } = computeCharPositions(charArray, maxPerLine);
+    const { positions: basePositions, charArray: baseCharArray } = charPositionsCache;
 
+    // 末尾の有効座標（最後の非null）を取得して ghost の起点にする
+    let lastLine = 0;
+    let lastPos = 0;
+    for (let i = basePositions.length - 1; i >= 0; i--) {
+      const p = basePositions[i];
+      if (p != null) { lastLine = p.line; lastPos = p.pos + 1; break; }
+    }
+
+    // ghost テキストを末尾から続けて座標計算（ghost 部分だけ）
+    const ghostCharArray = splitString(ghostText);
+    let line = lastLine;
+    let pos = lastPos;
     const list = [];
-    for (let i = 0; i < ghostLen; i++) {
-      const idx = valueLen + i;
-      const p = positions[idx];
-      if (p) {
-        const x = settings.isVertical ? -p.line * cell : (p.pos * cell);
-        const y = settings.isVertical ? (p.pos * cell) : (p.line * cell);
-        list.push({ x, y, char: charArray[idx], charIdx: idx });
-      }
+
+    for (let i = 0; i < ghostCharArray.length; i++) {
+      const ch = ghostCharArray[i];
+      if (ch === '\n') { line++; pos = 0; continue; }
+      if (pos >= maxPerLine) { line++; pos = 0; }
+      const x = settings.isVertical ? -line * cell : (pos * cell);
+      const y = settings.isVertical ? (pos * cell) : (line * cell);
+      list.push({ x, y, char: ch, charIdx: baseCharArray.length + i });
+      pos++;
     }
     return list;
-  }, [value, ghostText, baseMetrics, settings.isVertical]);
+  }, [charPositionsCache, ghostText, baseMetrics, settings.isVertical]);
 
   // --- 3b. 校正ハイライト座標計算（デバウンス + キャッシュ共有） ---
   const correctionHighlights = useMemo(() => {
@@ -565,8 +575,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
 
       while (index !== -1) {
         const len = splitString(corr.original).length;
-        const preStr = debouncedValue.slice(0, index);
-        const startCharIdx = splitString(preStr).length;
+        // ★ splitString(preStr) は index 文字分の Array.from → utf16ToCharIdx でゼロコスト化
+        const startCharIdx = utf16ToCharIdx.get(index) ?? splitString(debouncedValue.slice(0, index)).length;
 
         for (let i = 0; i < len; i++) {
           const p = positions[startCharIdx + i];
@@ -643,9 +653,14 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     pushHistory(beforeComposition, restored, cursorPos);
     if (currentCursorRef) currentCursorRef.current = cursorPos;
     nextCursorPos.current = cursorPos;
-    localOnChange(restored);
+    // ★ localOnChange（全文textToDocument）ではなく差分更新を使う
+    //    IME確定のたびに全文split('\n')が走るのを防ぐ
+    const newDoc = updateDocument(localDocumentRef.current, restored, cursorPos);
+    setLocalDocument(newDoc);
+    if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
+    appNotifyTimerRef.current = setTimeout(() => onChange(documentToText(newDoc)), 500);
     compositionTextRef.current = null;
-  }, [localOnChange, settings.isVertical, pushHistory, currentCursorRef]);
+  }, [settings.isVertical, pushHistory, currentCursorRef, onChange]);
 
   const handleCopy = useCallback((e) => {
     const textarea = textareaRef.current;
