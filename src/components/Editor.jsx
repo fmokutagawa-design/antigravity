@@ -483,7 +483,19 @@ const Editor = forwardRef(({
           {!isCleanMode && (
             <div className="editor-underlay" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 3, transform: 'none', pointerEvents: 'none', writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb', fontSize: `${baseMetrics.fontSize}px`, lineHeight: `${baseMetrics.cell}px`, letterSpacing: `${baseMetrics.letterSpacing}px`, fontFamily: settings.fontFamily, color: 'transparent' }}>
               {highlights.map(h => (
-                <div key={h.key} style={{ position: 'absolute', insetBlockStart: `${h.blockStart}px`, insetInlineStart: `${h.inlineStart}px`, width: `${baseMetrics.cell}px`, height: `${baseMetrics.cell}px`, background: h.color, opacity: 0.35, borderRadius: '2px', pointerEvents: 'none' }} />
+                <div key={h.key} style={{ 
+                  position: 'absolute', 
+                  ...(settings.isVertical
+                    ? { right: `${h.blockStart}px`, top: `${h.inlineStart}px` }
+                    : { left: `${h.inlineStart}px`, top: `${h.blockStart}px` }
+                  ),
+                  width: `${baseMetrics.cell}px`, 
+                  height: `${baseMetrics.cell}px`, 
+                  background: h.color, 
+                  opacity: 0.35, 
+                  borderRadius: '2px', 
+                  pointerEvents: 'none' 
+                }} />
               ))}
             </div>
           )}
