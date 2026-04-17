@@ -2167,6 +2167,7 @@ function App() {
               <div style={{ flex: 1, display: activeTab === 'editor' ? 'flex' : 'none', flexDirection: 'column', minHeight: 0 }}>
                 <Editor
                   ref={editorRef}
+                  fileId={activeFileHandle?.path || activeFileHandle?.name || String(activeFileHandle || 'default')}
                   value={editorValue}
                   onChange={handleTextChange}
                   settings={effectiveSettings}

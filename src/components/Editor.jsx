@@ -48,7 +48,8 @@ const Editor = forwardRef(({
   allFiles = [],
   corrections = [],
   ghostText = '',
-  setGhostText
+  setGhostText,
+  fileId = ''
 }, ref) => {
   const textareaRef = useRef(null);
   const containerRef = useRef(null);
@@ -69,6 +70,10 @@ const Editor = forwardRef(({
   const isProcessingPropValueRef = useRef(false);
   const scrollTimerRef = useRef(null);
   const initialScrollDoneRef = useRef(false);
+
+  useEffect(() => {
+    initialScrollDoneRef.current = false;
+  }, [fileId]);
 
   // ステート
   const [scrollForce, setScrollForce] = useState(0);
