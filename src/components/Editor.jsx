@@ -69,11 +69,6 @@ const Editor = forwardRef(({
   const debouncePrevLenRef = useRef(value.length);
   const isProcessingPropValueRef = useRef(false);
   const scrollTimerRef = useRef(null);
-  const initialScrollDoneRef = useRef(false);
-
-  useEffect(() => {
-    initialScrollDoneRef.current = false;
-  }, [fileId]);
 
   // ステート
   const [scrollForce, setScrollForce] = useState(0);
@@ -314,12 +309,6 @@ const Editor = forwardRef(({
     }
   }, [value, initHistory, settings.isVertical]);
 
-  useLayoutEffect(() => {
-    if (settings.isVertical && containerRef.current && !initialScrollDoneRef.current) {
-      containerRef.current.scrollLeft = containerRef.current.scrollWidth;
-      initialScrollDoneRef.current = true;
-    }
-  }, [settings.isVertical, fileId]);
 
   useLayoutEffect(() => {
     const timer = setTimeout(() => {
@@ -335,6 +324,17 @@ const Editor = forwardRef(({
     }, 150);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (!settings.isVertical) return;
+    const container = containerRef.current;
+    if (!container) return;
+    // DOMが安定するまで少し待ってから文頭（右端）にスクロール
+    const timer = setTimeout(() => {
+      container.scrollLeft = container.scrollWidth;
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [fileId, settings.isVertical]);
   
   useEffect(() => {
     const container = containerRef.current;
