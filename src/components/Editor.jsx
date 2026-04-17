@@ -77,7 +77,7 @@ const Editor = forwardRef(({
   const [selectionToolbar, setSelectionToolbar] = useState({ visible: false, position: { x: 0, y: 0 }, text: '' });
 
   // 履歴管理
-  const { initHistory, pushHistory, undo, redo, undoKeyDown } = useUndoHistory((newText) => {
+  const { initHistory, pushHistory, undo, redo, handleKeyDown } = useUndoHistory((newText) => {
     fullTextRef.current = newText;
     const { start } = windowRef.current;
     const windowText = newText.slice(start, start + 30000);
@@ -290,7 +290,7 @@ const Editor = forwardRef(({
             if (pCoord) {
               const blockStart = (pCoord.line + wsl) * cell;
               const inlineStart = pCoord.pos * cell;
-              list.push({ key: `h-${p.id}-${match.index}-${i}`, blockStart, inlineStart, color });
+              list.push({ key: `h-${windowRef.current.start}-${p.id}-${match.index}-${i}`, blockStart, inlineStart, color });
             }
           }
         }
@@ -523,7 +523,7 @@ const Editor = forwardRef(({
                 setDebouncedValue(full);
                 return;
               }
-              undoKeyDown(e);
+              handleKeyDown(e);
             }}
             onContextMenu={(e) => {
               e.preventDefault();
