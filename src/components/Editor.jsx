@@ -180,18 +180,25 @@ const Editor = forwardRef(({
     const text = debouncedValue;
     if (!text) return [];
     const lines = text.split(/\r?\n/);
-    let currentLine = 0;
-    return lines.map((lineText, idx) => {
+    
+    // ウィンドウ内の行数を先に計算して全体行数を推定
+    let windowLines = 0;
+    const tempEntries = lines.map((lineText, idx) => {
       const charArray = splitString(lineText + (idx < lines.length - 1 ? '\n' : ''));
       const { totalLines } = computeCharPositions(charArray, baseMetrics.maxPerLine);
-      const entry = {
-        id: idx,
-        text: lineText,
-        charArray,
-        startLine: currentLine,
-        lineCount: totalLines
-      };
-      currentLine += totalLines;
+      windowLines += totalLines;
+      return { id: idx, text: lineText, charArray, lineCount: totalLines };
+    });
+
+    const fullLen = fullTextRef.current.length;
+    const windowLen = Math.max(1, windowRef.current.end - windowRef.current.start);
+    const estimatedTotalLines = Math.ceil(windowLines * fullLen / windowLen) + 20;
+    const wsl = Math.round((windowRef.current.start / fullLen) * estimatedTotalLines);
+
+    let currentLine = wsl;
+    return tempEntries.map(e => {
+      const entry = { ...e, startLine: currentLine };
+      currentLine += e.lineCount;
       return entry;
     });
   }, [debouncedValue, baseMetrics.maxPerLine]);
@@ -249,16 +256,10 @@ const Editor = forwardRef(({
     const startVisibleLine = Math.floor(scrollPos / cell) - 10;
     const endVisibleLine = Math.ceil((scrollPos + viewportSize) / cell) + 10;
 
-    const fullLen = fullTextRef.current.length;
-    const wsl = (fullLen > 0 && totalLineCount > 0)
-      ? Math.round((windowRef.current.start / fullLen) * totalLineCount)
-      : 0;
-    const adjStart = startVisibleLine - wsl;
-    const adjEnd = endVisibleLine - wsl;
     const visibleParagraphs = paragraphIndex.filter(
-      p => (p.startLine + p.lineCount) >= adjStart && p.startLine <= adjEnd
+      p => (p.startLine + p.lineCount) >= startVisibleLine && p.startLine <= endVisibleLine
     );
-    return { visibleParagraphs, wsl };
+    return { visibleParagraphs };
   }, [paragraphIndex, scrollForce, baseMetrics, settings.isVertical, totalLineCount]);
 
   const highlights = useMemo(() => {
@@ -273,10 +274,6 @@ const Editor = forwardRef(({
       { regex: /［＃.*?］/g, color: settings.syntaxColors?.aozora || '#8e44ad' },
     ];
     const list = [];
-    const fullLen = fullTextRef.current.length;
-    const wsl = (fullLen > 0 && totalLineCount > 0)
-      ? Math.round((windowRef.current.start / fullLen) * totalLineCount)
-      : 0;
 
     charPositionsCache.visibleParagraphs.forEach(p => {
       const pPositions = computeCharPositions(p.charArray, baseMetrics.maxPerLine, p.startLine).positions;
@@ -288,7 +285,7 @@ const Editor = forwardRef(({
           for (let i = 0; i < pMatchLen; i++) {
             const pCoord = pPositions[pStartIdx + i];
             if (pCoord) {
-              const blockStart = (pCoord.line + wsl) * cell;
+              const blockStart = pCoord.line * cell;
               const inlineStart = pCoord.pos * cell;
               list.push({ key: `h-${windowRef.current.start}-${p.id}-${match.index}-${i}`, blockStart, inlineStart, color });
             }
@@ -481,7 +478,7 @@ const Editor = forwardRef(({
         <div className="chunks-content-root" style={{ position: 'relative', width: settings.isVertical ? `${totalLineCount * baseMetrics.cell + baseMetrics.padding * 2 + 2}px` : '100%', height: settings.isVertical ? `${baseMetrics.maxPerLine * baseMetrics.cell + baseMetrics.padding * 2 + 2}px` : 'auto', minHeight: '100%' }}>
           {!isCleanMode && <div className={`editor-grid-layer ${paperClass}`} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, pointerEvents: 'none' }} />}
           {!isCleanMode && (
-            <div className="editor-underlay" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 3, transform: 'none', pointerEvents: 'none', writingMode: settings.isVertical ? 'vertical-rl' : 'horizontal-tb', fontSize: `${baseMetrics.fontSize}px`, lineHeight: `${baseMetrics.cell}px`, letterSpacing: `${baseMetrics.letterSpacing}px`, fontFamily: settings.fontFamily, color: 'transparent' }}>
+            <div className="editor-underlay" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 3, transform: 'none', pointerEvents: 'none', fontSize: `${baseMetrics.fontSize}px`, lineHeight: `${baseMetrics.cell}px`, letterSpacing: `${baseMetrics.letterSpacing}px`, fontFamily: settings.fontFamily, color: 'transparent' }}>
               {highlights.map(h => (
                 <div key={h.key} style={{ 
                   position: 'absolute', 
