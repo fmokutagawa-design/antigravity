@@ -1137,13 +1137,11 @@ function App() {
     if (showMetadata) {
       setText(newContent);
     } else {
-      // newContent is just the body, preserve metadata
-      setText(prev => {
-        const { metadata } = parseNote(prev);
-        return serializeNote(newContent, metadata);
-      });
+      // parsedNote.metadata を再利用することで parseNote の二重実行を排除。
+      // メタデータは本文編集中に変わらないため、debouncedTextベースの parsedNote で十分。
+      setText(serializeNote(newContent, parsedNote.metadata ?? {}));
     }
-  }, [showMetadata]);
+  }, [showMetadata, parsedNote]);
 
 
 
