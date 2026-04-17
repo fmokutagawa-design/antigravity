@@ -121,7 +121,33 @@ const Editor = forwardRef(({
     setScrollForce(f => f + 1);
     if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
     scrollTimerRef.current = setTimeout(() => {
-      // no-op: window sliding is triggered by typing only
+      const full = fullTextRef.current;
+      if (full.length <= 30000) return;
+      const isVert = settings.isVertical;
+      const scrollPos = isVert
+        ? container.scrollLeft
+        : container.scrollTop;
+      const scrollMax = isVert
+        ? container.scrollWidth - container.clientWidth
+        : container.scrollHeight - container.clientHeight;
+      if (scrollMax <= 0) return;
+      const proportion = scrollPos / scrollMax;
+      const estimatedCenter = Math.floor(proportion * full.length);
+      const { start } = windowRef.current;
+      if (Math.abs(estimatedCenter - (start + 15000)) > 5000) {
+        const newStart = Math.max(0, estimatedCenter - 15000);
+        const newEnd = Math.min(full.length, newStart + 30000);
+        const windowText = full.slice(newStart, newEnd);
+        const ta = textareaRef.current;
+        if (ta) {
+          ta.value = isVert
+            ? toVerticalDisplay(windowText)
+            : windowText;
+          windowRef.current = { start: newStart, end: newEnd };
+          // ※ setDebouncedValue は呼ばない（ファイル破壊防止）
+          setScrollForce(f => f + 1);
+        }
+      }
     }, 300);
   }, [settings.isVertical]);
 
