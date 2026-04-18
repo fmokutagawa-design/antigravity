@@ -322,6 +322,12 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     return () => clearTimeout(timer);
   }, [localDocument]);
 
+  // ★ 文書モデル化：段落ごとの座標キャッシュ（paraId → { positions, charArray, utf16ToCharIdx }）
+  // 変更された段落だけ Worker に投げて更新し、変わっていない段落は再計算しない。
+  const [paraPosCache, setParaPosCache] = useState(new Map());
+  const paraPosCacheRef = useRef(paraPosCache);
+  useEffect(() => { paraPosCacheRef.current = paraPosCache; }, [paraPosCache]);
+
   const debouncedLineCount = useMemo(() => {
     if (!debouncedDocument || debouncedDocument.length === 0) return 10;
     const cached = [...paraPosCache.values()];
@@ -340,11 +346,6 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     () => ({ positions: [], charArray: [], utf16ToCharIdx: new Map() })
   );
 
-  // ★ 文書モデル化：段落ごとの座標キャッシュ（paraId → { positions, charArray, utf16ToCharIdx }）
-  // 変更された段落だけ Worker に投げて更新し、変わっていない段落は再計算しない。
-  const [paraPosCache, setParaPosCache] = useState(new Map());
-  const paraPosCacheRef = useRef(paraPosCache);
-  useEffect(() => { paraPosCacheRef.current = paraPosCache; }, [paraPosCache]);
   const paraPosReqIdRef = useRef(new Map()); // paraId → 最新リクエスト id
 
   // Worker の初期化（マウント時に一度だけ）
