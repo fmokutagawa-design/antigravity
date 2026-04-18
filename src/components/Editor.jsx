@@ -413,7 +413,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     if (!workerRef.current) return;
 
     // キャッシュにない段落のみ送信（setIntervalで間引く）
-    const uncached = doc.filter(p => !paraPosCache.has(p.id));
+    const uncached = doc.filter(p => !paraPosCacheRef.current.has(p.id));
     if (uncached.length === 0) return;
 
     // 送信間隔を設けてWorkerのキューを詰まらせない
@@ -426,7 +426,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     let runningOffset = 0;
     doc.forEach(para => {
       offsetMap.set(para.id, runningOffset);
-      runningOffset += paraPosCache.get(para.id)?.totalLines || 1;
+      runningOffset += paraPosCacheRef.current.get(para.id)?.totalLines || 1;
     });
 
     let batchIndex = 0;
@@ -472,7 +472,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     let lineOffset = 0;
 
     doc.forEach((para, paraIdx) => {
-      const cached = paraPosCache.get(para.id);
+      const cached = paraPosCacheRef.current.get(para.id);
 
       if (cached) {
         // キャッシュあり：正確な座標を使う
@@ -517,7 +517,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     });
 
     setCharPositionsCache({ positions: allPositions, charArray: allCharArray, utf16ToCharIdx });
-  }, [paraPosCache, baseMetrics.maxPerLine]);
+  }, [baseMetrics.maxPerLine]);
 
   // --- 2. アンダーレイ（座標マップ）の生成（デバウンス） ---
   // ★ 大規模テキスト（20000文字超≒原稿用紙100枚超）ではハイライトを自動停止
