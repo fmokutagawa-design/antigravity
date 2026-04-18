@@ -257,7 +257,7 @@ ipcMain.handle('app:getSettings', async () => {
 // Save Application Settings
 ipcMain.handle('app:saveSettings', async (event, settings) => {
     try {
-        fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8');
+        await fs.promises.writeFile(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8');
         return true;
     } catch (e) {
         console.error("Failed to save settings file", e);

@@ -1176,7 +1176,11 @@ function App() {
   useEffect(() => {
     if (isProjectMode && activeFileHandle) return; // ファイル保存で十分
     if (!debouncedText && debouncedText !== '') return;
-    localStorage.setItem('novel-editor-text', debouncedText);
+
+    // ★ 10万字(≒200KB) の同期書き込みがメインスレッドを 5-50ms ブロックするため、大規模テキストはスキップ
+    if (debouncedText.length <= 100000) {
+      localStorage.setItem('novel-editor-text', debouncedText);
+    }
     setLastSaved(new Date());
   }, [debouncedText, isProjectMode, activeFileHandle]);
 
