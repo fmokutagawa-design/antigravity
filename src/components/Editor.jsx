@@ -362,16 +362,19 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   useEffect(() => {
     if (lineCountTimerRef.current) clearTimeout(lineCountTimerRef.current);
     lineCountTimerRef.current = setTimeout(() => {
+      // 段落キャッシュから totalLines を合計する（全文送信ゼロ）
+      const total = [...paraPosCache.values()].reduce((sum, p) => sum + (p.totalLines || 0), 0);
+      if (total > 0) {
+        setDebouncedLineCount(total);
+        return;
+      }
+      // キャッシュが空の場合のみWorkerに送る（初回のみ）
       if (workerRef.current) {
-        lineCountReqIdRef.current += 1;
         workerRef.current.postMessage({
           type: 'lineCount',
-          id: lineCountReqIdRef.current,
           text: localText,
           maxPerLine: baseMetrics.maxPerLine,
         });
-      } else {
-        setDebouncedLineCount(computeTotalLines(localText, baseMetrics.maxPerLine));
       }
     }, 300);
     return () => { if (lineCountTimerRef.current) clearTimeout(lineCountTimerRef.current); };
@@ -410,17 +413,15 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       setParaPosCache(new Map());
       return;
     }
-    // lineOffset: 各段落が全文の何行目から始まるかを計算
-    // （前の段落の totalLines を累積する）
-    // まずキャッシュにある段落の行数を使い、ない段落は暫定0で計算する
+
+    const uncached = debouncedDocument.filter(p => !paraPosCache.has(p.id));
+    // 先頭20段落だけ処理（残りは次のレンダリングサイクルで処理）
+    const batch = uncached.slice(0, 20);
     let lineOffset = 0;
     debouncedDocument.forEach((para) => {
       if (paraPosCache.has(para.id)) {
-        // キャッシュ済み：Worker に再送不要（lineOffset のみ更新が必要な場合も後で対応）
-        const cached = paraPosCache.get(para.id);
-        lineOffset += cached.totalLines;
-      } else {
-        // 未キャッシュ：Worker に投げる
+        lineOffset += paraPosCache.get(para.id).totalLines;
+      } else if (batch.includes(para)) {
         if (workerRef.current) {
           const reqId = (paraPosReqIdRef.current.get(para.id) || 0) + 1;
           paraPosReqIdRef.current.set(para.id, reqId);
@@ -433,10 +434,12 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
             lineOffset,
           });
         }
-        lineOffset += 1; // 暫定：計算完了後に更新される
+        lineOffset += 1;
+      } else {
+        lineOffset += paraPosCache.get(para.id)?.totalLines || 1;
       }
     });
-  }, [debouncedDocument, baseMetrics.maxPerLine]);
+  }, [debouncedDocument, baseMetrics.maxPerLine, paraPosCache]);
 
   // --- 段落キャッシュ → charPositionsCache への合成 ---
   // 全段落のキャッシュが揃ったら、全文の charPositionsCache を組み立てる。
