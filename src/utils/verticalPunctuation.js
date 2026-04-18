@@ -1,3 +1,5 @@
+import { perfNow, perfMeasure } from './perfProbe';
+
 /**
  * verticalPunctuation.js
  *
@@ -52,9 +54,29 @@ const toHorizontalTest = new RegExp(`[${Object.keys(HORIZONTAL_MAP).map(k => k.r
  * @returns {string} 縦書き表示用テキスト
  */
 export function toVerticalDisplay(text) {
-    if (!ENABLED || !text) return text;
-    if (!toVerticalTest.test(text)) return text; // 対象文字が 1 つも無いなら即返す
-    return text.replace(toVerticalRegex, (ch) => VERTICAL_MAP[ch] || ch);
+  const t0 = perfNow();
+  if (!ENABLED || !text) {
+    perfMeasure('verticalPunctuation.toVerticalDisplay', t0, {
+      skipped: true,
+      len: text ? text.length : 0,
+    });
+    return text;
+  }
+  if (!toVerticalTest.test(text)) {
+    perfMeasure('verticalPunctuation.toVerticalDisplay', t0, {
+      skipped: true,
+      len: text.length,
+      matched: false,
+    });
+    return text;
+  }
+  const out = text.replace(toVerticalRegex, (ch) => VERTICAL_MAP[ch] || ch);
+  perfMeasure('verticalPunctuation.toVerticalDisplay', t0, {
+    skipped: false,
+    len: text.length,
+    outLen: out.length,
+  });
+  return out;
 }
 
 /**
@@ -63,7 +85,27 @@ export function toVerticalDisplay(text) {
  * @returns {string} 元の約物に復元されたテキスト
  */
 export function fromVerticalDisplay(text) {
-    if (!ENABLED || !text) return text;
-    if (!toHorizontalTest.test(text)) return text; // 同上
-    return text.replace(toHorizontalRegex, (ch) => HORIZONTAL_MAP[ch] || ch);
+  const t0 = perfNow();
+  if (!ENABLED || !text) {
+    perfMeasure('verticalPunctuation.fromVerticalDisplay', t0, {
+      skipped: true,
+      len: text ? text.length : 0,
+    });
+    return text;
+  }
+  if (!toHorizontalTest.test(text)) {
+    perfMeasure('verticalPunctuation.fromVerticalDisplay', t0, {
+      skipped: true,
+      len: text.length,
+      matched: false,
+    });
+    return text;
+  }
+  const out = text.replace(toHorizontalRegex, (ch) => HORIZONTAL_MAP[ch] || ch);
+  perfMeasure('verticalPunctuation.fromVerticalDisplay', t0, {
+    skipped: false,
+    len: text.length,
+    outLen: out.length,
+  });
+  return out;
 }

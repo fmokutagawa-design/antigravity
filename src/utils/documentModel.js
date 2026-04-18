@@ -1,3 +1,5 @@
+import { perfNow, perfMeasure } from './perfProbe';
+
 /**
  * documentModel.js
  *
@@ -22,8 +24,14 @@ function newId() {
  * @returns {{ id: number, text: string }[]}
  */
 export function textToDocument(text) {
+  const t0 = perfNow();
   if (text == null || text === '') return [{ id: newId(), text: '' }];
-  return text.split('\n').map(t => ({ id: newId(), text: t }));
+  const out = text.split('\n').map(t => ({ id: newId(), text: t }));
+  perfMeasure('documentModel.textToDocument', t0, {
+    paras: out.length,
+    len: text.length,
+  });
+  return out;
 }
 
 /**
@@ -32,8 +40,14 @@ export function textToDocument(text) {
  * @returns {string}
  */
 export function documentToText(doc) {
+  const t0 = perfNow();
   if (!doc || doc.length === 0) return '';
-  return doc.map(p => p.text).join('\n');
+  const out = doc.map(p => p.text).join('\n');
+  perfMeasure('documentModel.documentToText', t0, {
+    paras: doc.length,
+    len: out.length,
+  });
+  return out;
 }
 
 /**
@@ -86,16 +100,11 @@ export function positionToGlobalOffset(doc, paraIndex, offset) {
  * @returns {{ id: number, text: string }[]} 更新後の文書モデル
  */
 export function updateDocument(prevDoc, newFullText, cursorPos) {
+  const t0 = perfNow();
   const newLines = newFullText.split('\n');
   const oldLines = prevDoc;
 
-  // --- 段落数が同じ：変更された段落だけ差し替え ---
   if (newLines.length === oldLines.length) {
-    // カーソルがある段落を特定して、その段落だけ更新する
-    const pos = globalOffsetToPosition(prevDoc, cursorPos);
-    const paraIndex = pos.paraIndex;
-
-    // 念のため前後1段落も確認（IMEや一括置換で複数段落が変わる場合に対応）
     let changed = false;
     const newDoc = [...prevDoc];
     for (let i = 0; i < newLines.length; i++) {
@@ -104,23 +113,33 @@ export function updateDocument(prevDoc, newFullText, cursorPos) {
         changed = true;
       }
     }
-    return changed ? newDoc : prevDoc;
+    const result = changed ? newDoc : prevDoc;
+    perfMeasure('documentModel.updateDocument.sameLineCount', t0, {
+      prevParas: prevDoc.length,
+      nextParas: result.length,
+      textLength: newFullText.length,
+      cursorPos,
+      changed,
+    });
+    return result;
   }
 
-  // --- 段落数が変わった：既存 id を再利用しながら再構築 ---
-  // 先頭から一致する段落は id を引き継ぐ（Workerキャッシュを活かす）
   const newDoc = [];
   for (let i = 0; i < newLines.length; i++) {
     if (i < oldLines.length && newLines[i] === oldLines[i].text) {
-      // 内容が同じ → id を引き継ぐ
       newDoc.push(oldLines[i]);
     } else if (i < oldLines.length && newLines[i] !== oldLines[i].text) {
-      // 内容が変わった → 新しい id（Workerに再計算させる）
       newDoc.push({ id: newId(), text: newLines[i] });
     } else {
-      // 新規に追加された段落
       newDoc.push({ id: newId(), text: newLines[i] });
     }
   }
+
+  perfMeasure('documentModel.updateDocument.rebuild', t0, {
+    prevParas: prevDoc.length,
+    nextParas: newDoc.length,
+    textLength: newFullText.length,
+    cursorPos,
+  });
   return newDoc;
 }

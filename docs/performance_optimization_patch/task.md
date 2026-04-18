@@ -1,0 +1,6 @@
+- [ ] `src/utils/positionWorker.js` の修正 (lineOffset 加算の削除)
+- [ ] `src/components/Editor.jsx` への `composedSegCacheRef` 追加
+- [ ] `src/components/Editor.jsx` の Worker 送信ロジック修正
+- [ ] `src/components/Editor.jsx` の合成ロジック修正 (メモ化 + デバウンス)
+- [ ] 動作確認
+- [ ] Git commit & push

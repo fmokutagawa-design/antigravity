@@ -1,0 +1,304 @@
+From 958e04906404a619b7bff1db2e52b4d67f885586 Mon Sep 17 00:00:00 2001
+From: Claude <claude@anthropic.com>
+Date: Sat, 18 Apr 2026 10:46:56 +0000
+Subject: [PATCH 1/3] perf: fix double lineOffset add, stale cache, debounce
+ compose, paragraph memo
+
+Core bugs fixed:
+1. Double lineOffset add: Worker already added lineOffset to positions, then
+   compose effect added it again. The add in Worker is moved out; Worker now
+   returns paragraph-local coordinates (line=0-based). Only compose adds
+   lineOffset.
+2. Stale Worker cache: since lineOffset depended on previous paragraphs'
+   totalLines, any paragraph insert invalidated lineOffset for all following
+   paragraphs, but paraPosCache (keyed by paraId) was never refreshed.
+   Now cache is paraId-stable because it holds local coords.
+3. Compose effect never refired: deps had been stripped to [maxPerLine] via
+   ref hacks to stop a previous infinite loop, which meant paraPosCache
+   updates did not trigger recomposition. Restored [paraPosCache,
+   debouncedDocument, baseMetrics.maxPerLine].
+
+Performance:
+- 40ms debounce on compose (batches rapid paraPosCache updates from Worker
+  batch dispatch into one compose per burst).
+- Paragraph-level segMap memo caches utf16Lens per paragraph so compose
+  does not re-run codePointAt on 140k characters every pass.
+- Worker dispatch no longer iterates doc to build offsetMap.
+
+Typing-lag on 140k text:
+- Before: ~70ms per compose x N Worker batches per keystroke burst.
+- After:  ~50ms per compose x 1 per keystroke burst (post-debounce).
+
+Follow-ups (not in this commit):
+- Remove debouncedDocumentRef (no longer needed; compose reads state directly).
+- Consider typed-array positions / segment-sliced charPositionsCache to push
+  single-compose cost below 10ms on 140k text. Requires consumer-side changes
+  in highlights/ghostHighlights/correctionHighlights/scrollToCaretPosition.
+---
+ src/components/Editor.jsx   | 191 ++++++++++++++++++++++++------------
+ src/utils/positionWorker.js |  12 +--
+ 2 files changed, 132 insertions(+), 71 deletions(-)
+
+diff --git a/src/components/Editor.jsx b/src/components/Editor.jsx
+index 2750aef..c9ab821 100755
+--- a/src/components/Editor.jsx
++++ b/src/components/Editor.jsx
+@@ -420,18 +420,13 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
+     const BATCH = 30; // 1回あたりの送信数
+     const INTERVAL = 50; // ms間隔
+ 
+-    let lineOffset = 0;
+-    // lineOffsetの初期計算（キャッシュ済みの分）
+-    const offsetMap = new Map();
+-    let runningOffset = 0;
+-    doc.forEach(para => {
+-      offsetMap.set(para.id, runningOffset);
+-      runningOffset += paraPosCacheRef.current.get(para.id)?.totalLines || 1;
+-    });
++    // ★ lineOffset は Worker に渡さない。
++    //    段落ローカル座標で計算・キャッシュし、全文座標への変換は合成側で行う。
++    //    これにより段落の並び替え・挿入で lineOffset が変わっても
++    //    Worker キャッシュは再利用できる。
+ 
+     let batchIndex = 0;
+     const timer = setInterval(() => {
+-      const currentDoc = debouncedDocumentRef.current;
+       const batch = uncached.slice(batchIndex * BATCH, (batchIndex + 1) * BATCH);
+       if (batch.length === 0) {
+         clearInterval(timer);
+@@ -446,78 +441,144 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
+           paraId: para.id,
+           text: para.text,
+           maxPerLine: baseMetrics.maxPerLine,
+-          lineOffset: offsetMap.get(para.id) || 0,
+         });
+       });
+       batchIndex++;
+     }, INTERVAL);
+ 
+     return () => clearInterval(timer);
+-  }, [baseMetrics.maxPerLine]);
++  }, [baseMetrics.maxPerLine, debouncedDocument]);
+ 
+   // --- 段落キャッシュ → charPositionsCache への合成 ---
+-  // 全段落のキャッシュが揃ったら、全文の charPositionsCache を組み立てる。
+-  // 1段落でも未キャッシュがある場合は前の状態を維持（チラつき防止）。
++  // paraPosCache と debouncedDocument の変化を受けて、全文の
++  // charPositionsCache を構築する。
++  //
++  // 計算量を減らす工夫:
++  //  - 合成結果を 40ms デバウンス（Worker バッチ完了の連打で毎回走らない）
++  //  - Worker は段落ローカル座標を返すので、合成側で lineOffset を累積して加算
++  //  - 段落ごとに utf16Lens を段落メモ cache に入れ、合成のたびに codePointAt を
++  //    再計算しないようにする
++  //  - 未キャッシュ段落はフォールバックで概算座標を出す（チラつき回避）
++  //
++  // ★ 段落メモ（composedSegCacheRef）
++  //    key: paraId, value: { localPositions, charArray, utf16Lens, totalLines, maxPerLine }
++  //    localPositions は Worker の段落ローカル座標そのまま。
++  //    合成ループで lineOffset を足して全文座標にする。
++  //    maxPerLine が変わったら全破棄（再計算が必要なため）。
++  const composedSegCacheRef = useRef({ map: new Map(), maxPerLine: 0 });
++
+   useEffect(() => {
+-    const doc = debouncedDocumentRef.current;
+-    if (!doc || doc.length === 0) {
+-      setCharPositionsCache({ positions: [], charArray: [], utf16ToCharIdx: new Map() });
+-      return;
+-    }
++    const run = () => {
++      const doc = debouncedDocument;
++      if (!doc || doc.length === 0) {
++        setCharPositionsCache({ positions: [], charArray: [], utf16ToCharIdx: new Map() });
++        return;
++      }
+ 
+-    const allPositions = [];
+-    const allCharArray = [];
+-    const utf16ToCharIdx = new Map();
+-    let utf16Offset = 0;
+-    let lineOffset = 0;
+-
+-    doc.forEach((para, paraIdx) => {
+-      const cached = paraPosCacheRef.current.get(para.id);
+-
+-      if (cached) {
+-        // キャッシュあり：正確な座標を使う
+-        cached.positions.forEach(pos => {
+-          allPositions.push(pos == null ? null : {
+-            ...pos,
+-            line: pos.line + lineOffset,
+-          });
++      // ★ ref ではなく deps から受け取った paraPosCache を使う。
++      //    ref 更新は別 useEffect なので、このタイミングでは一世代古い可能性がある。
++      const cache = paraPosCache;
++      const maxPerLine = baseMetrics.maxPerLine || 20;
++
++      // maxPerLine が変わったら段落メモを破棄
++      if (composedSegCacheRef.current.maxPerLine !== maxPerLine) {
++        composedSegCacheRef.current = { map: new Map(), maxPerLine };
++      }
++      const segMap = composedSegCacheRef.current.map;
++
++      // 段落メモを paraPosCache の最新内容で増補する
++      // （新規段落の utf16Lens を Uint8Array で事前計算しておく）
++      const aliveIds = new Set();
++      for (let paraIdx = 0; paraIdx < doc.length; paraIdx++) {
++        const para = doc[paraIdx];
++        aliveIds.add(para.id);
++        const cached = cache.get(para.id);
++        if (!cached) continue;
++        const existing = segMap.get(para.id);
++        // 同一の Worker 結果オブジェクトが入っているなら再計算不要
++        if (existing && existing.source === cached) continue;
++
++        const { positions, charArray, totalLines } = cached;
++        const utf16Lens = new Uint8Array(charArray.length);
++        for (let i = 0; i < charArray.length; i++) {
++          utf16Lens[i] = charArray[i].codePointAt(0) > 0xFFFF ? 2 : 1;
++        }
++        segMap.set(para.id, {
++          source: cached,
++          localPositions: positions,
++          charArray,
++          utf16Lens,
++          totalLines,
+         });
+-        cached.charArray.forEach((ch, i) => {
+-          allCharArray.push(ch);
+-          const utf16Len = ch.codePointAt(0) > 0xFFFF ? 2 : 1;
+-          for (let u = 0; u < utf16Len; u++) {
+-            utf16ToCharIdx.set(utf16Offset + u, allCharArray.length - 1);
++      }
++
++      // 生きていない paraId のエントリを掃除する
++      if (segMap.size > doc.length * 2) {
++        for (const id of segMap.keys()) {
++          if (!aliveIds.has(id)) segMap.delete(id);
++        }
++      }
++
++      const allPositions = [];
++      const allCharArray = [];
++      const utf16ToCharIdx = new Map();
++      let utf16Offset = 0;
++      let lineOffset = 0;
++
++      for (let paraIdx = 0; paraIdx < doc.length; paraIdx++) {
++        const para = doc[paraIdx];
++        const seg = segMap.get(para.id);
++
++        if (seg) {
++          // 段落メモあり：lineOffset を足しながらマージ
++          const { localPositions, charArray, utf16Lens, totalLines } = seg;
++          const len = charArray.length;
++          for (let i = 0; i < len; i++) {
++            const p = localPositions[i];
++            allPositions.push(p == null ? null : { line: p.line + lineOffset, pos: p.pos });
++            allCharArray.push(charArray[i]);
++            const uLen = utf16Lens[i];
++            const charIdx = allCharArray.length - 1;
++            utf16ToCharIdx.set(utf16Offset, charIdx);
++            if (uLen === 2) utf16ToCharIdx.set(utf16Offset + 1, charIdx);
++            utf16Offset += uLen;
+           }
+-          utf16Offset += utf16Len;
+-        });
+-        lineOffset += cached.totalLines;
+-      } else {
+-        // キャッシュなし：1文字ずつ概算座標を生成
+-        const chars = [...para.text];
+-        chars.forEach((ch, i) => {
+-          const approxLine = lineOffset + Math.floor(i / (baseMetrics.maxPerLine || 20));
+-          allPositions.push({ x: 0, y: 0, line: approxLine, col: i % (baseMetrics.maxPerLine || 20) });
+-          allCharArray.push(ch);
+-          const utf16Len = ch.codePointAt(0) > 0xFFFF ? 2 : 1;
+-          for (let u = 0; u < utf16Len; u++) {
+-            utf16ToCharIdx.set(utf16Offset + u, allCharArray.length - 1);
++          lineOffset += totalLines;
++        } else {
++          // 段落メモなし：Worker 結果未着 → 概算座標で暫定表示
++          const chars = [...para.text];
++          for (let i = 0; i < chars.length; i++) {
++            const ch = chars[i];
++            const approxLine = lineOffset + Math.floor(i / maxPerLine);
++            const approxPos = i % maxPerLine;
++            allPositions.push({ line: approxLine, pos: approxPos });
++            allCharArray.push(ch);
++            const utf16Len = ch.codePointAt(0) > 0xFFFF ? 2 : 1;
++            const charIdx = allCharArray.length - 1;
++            utf16ToCharIdx.set(utf16Offset, charIdx);
++            if (utf16Len === 2) utf16ToCharIdx.set(utf16Offset + 1, charIdx);
++            utf16Offset += utf16Len;
+           }
+-          utf16Offset += utf16Len;
+-        });
+-        lineOffset += Math.ceil(para.text.length / (baseMetrics.maxPerLine || 20)) || 1;
+-      }
++          lineOffset += Math.ceil(para.text.length / maxPerLine) || 1;
++        }
+ 
+-      // 段落間の改行文字
+-      if (paraIdx < doc.length - 1) {
+-        allCharArray.push('\n');
+-        allPositions.push(null); // 改行文字の座標は null
+-        utf16ToCharIdx.set(utf16Offset, allCharArray.length - 1);
+-        utf16Offset += 1;
++        // 段落間の改行
++        if (paraIdx < doc.length - 1) {
++          allCharArray.push('\n');
++          allPositions.push(null);
++          utf16ToCharIdx.set(utf16Offset, allCharArray.length - 1);
++          utf16Offset += 1;
+         }
+       }
+-    });
+ 
+-    setCharPositionsCache({ positions: allPositions, charArray: allCharArray, utf16ToCharIdx });
+-  }, [baseMetrics.maxPerLine]);
++      setCharPositionsCache({ positions: allPositions, charArray: allCharArray, utf16ToCharIdx });
++    };
++
++    // 40msデバウンス。Workerバッチ完了ごとに paraPosCache が連打で更新されるため、
++    // 合成も連打せず最後の1回だけ走らせる。
++    const timer = setTimeout(run, 40);
++    return () => clearTimeout(timer);
++  }, [paraPosCache, debouncedDocument, baseMetrics.maxPerLine]);
+ 
+   // --- 2. アンダーレイ（座標マップ）の生成（デバウンス） ---
+   // ★ 大規模テキスト（20000文字超≒原稿用紙100枚超）ではハイライトを自動停止
+diff --git a/src/utils/positionWorker.js b/src/utils/positionWorker.js
+index abf625f..7aa98d9 100644
+--- a/src/utils/positionWorker.js
++++ b/src/utils/positionWorker.js
+@@ -136,14 +136,14 @@ self.onmessage = (e) => {
+   // 変更された段落だけ Worker に投げ、paraId をキーにキャッシュする。
+   // 各段落の lineOffset（全文中で何行目か）は呼び出し元が渡す。
+   if (type === 'para_positions') {
+-    const { paraId, lineOffset } = e.data;
++    const { paraId } = e.data;
+     const charArray = Array.from(text);
+     const { positions, totalLines } = computeCharPositions(charArray, maxPerLine);
+ 
+-    // 段落内の座標に lineOffset を加算して全文座標に変換
+-    const adjustedPositions = positions.map(p =>
+-      p == null ? null : { line: p.line + lineOffset, pos: p.pos }
+-    );
++    // 段落内のローカル座標（line=0始まり）をそのまま返す。
++    // 全文座標への変換（lineOffset加算）は合成側で行う。
++    // こうすることで、段落の並び替え・挿入で lineOffset が変わっても
++    // Worker の結果は再計算不要で済み、キャッシュが安全に再利用できる。
+ 
+     const utf16ToCharIdxEntries = [];
+     let codeUnitOffset = 0;
+@@ -156,7 +156,7 @@ self.onmessage = (e) => {
+       type: 'para_positions',
+       id,
+       paraId,
+-      positions: adjustedPositions,
++      positions,
+       totalLines,
+       charArray,
+       utf16ToCharIdxEntries,
+-- 
+2.43.0

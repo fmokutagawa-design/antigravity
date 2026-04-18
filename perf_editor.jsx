@@ -4,7 +4,6 @@ import '../index.css';
 import { toVerticalDisplay, fromVerticalDisplay } from '../utils/verticalPunctuation';
 import { useUndoHistory } from '../hooks/useUndoHistory';
 import { useClipboardHistory } from '../hooks/useClipboardHistory';
-import { perfNow, perfLog, perfMeasure } from '../utils/perfProbe';
 import PositionWorker from '../utils/positionWorker?worker';
 import { textToDocument, documentToText, updateDocument } from '../utils/documentModel';
 
@@ -207,34 +206,20 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   // React再レンダリング直後にカーソル位置を復元（useLayoutEffectでペイント前に実行）
   // ★ IME 変換中はカーソル復元をスキップ（変換カーソルを破壊しないため）
   useLayoutEffect(() => {
-    const totalT0 = perfNow();
-
-    if (isComposingRef.current) {
-      perfMeasure('Editor.selectionRestore.skipped.composing', totalT0);
-      return;
-    }
-
+    if (isComposingRef.current) return;
+    // undo/redo後のカーソル復元
     if (pendingCursorRef && pendingCursorRef.current != null && textareaRef.current) {
-      const t0 = perfNow();
       const pos = pendingCursorRef.current;
       pendingCursorRef.current = null;
       textareaRef.current.setSelectionRange(pos, pos);
-      perfMeasure('Editor.selectionRestore.pendingCursor', t0, { pos });
-      perfMeasure('Editor.selectionRestore.total', totalT0, { kind: 'pendingCursor' });
       return;
     }
-
+    // 通常編集後のカーソル復元
     if (nextCursorPos.current != null && textareaRef.current) {
-      const t0 = perfNow();
       const pos = nextCursorPos.current;
       nextCursorPos.current = null;
       textareaRef.current.setSelectionRange(pos, pos);
-      perfMeasure('Editor.selectionRestore.nextCursor', t0, { pos });
-      perfMeasure('Editor.selectionRestore.total', totalT0, { kind: 'nextCursor' });
-      return;
     }
-
-    perfMeasure('Editor.selectionRestore.total', totalT0, { kind: 'noop' });
   });
 
   // Context Menu Close Handler
@@ -430,26 +415,17 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     const worker = new PositionWorker();
     workerRef.current = worker;
     worker.onmessage = (e) => {
-      const t0 = perfNow();
       const { type, id } = e.data;
       if (type === 'lineCount') {
-        perfMeasure('Editor.worker.onmessage.lineCount', t0, { id, totalLines: e.data.totalLines });
+        // 無視
       } else if (type === 'positions' && id === positionsReqIdRef.current) {
         const { positions, charArray, utf16ToCharIdxEntries } = e.data;
         const utf16ToCharIdx = new Map(utf16ToCharIdxEntries);
         setCharPositionsCache({ positions, charArray, utf16ToCharIdx });
-        perfMeasure('Editor.worker.onmessage.positions', t0, {
-          id,
-          positionsLen: positions.length,
-          charArrayLen: charArray.length,
-        });
       } else if (type === 'para_positions') {
         const { paraId } = e.data;
         const latestId = paraPosReqIdRef.current.get(paraId);
-        if (id !== latestId) {
-          perfMeasure('Editor.worker.onmessage.para_positions.stale', t0, { id, paraId, latestId });
-          return;
-        }
+        if (id !== latestId) return; // 古いリクエストは無視
         const { positions, charArray, utf16ToCharIdxEntries, totalLines } = e.data;
         const utf16ToCharIdx = new Map(utf16ToCharIdxEntries);
         // rAF バッチングでまとめて 1 回の setState に集約
@@ -460,15 +436,6 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         if (paraRecvRafRef.current === 0) {
           paraRecvRafRef.current = requestAnimationFrame(flushParaRecvBuffer);
         }
-        perfMeasure('Editor.worker.onmessage.para_positions', t0, {
-          id,
-          paraId,
-          positionsLen: positions.length,
-          charArrayLen: charArray.length,
-          totalLines,
-        });
-      } else {
-        perfMeasure('Editor.worker.onmessage.other', t0, { type, id });
       }
     };
     return () => {
@@ -520,25 +487,9 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     const timer = setInterval(() => {
       const batch = uncached.slice(batchIndex * 30, (batchIndex + 1) * 30);
       if (batch.length === 0) { clearInterval(timer); return; }
-
-      const batchT0 = perfNow();
-      perfLog('Editor.worker.dispatch.batch', {
-        batchIndex,
-        batchSize: batch.length,
-        uncachedTotal: uncached.length,
-        maxPerLine: baseMetrics.maxPerLine,
-      });
-
       batch.forEach(para => {
         const reqId = (paraPosReqIdRef.current.get(para.id) || 0) + 1;
         paraPosReqIdRef.current.set(para.id, reqId);
-
-        perfLog('Editor.worker.dispatch.single', {
-          paraId: para.id,
-          reqId,
-          textLength: para.text.length,
-        });
-
         workerRef.current.postMessage({
           type: 'para_positions',
           id: reqId,
@@ -556,7 +507,6 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   // charPositionsCache 合成（cacheComposeTick または debouncedDocument が変わるたびに実行）
   useEffect(() => {
     const run = () => {
-      const t0 = perfNow();
       const doc = debouncedDocument;
       if (!doc || doc.length === 0) {
         setCharPositionsCache({ positions: [], charArray: [], utf16ToCharIdx: new Map() });
@@ -564,12 +514,13 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       }
 
       // ★ 大規模テキスト: 合成をスキップして空キャッシュを維持。
+      //    highlights/ghostHighlights/correctionHighlights は
+      //    charArray.length === 0 で空配列を返す。
       if (isMassiveTextRef.current) {
         setCharPositionsCache(prev => {
           if (prev.charArray.length === 0) return prev;
           return { positions: [], charArray: [], utf16ToCharIdx: new Map() };
         });
-        perfMeasure('Editor.charPositionsCache.compose.skipped.massive', t0);
         return;
       }
 
@@ -663,14 +614,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         }
       }
 
-      perfMeasure('Editor.charPositionsCache.compose.setCachePre', t0, {
-        docLen: doc.length,
-        paraCacheSize: cache.size,
-        allCharArrayLen: allCharArray.length,
-        allPositionsLen: allPositions.length,
-      });
       setCharPositionsCache({ positions: allPositions, charArray: allCharArray, utf16ToCharIdx });
-      perfMeasure('Editor.charPositionsCache.compose.total', t0);
     };
 
     const timer = setTimeout(run, 40);
@@ -681,19 +625,9 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   // ★ 大規模テキスト（20000文字超≒原稿用紙100枚超）ではハイライトを自動停止
   const HIGHLIGHT_CHAR_LIMIT = 100000;
   const highlights = useMemo(() => {
-    const t0 = perfNow();
-    if (settings.editorSyntaxColors === false) {
-      perfMeasure('Editor.highlights', t0, { kind: 'skipped (disabled)' });
-      return [];
-    }
-    if (!debouncedValue) {
-      perfMeasure('Editor.highlights', t0, { kind: 'skipped (empty)' });
-      return [];
-    }
-    if (debouncedValue.length > HIGHLIGHT_CHAR_LIMIT) {
-      perfMeasure('Editor.highlights', t0, { kind: 'skipped (massive)', len: debouncedValue.length });
-      return [];
-    }
+    if (settings.editorSyntaxColors === false) return [];
+    if (!debouncedValue) return [];
+    if (debouncedValue.length > HIGHLIGHT_CHAR_LIMIT) return [];
     const { cell } = baseMetrics;
     const { positions, utf16ToCharIdx } = charPositionsCache;
     const isVert = settings.isVertical;
@@ -727,19 +661,15 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         }
       }
     });
-    perfMeasure('Editor.highlights', t0, { count: list.length, len: debouncedValue.length });
     return list;
   }, [charPositionsCache, debouncedValue, baseMetrics, settings.isVertical, settings.syntaxColors, settings.editorSyntaxColors]);
 
   // --- 3a. ゴーストテキスト座標計算 ---
   const ghostHighlights = useMemo(() => {
-    const t0 = perfNow();
-    if (!ghostText || !charPositionsCache.charArray.length) {
-      perfMeasure('Editor.ghostHighlights', t0, { kind: 'skipped' });
-      return [];
-    }
+    if (!ghostText || !charPositionsCache.charArray.length) return [];
 
     // ★ 全文再計算を廃止。charPositionsCache の末尾座標を起点に ghost 部分だけ計算する。
+    //    value（42万字）を毎回 Array.from + computeCharPositions するのを防ぐ。
     const { cell, maxPerLine } = baseMetrics;
     const { positions: basePositions, charArray: baseCharArray } = charPositionsCache;
 
@@ -766,17 +696,12 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       list.push({ x, y, char: ch, charIdx: baseCharArray.length + i });
       pos++;
     }
-    perfMeasure('Editor.ghostHighlights', t0, { count: list.length });
     return list;
   }, [charPositionsCache, ghostText, baseMetrics, settings.isVertical]);
 
   // --- 3b. 校正ハイライト座標計算（デバウンス + キャッシュ共有） ---
   const correctionHighlights = useMemo(() => {
-    const t0 = perfNow();
-    if (!corrections || corrections.length === 0 || !debouncedValue) {
-      perfMeasure('Editor.correctionHighlights', t0, { kind: 'skipped' });
-      return [];
-    }
+    if (!corrections || corrections.length === 0 || !debouncedValue) return [];
 
     const { charArray, positions } = charPositionsCache;
     const { cell } = baseMetrics;
@@ -797,7 +722,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
           const p = positions[startCharIdx + i];
           if (p) {
             const x = settings.isVertical ? -p.line * cell : (p.pos * cell);
-            const y = settings.isVertical ? (pos * cell) : (line * cell);
+            const y = settings.isVertical ? (p.pos * cell) : (p.line * cell);
             list.push({
               corrId: corr.id, matchIndex: index, charOffset: i,
               x, y,
@@ -810,7 +735,6 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       }
     });
 
-    perfMeasure('Editor.correctionHighlights', t0, { count: list.length });
     return list;
   }, [debouncedValue, corrections, charPositionsCache, baseMetrics, settings.isVertical]);
 
@@ -823,16 +747,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   //    id と text が同じ段落は使い回す。
   const displayParaCacheRef = useRef(new Map()); // paraId -> { text, displayText }
   const displayValue = useMemo(() => {
-    const t0 = perfNow();
-
-    if (!settings.isVertical) {
-      perfMeasure('Editor.displayValue', t0, {
-        vertical: false,
-        paraCount: localDocument.length,
-        textLength: localText.length,
-      });
-      return localText;
-    }
+    if (!settings.isVertical) return localText;
 
     const cache = displayParaCacheRef.current;
     const parts = new Array(localDocument.length);
@@ -842,12 +757,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       if (cached && cached.text === para.text) {
         parts[i] = cached.displayText;
       } else {
-        const paraT0 = perfNow();
         const displayText = toVerticalDisplay(para.text);
-        perfMeasure('Editor.displayValue.toVerticalDisplay.singlePara', paraT0, {
-          paraId: para.id,
-          paraLen: para.text.length,
-        });
         cache.set(para.id, { text: para.text, displayText });
         parts[i] = displayText;
       }
@@ -857,112 +767,35 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       const alive = new Set(localDocument.map(p => p.id));
       for (const id of cache.keys()) if (!alive.has(id)) cache.delete(id);
     }
-    const out = parts.join('\n');
-    perfMeasure('Editor.displayValue', t0, {
-      vertical: true,
-      paraCount: localDocument.length,
-      textLength: localText.length,
-      outLength: out.length,
-    });
-    return out;
+    return parts.join('\n');
   }, [localDocument, localText, settings.isVertical]);
 
   const handleChange = useCallback((e) => {
-    const t0 = perfNow();
     const ta = e.target;
     const raw = ta.value;
-
-    const restoreT0 = perfNow();
     const restored = settings.isVertical ? fromVerticalDisplay(raw) : raw;
-    perfMeasure('Editor.handleChange.restoreDisplay', restoreT0, {
-      rawLength: raw.length,
-      restoredLength: restored.length,
-      vertical: settings.isVertical,
-    });
-
     const cursorPos = ta.selectionStart;
 
     if (isComposingRef.current) {
-      const docT0 = perfNow();
+      // ★ IME 変換中: localDocument は更新する（React が DOM を上書きしないように）
+      //    ただし undo 履歴と App への通知はスキップ（確定時に handleCompositionEnd で行う）
+      //    差分更新で IME 中間状態も正しく反映する。
       const newDoc = updateDocument(localDocumentRef.current, restored, cursorPos);
-      perfMeasure('Editor.handleChange.composing.updateDocument', docT0, {
-        cursorPos,
-        prevParas: localDocumentRef.current.length,
-        nextParas: newDoc.length,
-        textLength: restored.length,
-      });
-
-      const setDocT0 = perfNow();
       setLocalDocument(newDoc);
-      perfMeasure('Editor.handleChange.composing.setLocalDocument', setDocT0, {
-        nextParas: newDoc.length,
-      });
-
-      perfMeasure('Editor.handleChange.composing.total', t0, {
-        cursorPos,
-        textLength: restored.length,
-      });
       return;
     }
 
-    const docT0 = perfNow();
+    // ★ 文書モデル化：変更された段落だけを更新（全文再構築は段落数変化時のみ）
     const newDoc = updateDocument(localDocumentRef.current, restored, cursorPos);
-    perfMeasure('Editor.handleChange.updateDocument', docT0, {
-      cursorPos,
-      prevParas: localDocumentRef.current.length,
-      nextParas: newDoc.length,
-      textLength: restored.length,
-    });
-
-    const toTextT0 = perfNow();
     const newText = documentToText(newDoc);
-    perfMeasure('Editor.handleChange.documentToText', toTextT0, {
-      nextParas: newDoc.length,
-      textLength: newText.length,
-    });
-
-    const historyT0 = perfNow();
     pushHistory(localTextRef.current, newText, cursorPos);
-    perfMeasure('Editor.handleChange.pushHistory', historyT0, {
-      cursorPos,
-    });
-
     if (currentCursorRef) currentCursorRef.current = cursorPos;
     nextCursorPos.current = cursorPos;
-
-    const setDocT0 = perfNow();
+    // localDocument を即座に差分更新（setLocalDocument直接呼び、localOnChange 経由はしない）
     setLocalDocument(newDoc);
-    perfMeasure('Editor.handleChange.setLocalDocument', setDocT0, {
-      nextParas: newDoc.length,
-    });
-
-    const timerT0 = perfNow();
+    // App への通知はデバウンスで
     if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
-    appNotifyTimerRef.current = setTimeout(() => {
-      const notifyT0 = perfNow();
-      onChange(newText);
-      perfMeasure('Editor.handleChange.debouncedOnChange', notifyT0, {
-        textLength: newText.length,
-      });
-    }, 500);
-    perfMeasure('Editor.handleChange.scheduleOnChange', timerT0, {
-      textLength: newText.length,
-    });
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        perfLog('Editor.handleChange.afterDoubleRAF', {
-          textLength: newText.length,
-          cursorPos,
-        });
-      });
-    });
-
-    perfMeasure('Editor.handleChange.total', t0, {
-      cursorPos,
-      textLength: newText.length,
-      paraCount: newDoc.length,
-    });
+    appNotifyTimerRef.current = setTimeout(() => { onChange(newText); }, 500);
   }, [settings.isVertical, pushHistory, currentCursorRef, onChange]);
 
   // ★ IME composition ハンドラ
@@ -974,57 +807,24 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   }, []);
 
   const handleCompositionEnd = useCallback((e) => {
-    const t0 = perfNow();
     isComposingRef.current = false;
     // composition 終了時に最終テキストを確定
     const ta = e.target;
     const raw = ta.value;
-
-    const restoreT0 = perfNow();
     const restored = settings.isVertical ? fromVerticalDisplay(raw) : raw;
-    perfMeasure('Editor.handleCompositionEnd.restoreDisplay', restoreT0, {
-      rawLength: raw.length,
-      restoredLength: restored.length,
-      vertical: settings.isVertical,
-    });
-
     const cursorPos = ta.selectionStart;
     // 変換開始前のテキストから undo 履歴を記録（中間状態は記録しない）
     const beforeComposition = compositionTextRef.current ?? localTextRef.current;
-    
-    const historyT0 = perfNow();
     pushHistory(beforeComposition, restored, cursorPos);
-    perfMeasure('Editor.handleCompositionEnd.pushHistory', historyT0, { cursorPos });
-
     if (currentCursorRef) currentCursorRef.current = cursorPos;
     nextCursorPos.current = cursorPos;
-    
-    const docT0 = perfNow();
+    // ★ localOnChange（全文textToDocument）ではなく差分更新を使う
+    //    IME確定のたびに全文split('\n')が走るのを防ぐ
     const newDoc = updateDocument(localDocumentRef.current, restored, cursorPos);
-    perfMeasure('Editor.handleCompositionEnd.updateDocument', docT0, {
-      prevParas: localDocumentRef.current.length,
-      nextParas: newDoc.length,
-    });
-
-    const setDocT0 = perfNow();
     setLocalDocument(newDoc);
-    perfMeasure('Editor.handleCompositionEnd.setLocalDocument', setDocT0, {
-      nextParas: newDoc.length,
-    });
-
-    const timerT0 = perfNow();
     if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
-    const finalFullText = documentToText(newDoc);
-    appNotifyTimerRef.current = setTimeout(() => onChange(finalFullText), 500);
-    perfMeasure('Editor.handleCompositionEnd.scheduleOnChange', timerT0, {
-      textLength: finalFullText.length,
-    });
-
+    appNotifyTimerRef.current = setTimeout(() => onChange(documentToText(newDoc)), 500);
     compositionTextRef.current = null;
-    perfMeasure('Editor.handleCompositionEnd.total', t0, {
-      cursorPos,
-      textLength: finalFullText.length,
-    });
   }, [settings.isVertical, pushHistory, currentCursorRef, onChange]);
 
   const handleCopy = useCallback((e) => {

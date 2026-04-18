@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { fileSystem } from '../utils/fileSystem';
 import { saveSnapshot } from '../utils/snapshotStore';
+import { perfNow, perfMeasure, perfLog } from '../utils/perfProbe';
 
 /**
  * useAutoSave
@@ -50,11 +51,14 @@ export function useAutoSave({
     const elapsed = now - lastSaveTimeRef.current;
 
     const doSave = async () => {
+      const tStart = perfNow();
       // 保存直前にもう一度ハンドルを確認（非同期の間に切り替わっていないか）
       const currentHandle = activeFileHandle;
       try {
         if (currentHandle !== activeFileHandle) {
-          console.warn('自動保存をブロック: ファイルハンドルが切り替わっている');
+          perfLog('useAutoSave.doSave.blockedHandleSwitch', {
+            textLength: debouncedText.length,
+          });
           return;
         }
 
@@ -62,7 +66,20 @@ export function useAutoSave({
         setLastSaved(new Date());
         lastSavedTextRef.current = debouncedText;
         lastSaveTimeRef.current = Date.now();
+        perfMeasure('useAutoSave.doSave', tStart, {
+          ok: true,
+          textLength: debouncedText.length,
+          throttleMs,
+          elapsed,
+        });
       } catch (error) {
+        perfMeasure('useAutoSave.doSave', tStart, {
+          ok: false,
+          textLength: debouncedText.length,
+          throttleMs,
+          elapsed,
+          error: String(error),
+        });
         console.error('Failed to auto-save:', error);
         showToast('⚠️ 自動保存に失敗しました');
       }
@@ -100,9 +117,15 @@ export function useAutoSave({
 
       if (timeDiff >= INTERVAL || charDiff >= CHAR_THRESHOLD) {
         if (debouncedText !== lastText) {
-          saveSnapshot(filePath, debouncedText, debouncedText.length).catch(e =>
-            console.warn('Snapshot save failed:', e)
-          );
+          const snapT0 = perfNow();
+          saveSnapshot(filePath, debouncedText, debouncedText.length)
+            .then(() => {
+              perfMeasure('useAutoSave.snapshot.tick', snapT0, { len: debouncedText.length });
+            })
+            .catch(e => {
+              perfMeasure('useAutoSave.snapshot.tick.fail', snapT0, { error: String(e) });
+              console.warn('Snapshot save failed:', e);
+            });
           lastSnapshotRef.current = { text: debouncedText, time: now };
         }
       }

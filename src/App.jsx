@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { perfNow, perfMeasure } from './utils/perfProbe';
 import ReactDOM from 'react-dom';
 import Toolbar from './components/Toolbar';
 import PrizePanel from './components/PrizePanel';
@@ -79,7 +80,15 @@ function App() {
   useEffect(() => { textRef.current = text; }, [text]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedText(text), 500);
+    const scheduledAt = perfNow();
+    const timer = setTimeout(() => {
+      const t0 = perfNow();
+      setDebouncedText(text);
+      perfMeasure('App.setDebouncedText.timeoutFired', t0, {
+        textLength: text.length,
+        scheduledDelayMs: perfNow() - scheduledAt,
+      });
+    }, 500);
     return () => clearTimeout(timer);
   }, [text]);
   const [settings, setSettings] = useState({
@@ -1171,16 +1180,21 @@ function App() {
   }, [settings, activeFileHandle, projectHandle, isDarkMode]);
 
   // Save to local storage on change (Web fallback) — debounced to avoid sync I/O on every keystroke
-  // ★ プロジェクトモードでは useAutoSave がファイル保存するので localStorage は不要
-  //    10万字(≒200KB) の同期書き込みがメインスレッドを 5-50ms ブロックするため、スキップ
   useEffect(() => {
     if (isProjectMode && activeFileHandle) return; // ファイル保存で十分
     if (!debouncedText && debouncedText !== '') return;
 
-    // ★ 10万字(≒200KB) の同期書き込みがメインスレッドを 5-50ms ブロックするため、大規模テキストはスキップ
-    if (debouncedText.length <= 100000) {
+    const t0 = perfNow();
+    const isLarge = debouncedText.length > 100000;
+    if (!isLarge) {
       localStorage.setItem('novel-editor-text', debouncedText);
     }
+    perfMeasure('App.localStorageSave', t0, {
+      textLength: debouncedText.length,
+      skipped: isLarge,
+      isProjectMode,
+      hasActiveFileHandle: !!activeFileHandle,
+    });
     setLastSaved(new Date());
   }, [debouncedText, isProjectMode, activeFileHandle]);
 
