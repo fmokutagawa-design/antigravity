@@ -353,6 +353,26 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   //    key: paraId, value: { localPositions, charArray, utf16Lens, totalLines, maxPerLine }
   const composedSegCacheRef = useRef({ map: new Map(), maxPerLine: 0 });
 
+  // ★ Worker 受信バッファ。
+  //    大量の段落が短時間に返ってくる場合、受信ごとに setParaPosCache を呼ぶと
+  //    React 更新が段落数ぶん連打される（11,000 回など）。
+  //    rAF 単位でまとめて 1 回だけ setParaPosCache する。
+  const paraRecvBufferRef = useRef([]);
+  const paraRecvRafRef = useRef(0);
+  const flushParaRecvBuffer = useCallback(() => {
+    paraRecvRafRef.current = 0;
+    const buffer = paraRecvBufferRef.current;
+    if (buffer.length === 0) return;
+    paraRecvBufferRef.current = [];
+    setParaPosCache(prev => {
+      const next = new Map(prev);
+      for (const entry of buffer) {
+        next.set(entry.paraId, entry.value);
+      }
+      return next;
+    });
+  }, []);
+
   const debouncedLineCount = useMemo(() => {
     const doc = debouncedDocumentRef.current;
     if (!doc || doc.length === 0) return 10;
@@ -386,18 +406,27 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       } else if (type === 'para_positions') {
         const { paraId } = e.data;
         const latestId = paraPosReqIdRef.current.get(paraId);
-        if (id !== latestId) return;
+        if (id !== latestId) return; // 古いリクエストは無視
         const { positions, charArray, utf16ToCharIdxEntries, totalLines } = e.data;
         const utf16ToCharIdx = new Map(utf16ToCharIdxEntries);
-        setParaPosCache(prev => {
-          const next = new Map(prev);
-          next.set(paraId, { positions, charArray, utf16ToCharIdx, totalLines });
-          return next;
+        // rAF バッチングでまとめて 1 回の setState に集約
+        paraRecvBufferRef.current.push({
+          paraId,
+          value: { positions, charArray, utf16ToCharIdx, totalLines },
         });
+        if (paraRecvRafRef.current === 0) {
+          paraRecvRafRef.current = requestAnimationFrame(flushParaRecvBuffer);
+        }
       }
     };
-    return () => worker.terminate();
-  }, []);
+    return () => {
+      worker.terminate();
+      if (paraRecvRafRef.current !== 0) {
+        cancelAnimationFrame(paraRecvRafRef.current);
+        paraRecvRafRef.current = 0;
+      }
+    };
+  }, [flushParaRecvBuffer]);
 
   // グリッド寸法
   const metrics = useMemo(() => {
