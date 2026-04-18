@@ -325,17 +325,35 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   const debouncedDocumentRef = useRef(debouncedDocument);
   useEffect(() => { debouncedDocumentRef.current = debouncedDocument; }, [debouncedDocument]);
 
-  // ★ 文書モデル化：段落ごとの座標キャッシュ（paraId → { positions, charArray, utf16ToCharIdx }）
-  // 変更された段落だけ Worker に投げて更新し、変わっていない段落は再計算しない。
+  // 段落キャッシュ
   const [paraPosCache, setParaPosCache] = useState(new Map());
   const paraPosCacheRef = useRef(paraPosCache);
   useEffect(() => { paraPosCacheRef.current = paraPosCache; }, [paraPosCache]);
+  const paraPosReqIdRef = useRef(new Map());
+
+  // バージョンカウンタ（deps に配列・Mapを入れずに再実行を制御する）
+  const workerDispatchVersionRef = useRef(0);
+  const [workerDispatchTick, setWorkerDispatchTick] = useState(0);
+  const cacheComposeVersionRef = useRef(0);
+  const [cacheComposeTick, setCacheComposeTick] = useState(0);
+
+  // debouncedDocument または baseMetrics が変わったら Worker送信を起動
+  useEffect(() => {
+    workerDispatchVersionRef.current += 1;
+    setWorkerDispatchTick(v => v + 1);
+  }, [debouncedDocument, baseMetrics.maxPerLine]);
+
+  // paraPosCache が更新されたら合成を起動
+  useEffect(() => {
+    cacheComposeVersionRef.current += 1;
+    setCacheComposeTick(v => v + 1);
+  }, [paraPosCache]);
 
   const debouncedLineCount = useMemo(() => {
-    if (!debouncedDocument || debouncedDocument.length === 0) return 10;
-    const cached = [...paraPosCache.values()];
+    const doc = debouncedDocumentRef.current;
+    if (!doc || doc.length === 0) return 10;
+    const cached = [...paraPosCacheRef.current.values()];
     if (cached.length === 0) {
-      // キャッシュが空：文字数÷1行文字数で概算
       const approx = baseMetrics.maxPerLine > 0
         ? Math.ceil(localText.length / baseMetrics.maxPerLine)
         : 10;
@@ -343,13 +361,11 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     }
     const total = cached.reduce((sum, p) => sum + (p.totalLines || 1), 0);
     return Math.max(total, 10);
-  }, [debouncedDocument, paraPosCache, baseMetrics.maxPerLine, localText]);
+  }, [cacheComposeTick, baseMetrics.maxPerLine, localText]);
 
   const [charPositionsCache, setCharPositionsCache] = useState(
     () => ({ positions: [], charArray: [], utf16ToCharIdx: new Map() })
   );
-
-  const paraPosReqIdRef = useRef(new Map()); // paraId → 最新リクエスト id
 
   // Worker の初期化（マウント時に一度だけ）
   useEffect(() => {
@@ -358,17 +374,15 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     worker.onmessage = (e) => {
       const { type, id } = e.data;
       if (type === 'lineCount') {
-        // lineCount は現在使用していないため無視
+        // 無視
       } else if (type === 'positions' && id === positionsReqIdRef.current) {
-        // 全文モード（フォールバック・互換）
-        const { positions, charArray, utf16ToCharIdxEntries, totalLines } = e.data;
+        const { positions, charArray, utf16ToCharIdxEntries } = e.data;
         const utf16ToCharIdx = new Map(utf16ToCharIdxEntries);
         setCharPositionsCache({ positions, charArray, utf16ToCharIdx });
       } else if (type === 'para_positions') {
-        // 段落単位モード：最新リクエストのみ反映
         const { paraId } = e.data;
         const latestId = paraPosReqIdRef.current.get(paraId);
-        if (id !== latestId) return; // 古いリクエストは無視
+        if (id !== latestId) return;
         const { positions, charArray, utf16ToCharIdxEntries, totalLines } = e.data;
         const utf16ToCharIdx = new Map(utf16ToCharIdxEntries);
         setParaPosCache(prev => {
@@ -381,12 +395,10 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     return () => worker.terminate();
   }, []);
 
-  // --- 1b. グリッド寸法（Worker で計算） ---
-
+  // グリッド寸法
   const metrics = useMemo(() => {
     const { fontSize, cell, maxPerLine, padding, letterSpacing } = baseMetrics;
     const totalLines = debouncedLineCount;
-
     let cols, rows, gridW, gridH;
     if (settings.isVertical) {
       rows = maxPerLine;
@@ -399,11 +411,10 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       gridW = cols * cell;
       gridH = rows * cell;
     }
-
     return { fontSize, cell, cols, rows, gridW, gridH, padding, letterSpacing };
   }, [debouncedLineCount, baseMetrics, settings.isVertical, settings.linesPerPage]);
 
-
+  // Worker送信（workerDispatchTick が変わるたびに実行）
   useEffect(() => {
     const doc = debouncedDocumentRef.current;
     if (!doc || doc.length === 0) {
@@ -412,16 +423,9 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     }
     if (!workerRef.current) return;
 
-    // キャッシュにない段落のみ送信（setIntervalで間引く）
     const uncached = doc.filter(p => !paraPosCacheRef.current.has(p.id));
     if (uncached.length === 0) return;
 
-    // 送信間隔を設けてWorkerのキューを詰まらせない
-    const BATCH = 30; // 1回あたりの送信数
-    const INTERVAL = 50; // ms間隔
-
-    let lineOffset = 0;
-    // lineOffsetの初期計算（キャッシュ済みの分）
     const offsetMap = new Map();
     let runningOffset = 0;
     doc.forEach(para => {
@@ -431,12 +435,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
 
     let batchIndex = 0;
     const timer = setInterval(() => {
-      const currentDoc = debouncedDocumentRef.current;
-      const batch = uncached.slice(batchIndex * BATCH, (batchIndex + 1) * BATCH);
-      if (batch.length === 0) {
-        clearInterval(timer);
-        return;
-      }
+      const batch = uncached.slice(batchIndex * 30, (batchIndex + 1) * 30);
+      if (batch.length === 0) { clearInterval(timer); return; }
       batch.forEach(para => {
         const reqId = (paraPosReqIdRef.current.get(para.id) || 0) + 1;
         paraPosReqIdRef.current.set(para.id, reqId);
@@ -450,14 +450,12 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         });
       });
       batchIndex++;
-    }, INTERVAL);
+    }, 50);
 
     return () => clearInterval(timer);
-  }, [baseMetrics.maxPerLine]);
+  }, [workerDispatchTick]);
 
-  // --- 段落キャッシュ → charPositionsCache への合成 ---
-  // 全段落のキャッシュが揃ったら、全文の charPositionsCache を組み立てる。
-  // 1段落でも未キャッシュがある場合は前の状態を維持（チラつき防止）。
+  // charPositionsCache 合成（cacheComposeTick が変わるたびに実行）
   useEffect(() => {
     const doc = debouncedDocumentRef.current;
     if (!doc || doc.length === 0) {
@@ -473,51 +471,39 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
 
     doc.forEach((para, paraIdx) => {
       const cached = paraPosCacheRef.current.get(para.id);
-
       if (cached) {
-        // キャッシュあり：正確な座標を使う
         cached.positions.forEach(pos => {
-          allPositions.push(pos == null ? null : {
-            ...pos,
-            line: pos.line + lineOffset,
-          });
+          allPositions.push(pos == null ? null : { ...pos, line: pos.line + lineOffset });
         });
-        cached.charArray.forEach((ch, i) => {
+        cached.charArray.forEach(ch => {
           allCharArray.push(ch);
           const utf16Len = ch.codePointAt(0) > 0xFFFF ? 2 : 1;
-          for (let u = 0; u < utf16Len; u++) {
-            utf16ToCharIdx.set(utf16Offset + u, allCharArray.length - 1);
-          }
+          for (let u = 0; u < utf16Len; u++) utf16ToCharIdx.set(utf16Offset + u, allCharArray.length - 1);
           utf16Offset += utf16Len;
         });
         lineOffset += cached.totalLines;
       } else {
-        // キャッシュなし：1文字ずつ概算座標を生成
         const chars = [...para.text];
         chars.forEach((ch, i) => {
           const approxLine = lineOffset + Math.floor(i / (baseMetrics.maxPerLine || 20));
           allPositions.push({ x: 0, y: 0, line: approxLine, col: i % (baseMetrics.maxPerLine || 20) });
           allCharArray.push(ch);
           const utf16Len = ch.codePointAt(0) > 0xFFFF ? 2 : 1;
-          for (let u = 0; u < utf16Len; u++) {
-            utf16ToCharIdx.set(utf16Offset + u, allCharArray.length - 1);
-          }
+          for (let u = 0; u < utf16Len; u++) utf16ToCharIdx.set(utf16Offset + u, allCharArray.length - 1);
           utf16Offset += utf16Len;
         });
         lineOffset += Math.ceil(para.text.length / (baseMetrics.maxPerLine || 20)) || 1;
       }
-
-      // 段落間の改行文字
       if (paraIdx < doc.length - 1) {
         allCharArray.push('\n');
-        allPositions.push(null); // 改行文字の座標は null
+        allPositions.push(null);
         utf16ToCharIdx.set(utf16Offset, allCharArray.length - 1);
         utf16Offset += 1;
       }
     });
 
     setCharPositionsCache({ positions: allPositions, charArray: allCharArray, utf16ToCharIdx });
-  }, [baseMetrics.maxPerLine]);
+  }, [cacheComposeTick, baseMetrics.maxPerLine]);
 
   // --- 2. アンダーレイ（座標マップ）の生成（デバウンス） ---
   // ★ 大規模テキスト（20000文字超≒原稿用紙100枚超）ではハイライトを自動停止
