@@ -711,9 +711,34 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
 
 
   // --- 3. 約物フィルター (縦書き時のみ — メモ化でローカルテキストベース) ---
+  // ★ 縦書きモードの displayValue を段落単位でメモ化する。
+  //    全文 42万字に対して toVerticalDisplay を毎打鍵実行すると 6〜15ms かかるが、
+  //    打鍵で変わる段落は通常 1 つだけなので、段落ごとに変換結果をキャッシュし、
+  //    id と text が同じ段落は使い回す。
+  const displayParaCacheRef = useRef(new Map()); // paraId -> { text, displayText }
   const displayValue = useMemo(() => {
-    return settings.isVertical ? toVerticalDisplay(localText) : localText;
-  }, [localText, settings.isVertical]);
+    if (!settings.isVertical) return localText;
+
+    const cache = displayParaCacheRef.current;
+    const parts = new Array(localDocument.length);
+    for (let i = 0; i < localDocument.length; i++) {
+      const para = localDocument[i];
+      const cached = cache.get(para.id);
+      if (cached && cached.text === para.text) {
+        parts[i] = cached.displayText;
+      } else {
+        const displayText = toVerticalDisplay(para.text);
+        cache.set(para.id, { text: para.text, displayText });
+        parts[i] = displayText;
+      }
+    }
+    // 生きていない paraId の掃除
+    if (cache.size > localDocument.length * 2) {
+      const alive = new Set(localDocument.map(p => p.id));
+      for (const id of cache.keys()) if (!alive.has(id)) cache.delete(id);
+    }
+    return parts.join('\n');
+  }, [localDocument, localText, settings.isVertical]);
 
   const handleChange = useCallback((e) => {
     const ta = e.target;

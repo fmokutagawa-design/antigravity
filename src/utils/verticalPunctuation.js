@@ -37,9 +37,11 @@ for (const [h, v] of Object.entries(VERTICAL_MAP)) {
     }
 }
 
-// 正規表現をキャッシュ（パフォーマンス用）
-const toVerticalRegex = new RegExp(`[${Object.keys(VERTICAL_MAP).join('')}]`, 'g');
-const toHorizontalRegex = new RegExp(`[${Object.keys(HORIZONTAL_MAP).join('')}]`, 'g');
+// 早期判定用の test 正規表現（g フラグ無し）。
+// replace は対象文字が無くても全文走査して返り値の新文字列を作るが、
+// test は最初のマッチで停止でき、大規模テキストで大幅に軽い。
+const toVerticalTest = new RegExp(`[${Object.keys(VERTICAL_MAP).join('')}]`);
+const toHorizontalTest = new RegExp(`[${Object.keys(HORIZONTAL_MAP).join('')}]`);
 
 /**
  * 表示用: 横書き約物 → 縦書き専用字形に変換
@@ -48,6 +50,7 @@ const toHorizontalRegex = new RegExp(`[${Object.keys(HORIZONTAL_MAP).join('')}]`
  */
 export function toVerticalDisplay(text) {
     if (!ENABLED || !text) return text;
+    if (!toVerticalTest.test(text)) return text; // 対象文字が 1 つも無いなら即返す
     return text.replace(toVerticalRegex, (ch) => VERTICAL_MAP[ch] || ch);
 }
 
@@ -58,5 +61,6 @@ export function toVerticalDisplay(text) {
  */
 export function fromVerticalDisplay(text) {
     if (!ENABLED || !text) return text;
+    if (!toHorizontalTest.test(text)) return text; // 同上
     return text.replace(toHorizontalRegex, (ch) => HORIZONTAL_MAP[ch] || ch);
 }
