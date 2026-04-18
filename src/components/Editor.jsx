@@ -315,8 +315,26 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   const lineCountReqIdRef = useRef(0);
   const positionsReqIdRef = useRef(0);
 
-  const [debouncedLineCount, setDebouncedLineCount] = useState(() => computeTotalLines(localText, baseMetrics.maxPerLine));
-  const lineCountTimerRef = useRef(null);
+  // debouncedDocument（800ms 遅延）を監視
+  const [debouncedDocument, setDebouncedDocument] = useState(localDocument);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedDocument(localDocument), 800);
+    return () => clearTimeout(timer);
+  }, [localDocument]);
+
+  const debouncedLineCount = useMemo(() => {
+    if (!debouncedDocument || debouncedDocument.length === 0) return 10;
+    const cached = [...paraPosCache.values()];
+    if (cached.length === 0) {
+      // キャッシュが空：文字数÷1行文字数で概算
+      const approx = baseMetrics.maxPerLine > 0
+        ? Math.ceil(localText.length / baseMetrics.maxPerLine)
+        : 10;
+      return Math.max(approx, 10);
+    }
+    const total = cached.reduce((sum, p) => sum + (p.totalLines || 1), 0);
+    return Math.max(total, 10);
+  }, [debouncedDocument, paraPosCache, baseMetrics.maxPerLine, localText]);
 
   const [charPositionsCache, setCharPositionsCache] = useState(
     () => ({ positions: [], charArray: [], utf16ToCharIdx: new Map() })
@@ -335,14 +353,11 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     workerRef.current = worker;
     worker.onmessage = (e) => {
       const { type, id } = e.data;
-      if (type === 'lineCount' && id === lineCountReqIdRef.current) {
-        setDebouncedLineCount(e.data.totalLines);
       } else if (type === 'positions' && id === positionsReqIdRef.current) {
         // 全文モード（フォールバック・互換）
         const { positions, charArray, utf16ToCharIdxEntries, totalLines } = e.data;
         const utf16ToCharIdx = new Map(utf16ToCharIdxEntries);
         setCharPositionsCache({ positions, charArray, utf16ToCharIdx });
-        if (totalLines !== undefined) setDebouncedLineCount(totalLines);
       } else if (type === 'para_positions') {
         // 段落単位モード：最新リクエストのみ反映
         const { paraId } = e.data;
@@ -361,26 +376,6 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   }, []);
 
   // --- 1b. グリッド寸法（Worker で計算） ---
-  useEffect(() => {
-    if (lineCountTimerRef.current) clearTimeout(lineCountTimerRef.current);
-    lineCountTimerRef.current = setTimeout(() => {
-      // 段落キャッシュから totalLines を合計する（全文送信ゼロ）
-      const total = [...paraPosCache.values()].reduce((sum, p) => sum + (p.totalLines || 0), 0);
-      if (total > 0) {
-        setDebouncedLineCount(total);
-        return;
-      }
-      // キャッシュが空の場合のみWorkerに送る（初回のみ）
-      if (workerRef.current) {
-        workerRef.current.postMessage({
-          type: 'lineCount',
-          text: localText,
-          maxPerLine: baseMetrics.maxPerLine,
-        });
-      }
-    }, 300);
-    return () => { if (lineCountTimerRef.current) clearTimeout(lineCountTimerRef.current); };
-  }, [localText, baseMetrics.maxPerLine]);
 
   const metrics = useMemo(() => {
     const { fontSize, cell, maxPerLine, padding, letterSpacing } = baseMetrics;
@@ -402,13 +397,6 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     return { fontSize, cell, cols, rows, gridW, gridH, padding, letterSpacing };
   }, [debouncedLineCount, baseMetrics, settings.isVertical, settings.linesPerPage]);
 
-  // --- 文書モデル化：段落単位で Worker に座標計算を依頼 ---
-  // debouncedDocument（500ms 遅延）を監視し、キャッシュにない段落だけ Worker に投げる。
-  const [debouncedDocument, setDebouncedDocument] = useState(localDocument);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedDocument(localDocument), 800);
-    return () => clearTimeout(timer);
-  }, [localDocument]);
 
   useEffect(() => {
     if (!debouncedDocument || debouncedDocument.length === 0) {
