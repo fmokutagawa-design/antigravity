@@ -275,10 +275,22 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   const splitString = (str) => Array.from(str || "");
 
   // --- パフォーマンス最適化: ハイライト用デバウンス（ローカルテキストベース）---
+  // ★ 大規模テキスト（10万字超）では座標キャッシュ・ハイライト系の
+  //    useEffect を全部スキップする。
+  //    42万字規模では全文座標配列の生成・保持・再レンダリングが
+  //    ブラウザ・React の両方を破綻させるため、highlights を諦めて
+  //    打鍵だけを軽くする方針。
+  const MASSIVE_TEXT_THRESHOLD = 100000;
+  const isMassiveText = localText.length > MASSIVE_TEXT_THRESHOLD;
+  const isMassiveTextRef = useRef(isMassiveText);
+  isMassiveTextRef.current = isMassiveText;
+
   const [debouncedValue, setDebouncedValue] = useState(localText);
   const debouncePrevLenRef = useRef(localText.length);
 
   useEffect(() => {
+    // 大規模時は debouncedValue を更新しない（消費側が使わないため）
+    if (isMassiveTextRef.current) return;
     debouncePrevLenRef.current = localText.length;
     const timer = setTimeout(() => setDebouncedValue(localText), 300);
     return () => clearTimeout(timer);
@@ -374,10 +386,17 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   }, []);
 
   const debouncedLineCount = useMemo(() => {
-    const doc = debouncedDocumentRef.current;
-    if (!doc || doc.length === 0) return 10;
-    const cached = [...paraPosCacheRef.current.values()];
+    if (!debouncedDocument || debouncedDocument.length === 0) return 10;
+    // 大規模テキスト: paraPosCache を作らないので文字数÷行幅で概算する
+    if (isMassiveText) {
+      const approx = baseMetrics.maxPerLine > 0
+        ? Math.ceil(localText.length / baseMetrics.maxPerLine)
+        : 10;
+      return Math.max(approx, 10);
+    }
+    const cached = [...paraPosCache.values()];
     if (cached.length === 0) {
+      // キャッシュが空：文字数÷1行文字数で概算
       const approx = baseMetrics.maxPerLine > 0
         ? Math.ceil(localText.length / baseMetrics.maxPerLine)
         : 10;
@@ -385,7 +404,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     }
     const total = cached.reduce((sum, p) => sum + (p.totalLines || 1), 0);
     return Math.max(total, 10);
-  }, [cacheComposeTick, baseMetrics.maxPerLine, localText]);
+  }, [debouncedDocument, paraPosCache, baseMetrics.maxPerLine, localText, isMassiveText]);
 
   const [charPositionsCache, setCharPositionsCache] = useState(
     () => ({ positions: [], charArray: [], utf16ToCharIdx: new Map() })
@@ -491,6 +510,17 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       const doc = debouncedDocument;
       if (!doc || doc.length === 0) {
         setCharPositionsCache({ positions: [], charArray: [], utf16ToCharIdx: new Map() });
+        return;
+      }
+
+      // ★ 大規模テキスト: 合成をスキップして空キャッシュを維持。
+      //    highlights/ghostHighlights/correctionHighlights は
+      //    charArray.length === 0 で空配列を返す。
+      if (isMassiveTextRef.current) {
+        setCharPositionsCache(prev => {
+          if (prev.charArray.length === 0) return prev;
+          return { positions: [], charArray: [], utf16ToCharIdx: new Map() };
+        });
         return;
       }
 
@@ -1253,7 +1283,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   return (
     <div lang="ja" className={`editor-container ${settings.isVertical ? 'vertical' : 'horizontal'} ${paperClass}`}>
       {/* Underlay: skip in clean mode (proportional fonts can't align character-by-character) */}
-      {!isCleanMode && (
+      {/* Underlay: skip in massive text mode（座標キャッシュを作らないため） */}
+      {!isCleanMode && !isMassiveText && (
         <div className="editor-underlay" style={{
           top: `${metrics.padding - (settings.isVertical ? Math.round(metrics.letterSpacing / 2) : 0)}px`,
           right: settings.isVertical ? `${metrics.padding}px` : 'auto',
