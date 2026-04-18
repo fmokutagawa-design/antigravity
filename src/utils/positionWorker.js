@@ -136,14 +136,14 @@ self.onmessage = (e) => {
   // 変更された段落だけ Worker に投げ、paraId をキーにキャッシュする。
   // 各段落の lineOffset（全文中で何行目か）は呼び出し元が渡す。
   if (type === 'para_positions') {
-    const { paraId, lineOffset } = e.data;
+    const { paraId } = e.data;
     const charArray = Array.from(text);
     const { positions, totalLines } = computeCharPositions(charArray, maxPerLine);
 
-    // 段落内の座標に lineOffset を加算して全文座標に変換
-    const adjustedPositions = positions.map(p =>
-      p == null ? null : { line: p.line + lineOffset, pos: p.pos }
-    );
+    // 段落内のローカル座標（line=0始まり）をそのまま返す。
+    // 全文座標への変換（lineOffset加算）は合成側で行う。
+    // こうすることで、段落の並び替え・挿入で lineOffset が変わっても
+    // Worker の結果は再計算不要で済み、キャッシュが安全に再利用できる。
 
     const utf16ToCharIdxEntries = [];
     let codeUnitOffset = 0;
@@ -156,7 +156,7 @@ self.onmessage = (e) => {
       type: 'para_positions',
       id,
       paraId,
-      positions: adjustedPositions,
+      positions,
       totalLines,
       charArray,
       utf16ToCharIdxEntries,

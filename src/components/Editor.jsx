@@ -349,6 +349,10 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     setCacheComposeTick(v => v + 1);
   }, [paraPosCache]);
 
+  // ★ 段落メモ（composedSegCacheRef）
+  //    key: paraId, value: { localPositions, charArray, utf16Lens, totalLines, maxPerLine }
+  const composedSegCacheRef = useRef({ map: new Map(), maxPerLine: 0 });
+
   const debouncedLineCount = useMemo(() => {
     const doc = debouncedDocumentRef.current;
     if (!doc || doc.length === 0) return 10;
@@ -414,9 +418,9 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     return { fontSize, cell, cols, rows, gridW, gridH, padding, letterSpacing };
   }, [debouncedLineCount, baseMetrics, settings.isVertical, settings.linesPerPage]);
 
-  // Worker送信（workerDispatchTick が変わるたびに実行）
+  // Worker送信（workerDispatchTick または debouncedDocument が変わるたびに実行）
   useEffect(() => {
-    const doc = debouncedDocumentRef.current;
+    const doc = debouncedDocument; // パッチに従い直接参照
     if (!doc || doc.length === 0) {
       setParaPosCache(new Map());
       return;
@@ -426,12 +430,10 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     const uncached = doc.filter(p => !paraPosCacheRef.current.has(p.id));
     if (uncached.length === 0) return;
 
-    const offsetMap = new Map();
-    let runningOffset = 0;
-    doc.forEach(para => {
-      offsetMap.set(para.id, runningOffset);
-      runningOffset += paraPosCacheRef.current.get(para.id)?.totalLines || 1;
-    });
+    // ★ lineOffset は Worker に渡さない。
+    //    段落ローカル座標で計算・キャッシュし、全文座標への変換は合成側で行う。
+    //    これにより段落の並び替え・挿入で lineOffset が変わっても
+    //    Worker キャッシュは再利用できる。
 
     let batchIndex = 0;
     const timer = setInterval(() => {
@@ -446,64 +448,119 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
           paraId: para.id,
           text: para.text,
           maxPerLine: baseMetrics.maxPerLine,
-          lineOffset: offsetMap.get(para.id) || 0,
         });
       });
       batchIndex++;
     }, 50);
 
     return () => clearInterval(timer);
-  }, [workerDispatchTick]);
+  }, [baseMetrics.maxPerLine, debouncedDocument]);
 
-  // charPositionsCache 合成（cacheComposeTick が変わるたびに実行）
+  // charPositionsCache 合成（cacheComposeTick または debouncedDocument が変わるたびに実行）
   useEffect(() => {
-    const doc = debouncedDocumentRef.current;
-    if (!doc || doc.length === 0) {
-      setCharPositionsCache({ positions: [], charArray: [], utf16ToCharIdx: new Map() });
-      return;
-    }
-
-    const allPositions = [];
-    const allCharArray = [];
-    const utf16ToCharIdx = new Map();
-    let utf16Offset = 0;
-    let lineOffset = 0;
-
-    doc.forEach((para, paraIdx) => {
-      const cached = paraPosCacheRef.current.get(para.id);
-      if (cached) {
-        cached.positions.forEach(pos => {
-          allPositions.push(pos == null ? null : { ...pos, line: pos.line + lineOffset });
-        });
-        cached.charArray.forEach(ch => {
-          allCharArray.push(ch);
-          const utf16Len = ch.codePointAt(0) > 0xFFFF ? 2 : 1;
-          for (let u = 0; u < utf16Len; u++) utf16ToCharIdx.set(utf16Offset + u, allCharArray.length - 1);
-          utf16Offset += utf16Len;
-        });
-        lineOffset += cached.totalLines;
-      } else {
-        const chars = [...para.text];
-        chars.forEach((ch, i) => {
-          const approxLine = lineOffset + Math.floor(i / (baseMetrics.maxPerLine || 20));
-          allPositions.push({ x: 0, y: 0, line: approxLine, col: i % (baseMetrics.maxPerLine || 20) });
-          allCharArray.push(ch);
-          const utf16Len = ch.codePointAt(0) > 0xFFFF ? 2 : 1;
-          for (let u = 0; u < utf16Len; u++) utf16ToCharIdx.set(utf16Offset + u, allCharArray.length - 1);
-          utf16Offset += utf16Len;
-        });
-        lineOffset += Math.ceil(para.text.length / (baseMetrics.maxPerLine || 20)) || 1;
+    const run = () => {
+      const doc = debouncedDocument;
+      if (!doc || doc.length === 0) {
+        setCharPositionsCache({ positions: [], charArray: [], utf16ToCharIdx: new Map() });
+        return;
       }
-      if (paraIdx < doc.length - 1) {
-        allCharArray.push('\n');
-        allPositions.push(null);
-        utf16ToCharIdx.set(utf16Offset, allCharArray.length - 1);
-        utf16Offset += 1;
-      }
-    });
 
-    setCharPositionsCache({ positions: allPositions, charArray: allCharArray, utf16ToCharIdx });
-  }, [cacheComposeTick, baseMetrics.maxPerLine]);
+      const cache = paraPosCache;
+      const maxPerLine = baseMetrics.maxPerLine || 20;
+
+      // maxPerLine が変わったら段落メモを破棄
+      if (composedSegCacheRef.current.maxPerLine !== maxPerLine) {
+        composedSegCacheRef.current = { map: new Map(), maxPerLine };
+      }
+      const segMap = composedSegCacheRef.current.map;
+
+      // 段落メモを paraPosCache の最新内容で増補する
+      const aliveIds = new Set();
+      for (let paraIdx = 0; paraIdx < doc.length; paraIdx++) {
+        const para = doc[paraIdx];
+        aliveIds.add(para.id);
+        const cached = cache.get(para.id);
+        if (!cached) continue;
+        const existing = segMap.get(para.id);
+        if (existing && existing.source === cached) continue;
+
+        const { positions, charArray, totalLines } = cached;
+        const utf16Lens = new Uint8Array(charArray.length);
+        for (let i = 0; i < charArray.length; i++) {
+          utf16Lens[i] = charArray[i].codePointAt(0) > 0xFFFF ? 2 : 1;
+        }
+        segMap.set(para.id, {
+          source: cached,
+          localPositions: positions,
+          charArray,
+          utf16Lens,
+          totalLines,
+        });
+      }
+
+      // 生きていない paraId のエントリを掃除
+      if (segMap.size > doc.length * 2) {
+        for (const id of segMap.keys()) {
+          if (!aliveIds.has(id)) segMap.delete(id);
+        }
+      }
+
+      const allPositions = [];
+      const allCharArray = [];
+      const utf16ToCharIdx = new Map();
+      let utf16Offset = 0;
+      let lineOffset = 0;
+
+      for (let paraIdx = 0; paraIdx < doc.length; paraIdx++) {
+        const para = doc[paraIdx];
+        const seg = segMap.get(para.id);
+
+        if (seg) {
+          const { localPositions, charArray, utf16Lens, totalLines } = seg;
+          const len = charArray.length;
+          for (let i = 0; i < len; i++) {
+            const p = localPositions[i];
+            allPositions.push(p == null ? null : { line: p.line + lineOffset, pos: p.pos });
+            allCharArray.push(charArray[i]);
+            const uLen = utf16Lens[i];
+            const charIdx = allCharArray.length - 1;
+            utf16ToCharIdx.set(utf16Offset, charIdx);
+            if (uLen === 2) utf16ToCharIdx.set(utf16Offset + 1, charIdx);
+            utf16Offset += uLen;
+          }
+          lineOffset += totalLines;
+        } else {
+          // 暫定表示
+          const chars = [...para.text];
+          for (let i = 0; i < chars.length; i++) {
+            const ch = chars[i];
+            const approxLine = lineOffset + Math.floor(i / maxPerLine);
+            const approxPos = i % maxPerLine;
+            allPositions.push({ line: approxLine, pos: approxPos });
+            allCharArray.push(ch);
+            const utf16Len = ch.codePointAt(0) > 0xFFFF ? 2 : 1;
+            const charIdx = allCharArray.length - 1;
+            utf16ToCharIdx.set(utf16Offset, charIdx);
+            if (utf16Len === 2) utf16ToCharIdx.set(utf16Offset + 1, charIdx);
+            utf16Offset += utf16Len;
+          }
+          lineOffset += Math.ceil(para.text.length / maxPerLine) || 1;
+        }
+
+        if (paraIdx < doc.length - 1) {
+          allCharArray.push('\n');
+          allPositions.push(null);
+          utf16ToCharIdx.set(utf16Offset, allCharArray.length - 1);
+          utf16Offset += 1;
+        }
+      }
+
+      setCharPositionsCache({ positions: allPositions, charArray: allCharArray, utf16ToCharIdx });
+    };
+
+    const timer = setTimeout(run, 40);
+    return () => clearTimeout(timer);
+  }, [paraPosCache, debouncedDocument, baseMetrics.maxPerLine]);
 
   // --- 2. アンダーレイ（座標マップ）の生成（デバウンス） ---
   // ★ 大規模テキスト（20000文字超≒原稿用紙100枚超）ではハイライトを自動停止
