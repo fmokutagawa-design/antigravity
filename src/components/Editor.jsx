@@ -462,6 +462,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       // 段落内のcharArrayをマージ
       cached.charArray.forEach((ch, i) => {
         // Worker がすでに lineOffset を加算した全文座標を返しているのでそのまま使う
+        const pos = cached.positions[i];
         allPositions.push(pos == null ? null : { line: pos.line, pos: pos.pos }); // Worker が lineOffset 加算済みなので再補正不要
         utf16ToCharIdx.set(utf16Offset, allCharArray.length);
         utf16Offset += ch.length;
