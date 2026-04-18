@@ -406,7 +406,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   // debouncedDocument（500ms 遅延）を監視し、キャッシュにない段落だけ Worker に投げる。
   const [debouncedDocument, setDebouncedDocument] = useState(localDocument);
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedDocument(localDocument), 300);
+    const timer = setTimeout(() => setDebouncedDocument(localDocument), 800);
     return () => clearTimeout(timer);
   }, [localDocument]);
 
@@ -415,33 +415,48 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       setParaPosCache(new Map());
       return;
     }
+    if (!workerRef.current) return;
 
-    const cache = paraPosCacheRef.current;
-    const uncached = debouncedDocument.filter(p => !cache.has(p.id));
-    // 先頭20段落だけ処理（残りは次のレンダリングサイクルで処理）
-    const batch = uncached.slice(0, 20);
+    // キャッシュにない段落のみ送信（setIntervalで間引く）
+    const uncached = debouncedDocument.filter(p => !paraPosCache.has(p.id));
+    if (uncached.length === 0) return;
+
+    // 送信間隔を設けてWorkerのキューを詰まらせない
+    const BATCH = 30; // 1回あたりの送信数
+    const INTERVAL = 50; // ms間隔
+
     let lineOffset = 0;
-    debouncedDocument.forEach((para) => {
-      if (cache.has(para.id)) {
-        lineOffset += cache.get(para.id).totalLines;
-      } else if (batch.includes(para)) {
-        if (workerRef.current) {
-          const reqId = (paraPosReqIdRef.current.get(para.id) || 0) + 1;
-          paraPosReqIdRef.current.set(para.id, reqId);
-          workerRef.current.postMessage({
-            type: 'para_positions',
-            id: reqId,
-            paraId: para.id,
-            text: para.text,
-            maxPerLine: baseMetrics.maxPerLine,
-            lineOffset,
-          });
-        }
-        lineOffset += 1;
-      } else {
-        lineOffset += cache.get(para.id)?.totalLines || 1;
-      }
+    // lineOffsetの初期計算（キャッシュ済みの分）
+    const offsetMap = new Map();
+    let runningOffset = 0;
+    debouncedDocument.forEach(para => {
+      offsetMap.set(para.id, runningOffset);
+      runningOffset += paraPosCache.get(para.id)?.totalLines || 1;
     });
+
+    let batchIndex = 0;
+    const timer = setInterval(() => {
+      const batch = uncached.slice(batchIndex * BATCH, (batchIndex + 1) * BATCH);
+      if (batch.length === 0) {
+        clearInterval(timer);
+        return;
+      }
+      batch.forEach(para => {
+        const reqId = (paraPosReqIdRef.current.get(para.id) || 0) + 1;
+        paraPosReqIdRef.current.set(para.id, reqId);
+        workerRef.current.postMessage({
+          type: 'para_positions',
+          id: reqId,
+          paraId: para.id,
+          text: para.text,
+          maxPerLine: baseMetrics.maxPerLine,
+          lineOffset: offsetMap.get(para.id) || 0,
+        });
+      });
+      batchIndex++;
+    }, INTERVAL);
+
+    return () => clearInterval(timer);
   }, [debouncedDocument, baseMetrics.maxPerLine]);
 
   // --- 段落キャッシュ → charPositionsCache への合成 ---
