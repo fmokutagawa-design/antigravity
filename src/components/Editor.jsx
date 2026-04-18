@@ -184,6 +184,39 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     }, 500);
   }, [onChange]);
 
+  /**
+   * 外部からの全文差し替え窓口（フェーズ1はまだ state ベース、
+   * フェーズ3で DOM 直接操作に変わる）。
+   *
+   * 不変条件:
+   *   - pending な debounce タイマーを全て clearTimeout する
+   *   - onChange は絶対に呼ばない（呼び出し元が明示的に呼ぶ）
+   *   - IME 変換中（isComposingRef.current）でも呼ばれる可能性があるが、
+   *     呼び出し側の責任で発火可否を判断する
+   */
+  const applyText = useCallback((newValue, cursorPos = null) => {
+    // 1. pending な debounce タイマーを全部破棄
+    if (appNotifyTimerRef.current) {
+      clearTimeout(appNotifyTimerRef.current);
+      appNotifyTimerRef.current = null;
+    }
+
+    // 2. documentModel を差分更新
+    const newDoc = updateDocument(
+      localDocumentRef.current,
+      newValue,
+      cursorPos ?? 0
+    );
+    setLocalDocument(newDoc);
+
+    // 3. カーソル位置を保存（useLayoutEffect で復元される）
+    if (cursorPos != null) {
+      nextCursorPos.current = cursorPos;
+    }
+
+    // 注: onChange は呼ばない（呼び出し側の責任）
+  }, []);
+
   const { initHistory, pushHistory, undo, redo, handleKeyDown: undoKeyDown, pendingCursor: pendingCursorRef, currentCursor: currentCursorRef } = useUndoHistory(localOnChange);
   // --- クリップボード履歴 ---
   const { clipboardHistory, addToClipboard } = useClipboardHistory();
@@ -1071,11 +1104,11 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         const after = textarea.value.substring(textarea.selectionEnd);
         const newValue = fromVerticalDisplay(before + after);
         pushHistory(localTextRef.current, newValue, cursorPos);
-        nextCursorPos.current = cursorPos;
-        localOnChange(newValue);
+        applyText(newValue, cursorPos);
+        appNotifyTimerRef.current = setTimeout(() => onChange(newValue), 500);
       }
     }
-  }, [localOnChange, settings.isVertical, addToClipboard, pushHistory]);
+  }, [applyText, settings.isVertical, addToClipboard, pushHistory, onChange]);
 
   // --- 4. ハンドラ ---
   const handleCursor = () => {
@@ -1261,11 +1294,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       const newValue = rawVal.substring(0, start) + text + rawVal.substring(end);
       const newCursor = start + splitString(text).length;
       pushHistory(localTextRef.current, newValue, newCursor);
-      nextCursorPos.current = newCursor;
-      const newDoc = updateDocument(localDocumentRef.current, newValue, newCursor);
-      setLocalDocument(newDoc);
-      if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
-      appNotifyTimerRef.current = setTimeout(() => onChange(documentToText(newDoc)), 500);
+      applyText(newValue, newCursor);
+      appNotifyTimerRef.current = setTimeout(() => onChange(newValue), 500);
     },
     pasteFromHistory: (text) => {
       const ta = textareaRef.current;
@@ -1277,12 +1307,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       const newValue = rawVal.substring(0, start) + text + rawVal.substring(end);
       const newCursor = start + text.length;
       pushHistory(localTextRef.current, newValue, newCursor);
-      nextCursorPos.current = newCursor;
-      // ★ localOnChange（全文再構築）→ 差分更新
-      const newDoc = updateDocument(localDocumentRef.current, newValue, newCursor);
-      setLocalDocument(newDoc);
-      if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
-      appNotifyTimerRef.current = setTimeout(() => onChange(documentToText(newDoc)), 500);
+      applyText(newValue, newCursor);
+      appNotifyTimerRef.current = setTimeout(() => onChange(newValue), 500);
     },
     insertRuby: () => {
       const ta = textareaRef.current;
@@ -1298,12 +1324,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       const newValue = rawValue.substring(0, start) + insertion + rawValue.substring(end);
       const newCursor = start + (selectedText ? selectedText.length + 1 : 1);
       pushHistory(localTextRef.current, newValue, newCursor);
-      nextCursorPos.current = newCursor;
-      // ★ localOnChange（全文再構築）→ 差分更新
-      const newDoc = updateDocument(localDocumentRef.current, newValue, newCursor);
-      setLocalDocument(newDoc);
-      if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
-      appNotifyTimerRef.current = setTimeout(() => onChange(documentToText(newDoc)), 500);
+      applyText(newValue, newCursor);
+      appNotifyTimerRef.current = setTimeout(() => onChange(newValue), 500);
       // useLayoutEffect だけでは縦書き時に復元されないことがあるため、明示的にフォーカス
       setTimeout(() => {
         const pos = start + (selectedText ? selectedText.length + 1 : 1);
@@ -1473,12 +1495,13 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         // 前後が改行されていない場合は改行で挟むなどの調整が可能（今回はシンプルに改行挟み）
         const insertion = `\n［＃挿絵（${fileName}）入る］\n`;
         const newValue = localText.substring(0, pos) + insertion + localText.substring(pos);
+        const newCursor = pos + insertion.length;
         pushHistory(localText, newValue, pos);
-        nextCursorPos.current = pos + insertion.length;
-        localOnChange(newValue);
+        applyText(newValue, newCursor);
+        appNotifyTimerRef.current = setTimeout(() => onChange(newValue), 500);
       }
     }
-  }, [localText, localOnChange, pushHistory, onImageDrop]);
+  }, [localText, applyText, pushHistory, onImageDrop, onChange]);
 
   return (
     <div lang="ja" className={`editor-container ${settings.isVertical ? 'vertical' : 'horizontal'} ${paperClass}`}>
@@ -1556,11 +1579,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
               const newValue = val.slice(0, start) + ghostText + val.slice(start);
               const newCursor = start + ghostText.length;
               pushHistory(localTextRef.current, newValue, newCursor);
-              nextCursorPos.current = newCursor;
-              const newDoc = updateDocument(localDocumentRef.current, newValue, newCursor);
-              setLocalDocument(newDoc);
-              if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
-              appNotifyTimerRef.current = setTimeout(() => onChange(documentToText(newDoc)), 500);
+              applyText(newValue, newCursor);
+              appNotifyTimerRef.current = setTimeout(() => onChange(newValue), 500);
               setGhostText('');
               return;
             }
@@ -1666,9 +1686,10 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
                       const selected = rawValue.substring(start, end);
                       const wrapped = `{font:${f.name}}${selected}{/font}`;
                       const newValue = rawValue.substring(0, start) + wrapped + rawValue.substring(end);
+                      const newCursor = start + wrapped.length;
                       pushHistory(localText, newValue, start);
-                      nextCursorPos.current = start + wrapped.length;
-                      localOnChange(newValue);
+                      applyText(newValue, newCursor);
+                      appNotifyTimerRef.current = setTimeout(() => onChange(newValue), 500);
                       setEditorContextMenu(null);
                     }}>
                       {f.label}
@@ -1685,9 +1706,10 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
                     // Remove font tags from selection
                     const cleaned = selected.replace(/\{font[:：][^}]*\}/g, '').replace(/\{\/font\}/g, '');
                     const newValue = rawValue.substring(0, start) + cleaned + rawValue.substring(end);
+                    const newCursor = start + cleaned.length;
                     pushHistory(localText, newValue, start);
-                    nextCursorPos.current = start + cleaned.length;
-                    localOnChange(newValue);
+                    applyText(newValue, newCursor);
+                    appNotifyTimerRef.current = setTimeout(() => onChange(newValue), 500);
                     setEditorContextMenu(null);
                   }}>
                     ❌ フォント解除
@@ -1708,7 +1730,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
                   const after = ta.value.substring(ta.selectionEnd);
                   const newValue = settings.isVertical ? fromVerticalDisplay(before + after) : (before + after);
                   pushHistory(localText, newValue, cursorPos);
-                  localOnChange(newValue);
+                  applyText(newValue, cursorPos);
+                  appNotifyTimerRef.current = setTimeout(() => onChange(newValue), 500);
                 }
                 setEditorContextMenu(null);
               }}>
@@ -1740,9 +1763,10 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
               const currentVal = ta.value;
               const rawVal = settings.isVertical ? fromVerticalDisplay(currentVal) : currentVal;
               const newValue = rawVal.substring(0, start) + text + rawVal.substring(end);
+              const newCursor = start + text.length;
               pushHistory(localText, newValue, start);
-              nextCursorPos.current = start + text.length;
-              localOnChange(newValue);
+              applyText(newValue, newCursor);
+              appNotifyTimerRef.current = setTimeout(() => onChange(newValue), 500);
               addToClipboard(text);
               requestAnimationFrame(() => {
                 ta.focus();
