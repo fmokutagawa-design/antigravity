@@ -458,11 +458,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       setCharPositionsCache({ positions: [], charArray: [], utf16ToCharIdx: new Map() });
       return;
     }
-    // 全段落揃っているか確認
-    const allCached = debouncedDocument.every(p => paraPosCache.has(p.id));
-    if (!allCached) return; // 未完了なら前の状態を維持
 
-    // 段落キャッシュを全文座標に再組み立て
     const allPositions = [];
     const allCharArray = [];
     const utf16ToCharIdx = new Map();
@@ -471,28 +467,51 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
 
     debouncedDocument.forEach((para, paraIdx) => {
       const cached = paraPosCache.get(para.id);
-      // 段落内のcharArrayをマージ
-      cached.charArray.forEach((ch, i) => {
-        // Worker がすでに lineOffset を加算した全文座標を返しているのでそのまま使う
-        const pos = cached.positions[i];
-        allPositions.push(pos == null ? null : { line: pos.line, pos: pos.pos }); // Worker が lineOffset 加算済みなので再補正不要
-        utf16ToCharIdx.set(utf16Offset, allCharArray.length);
-        utf16Offset += ch.length;
-        allCharArray.push(ch);
-      });
-      lineOffset += cached.totalLines;
 
-      // 段落区切りの \n（最終段落以外）
+      if (cached) {
+        // キャッシュあり：正確な座標を使う
+        cached.positions.forEach(pos => {
+          allPositions.push(pos == null ? null : {
+            ...pos,
+            line: pos.line + lineOffset,
+          });
+        });
+        cached.charArray.forEach((ch, i) => {
+          allCharArray.push(ch);
+          const utf16Len = ch.codePointAt(0) > 0xFFFF ? 2 : 1;
+          for (let u = 0; u < utf16Len; u++) {
+            utf16ToCharIdx.set(utf16Offset + u, allCharArray.length - 1);
+          }
+          utf16Offset += utf16Len;
+        });
+        lineOffset += cached.totalLines;
+      } else {
+        // キャッシュなし：1文字ずつ概算座標を生成
+        const chars = [...para.text];
+        chars.forEach((ch, i) => {
+          const approxLine = lineOffset + Math.floor(i / (baseMetrics.maxPerLine || 20));
+          allPositions.push({ x: 0, y: 0, line: approxLine, col: i % (baseMetrics.maxPerLine || 20) });
+          allCharArray.push(ch);
+          const utf16Len = ch.codePointAt(0) > 0xFFFF ? 2 : 1;
+          for (let u = 0; u < utf16Len; u++) {
+            utf16ToCharIdx.set(utf16Offset + u, allCharArray.length - 1);
+          }
+          utf16Offset += utf16Len;
+        });
+        lineOffset += Math.ceil(para.text.length / (baseMetrics.maxPerLine || 20)) || 1;
+      }
+
+      // 段落間の改行文字
       if (paraIdx < debouncedDocument.length - 1) {
-        allPositions.push(null); // \n は null
-        utf16ToCharIdx.set(utf16Offset, allCharArray.length);
-        utf16Offset += 1;
         allCharArray.push('\n');
+        allPositions.push(null); // 改行文字の座標は null
+        utf16ToCharIdx.set(utf16Offset, allCharArray.length - 1);
+        utf16Offset += 1;
       }
     });
 
     setCharPositionsCache({ positions: allPositions, charArray: allCharArray, utf16ToCharIdx });
-  }, [paraPosCache, debouncedDocument]);
+  }, [paraPosCache, debouncedDocument, baseMetrics.maxPerLine]);
 
   // --- 2. アンダーレイ（座標マップ）の生成（デバウンス） ---
   // ★ 大規模テキスト（20000文字超≒原稿用紙100枚超）ではハイライトを自動停止
