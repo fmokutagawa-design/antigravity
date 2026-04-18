@@ -353,6 +353,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     workerRef.current = worker;
     worker.onmessage = (e) => {
       const { type, id } = e.data;
+      if (type === 'lineCount') {
+        // lineCount は現在使用していないため無視
       } else if (type === 'positions' && id === positionsReqIdRef.current) {
         // 全文モード（フォールバック・互換）
         const { positions, charArray, utf16ToCharIdxEntries, totalLines } = e.data;
