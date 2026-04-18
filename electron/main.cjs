@@ -177,13 +177,16 @@ ipcMain.handle('fs:readFileBinary', async (event, filePath) => {
 });
 
 // Write File Content (Text)
+// ★ 非同期版を使う。同期 writeFileSync はメインプロセスをブロックし、
+//    大規模ファイル（42万字＝UTF-8で約1MB）を毎秒保存するとIPCキューが
+//    詰まりレンダラがフリーズする。
 ipcMain.handle('fs:writeFile', async (event, filePath, content) => {
-    return fs.writeFileSync(filePath, content, 'utf-8');
+    return fs.promises.writeFile(filePath, content, 'utf-8');
 });
 
 // Write File Content (Binary)
 ipcMain.handle('fs:writeFileBinary', async (event, filePath, buffer) => {
-    return fs.writeFileSync(filePath, Buffer.from(buffer));
+    return fs.promises.writeFile(filePath, Buffer.from(buffer));
 });
 
 // Create Folder

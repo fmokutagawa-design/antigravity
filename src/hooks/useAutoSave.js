@@ -22,8 +22,13 @@ export function useAutoSave({
 }) {
   // Auto-save to active file in project mode
   // ★ debouncedText は Editor(500ms) + App(500ms) で既に約1秒遅延済み
-  //    さらに setTimeout(1000) を挟むと最大2秒の遅延になるため、
-  //    スロットル方式に変更: debouncedText 変更で即保存、ただし前回から1秒未満ならスキップ
+  //    さらに setTimeout を挟んで節電する。
+  //    スロットル方式: debouncedText 変更で即保存、ただし前回から規定時間未満ならスキップ
+  //
+  //    旧仕様は 1 秒スロットルだったが、42万字クラスのファイルだと
+  //    IPC 経由の writeFile 自体が数百ms〜数秒かかり、打鍵のたびに
+  //    IPC キューが詰まってメインスレッドが長時間ブロックされる。
+  //    このため「十分な休憩」を与える長いスロットルに変更する。
   const lastSaveTimeRef = useRef(0);
   useEffect(() => {
     if (!isProjectMode || !activeFileHandle || debouncedText === undefined) return;
@@ -32,10 +37,14 @@ export function useAutoSave({
     // ★ 同一内容なら保存しない（無駄な I/O 回避）
     if (debouncedText === lastSavedTextRef.current) return;
 
-    // ★ 追加のセーフティガード: 保存する内容が、直前にファイルからロードされた内容と極端に乖離していないか？
-    // もし前回ロード時から1文字も変更されていないはずなのに、debouncedText が異なる場合は、
-    // それは前のファイルの内容が残っている可能性が高い。
-    // (App.jsxの handleOpenFile で debouncedText も更新するようになったため、通常はここはスキップされる)
+    // ★ ファイルサイズに応じてスロットルを変える。
+    //    大きいファイルは I/O コストが高く、またクラッシュ復旧も手動で再読込すれば済む。
+    //    10万字超: 10秒、20万字超: 20秒、それ以外: 5秒
+    const len = debouncedText.length;
+    let throttleMs;
+    if (len > 200000) throttleMs = 20000;
+    else if (len > 100000) throttleMs = 10000;
+    else throttleMs = 5000;
 
     const now = Date.now();
     const elapsed = now - lastSaveTimeRef.current;
@@ -44,8 +53,6 @@ export function useAutoSave({
       // 保存直前にもう一度ハンドルを確認（非同期の間に切り替わっていないか）
       const currentHandle = activeFileHandle;
       try {
-        // 安全ガード: ハンドルが切り替わっていたら保存しない（前ファイルの内容を上書きしない）
-        // 文字数での判定は大量削除・章分割時に保存を拒否する危険があるため廃止。
         if (currentHandle !== activeFileHandle) {
           console.warn('自動保存をブロック: ファイルハンドルが切り替わっている');
           return;
@@ -61,12 +68,12 @@ export function useAutoSave({
       }
     };
 
-    if (elapsed >= 1000) {
-      // 前回保存から1秒以上経過 → 即保存
+    if (elapsed >= throttleMs) {
+      // 前回保存から規定時間経過 → 即保存
       doSave();
     } else {
-      // 前回保存から1秒未満 → 残り時間後に保存
-      const timer = setTimeout(doSave, 1000 - elapsed);
+      // 前回保存から規定時間未満 → 残り時間後に保存
+      const timer = setTimeout(doSave, throttleMs - elapsed);
       return () => clearTimeout(timer);
     }
   }, [debouncedText, isProjectMode, activeFileHandle, setLastSaved, lastSavedTextRef, showToast]);

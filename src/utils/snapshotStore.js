@@ -38,7 +38,17 @@ function writeList(filePath, list) {
     }
 }
 
+// ★ snapshot は localStorage に 全文 × 最大50世代 を保存する。
+//    42万字 × 50世代 = 最大21MB、しかも localStorage は同期 API。
+//    JSON.stringify → setItem の間、メインスレッドがブロックされる。
+//    大規模テキストではスキップする。
+const SNAPSHOT_CHAR_LIMIT = 100000;
+
 export async function saveSnapshot(filePath, content, charCount) {
+    if (content && content.length > SNAPSHOT_CHAR_LIMIT) {
+        // 大規模テキストは localStorage に載せない
+        return;
+    }
     const list = readList(filePath);
     list.push({
         id: Date.now(),
