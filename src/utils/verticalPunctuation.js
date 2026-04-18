@@ -40,6 +40,8 @@ for (const [h, v] of Object.entries(VERTICAL_MAP)) {
 // 早期判定用の test 正規表現（g フラグ無し）。
 // replace は対象文字が無くても全文走査して返り値の新文字列を作るが、
 // test は最初のマッチで停止でき、大規模テキストで大幅に軽い。
+const toVerticalRegex = new RegExp(Object.keys(VERTICAL_MAP).join('|'), 'g');
+const toHorizontalRegex = new RegExp(Object.keys(HORIZONTAL_MAP).join('|'), 'g');
 const toVerticalTest = new RegExp(`[${Object.keys(VERTICAL_MAP).join('')}]`);
 const toHorizontalTest = new RegExp(`[${Object.keys(HORIZONTAL_MAP).join('')}]`);
 
