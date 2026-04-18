@@ -325,6 +325,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   // ★ 文書モデル化：段落ごとの座標キャッシュ（paraId → { positions, charArray, utf16ToCharIdx }）
   // 変更された段落だけ Worker に投げて更新し、変わっていない段落は再計算しない。
   const [paraPosCache, setParaPosCache] = useState(new Map());
+  const paraPosCacheRef = useRef(paraPosCache);
+  useEffect(() => { paraPosCacheRef.current = paraPosCache; }, [paraPosCache]);
   const paraPosReqIdRef = useRef(new Map()); // paraId → 最新リクエスト id
 
   // Worker の初期化（マウント時に一度だけ）
@@ -414,13 +416,14 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       return;
     }
 
-    const uncached = debouncedDocument.filter(p => !paraPosCache.has(p.id));
+    const cache = paraPosCacheRef.current;
+    const uncached = debouncedDocument.filter(p => !cache.has(p.id));
     // 先頭20段落だけ処理（残りは次のレンダリングサイクルで処理）
     const batch = uncached.slice(0, 20);
     let lineOffset = 0;
     debouncedDocument.forEach((para) => {
-      if (paraPosCache.has(para.id)) {
-        lineOffset += paraPosCache.get(para.id).totalLines;
+      if (cache.has(para.id)) {
+        lineOffset += cache.get(para.id).totalLines;
       } else if (batch.includes(para)) {
         if (workerRef.current) {
           const reqId = (paraPosReqIdRef.current.get(para.id) || 0) + 1;
@@ -436,10 +439,10 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         }
         lineOffset += 1;
       } else {
-        lineOffset += paraPosCache.get(para.id)?.totalLines || 1;
+        lineOffset += cache.get(para.id)?.totalLines || 1;
       }
     });
-  }, [debouncedDocument, baseMetrics.maxPerLine, paraPosCache]);
+  }, [debouncedDocument, baseMetrics.maxPerLine]);
 
   // --- 段落キャッシュ → charPositionsCache への合成 ---
   // 全段落のキャッシュが揃ったら、全文の charPositionsCache を組み立てる。
