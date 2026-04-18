@@ -40,6 +40,8 @@ for (const [h, v] of Object.entries(VERTICAL_MAP)) {
 // 正規表現をキャッシュ（パフォーマンス用）
 const toVerticalRegex = new RegExp(`[${Object.keys(VERTICAL_MAP).join('')}]`, 'g');
 const toHorizontalRegex = new RegExp(`[${Object.keys(HORIZONTAL_MAP).join('')}]`, 'g');
+const toVerticalTest = new RegExp(`[${Object.keys(VERTICAL_MAP).join('')}]`);
+const toHorizontalTest = new RegExp(`[${Object.keys(HORIZONTAL_MAP).join('')}]`);
 
 /**
  * 表示用: 横書き約物 → 縦書き専用字形に変換
@@ -48,6 +50,7 @@ const toHorizontalRegex = new RegExp(`[${Object.keys(HORIZONTAL_MAP).join('')}]`
  */
 export function toVerticalDisplay(text) {
     if (!ENABLED || !text) return text;
+    if (!toVerticalTest.test(text)) return text;
     return text.replace(toVerticalRegex, (ch) => VERTICAL_MAP[ch] || ch);
 }
 
@@ -58,5 +61,6 @@ export function toVerticalDisplay(text) {
  */
 export function fromVerticalDisplay(text) {
     if (!ENABLED || !text) return text;
+    if (!toHorizontalTest.test(text)) return text;
     return text.replace(toHorizontalRegex, (ch) => HORIZONTAL_MAP[ch] || ch);
 }
