@@ -322,6 +322,9 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     return () => clearTimeout(timer);
   }, [localDocument]);
 
+  const debouncedDocumentRef = useRef(debouncedDocument);
+  useEffect(() => { debouncedDocumentRef.current = debouncedDocument; }, [debouncedDocument]);
+
   // ★ 文書モデル化：段落ごとの座標キャッシュ（paraId → { positions, charArray, utf16ToCharIdx }）
   // 変更された段落だけ Worker に投げて更新し、変わっていない段落は再計算しない。
   const [paraPosCache, setParaPosCache] = useState(new Map());
@@ -402,14 +405,15 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
 
 
   useEffect(() => {
-    if (!debouncedDocument || debouncedDocument.length === 0) {
+    const doc = debouncedDocumentRef.current;
+    if (!doc || doc.length === 0) {
       setParaPosCache(new Map());
       return;
     }
     if (!workerRef.current) return;
 
     // キャッシュにない段落のみ送信（setIntervalで間引く）
-    const uncached = debouncedDocument.filter(p => !paraPosCache.has(p.id));
+    const uncached = doc.filter(p => !paraPosCache.has(p.id));
     if (uncached.length === 0) return;
 
     // 送信間隔を設けてWorkerのキューを詰まらせない
@@ -420,13 +424,14 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     // lineOffsetの初期計算（キャッシュ済みの分）
     const offsetMap = new Map();
     let runningOffset = 0;
-    debouncedDocument.forEach(para => {
+    doc.forEach(para => {
       offsetMap.set(para.id, runningOffset);
       runningOffset += paraPosCache.get(para.id)?.totalLines || 1;
     });
 
     let batchIndex = 0;
     const timer = setInterval(() => {
+      const currentDoc = debouncedDocumentRef.current;
       const batch = uncached.slice(batchIndex * BATCH, (batchIndex + 1) * BATCH);
       if (batch.length === 0) {
         clearInterval(timer);
@@ -448,13 +453,14 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     }, INTERVAL);
 
     return () => clearInterval(timer);
-  }, [debouncedDocument, baseMetrics.maxPerLine]);
+  }, [baseMetrics.maxPerLine]);
 
   // --- 段落キャッシュ → charPositionsCache への合成 ---
   // 全段落のキャッシュが揃ったら、全文の charPositionsCache を組み立てる。
   // 1段落でも未キャッシュがある場合は前の状態を維持（チラつき防止）。
   useEffect(() => {
-    if (!debouncedDocument || debouncedDocument.length === 0) {
+    const doc = debouncedDocumentRef.current;
+    if (!doc || doc.length === 0) {
       setCharPositionsCache({ positions: [], charArray: [], utf16ToCharIdx: new Map() });
       return;
     }
@@ -465,7 +471,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     let utf16Offset = 0;
     let lineOffset = 0;
 
-    debouncedDocument.forEach((para, paraIdx) => {
+    doc.forEach((para, paraIdx) => {
       const cached = paraPosCache.get(para.id);
 
       if (cached) {
@@ -502,7 +508,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       }
 
       // 段落間の改行文字
-      if (paraIdx < debouncedDocument.length - 1) {
+      if (paraIdx < doc.length - 1) {
         allCharArray.push('\n');
         allPositions.push(null); // 改行文字の座標は null
         utf16ToCharIdx.set(utf16Offset, allCharArray.length - 1);
@@ -511,7 +517,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     });
 
     setCharPositionsCache({ positions: allPositions, charArray: allCharArray, utf16ToCharIdx });
-  }, [paraPosCache, debouncedDocument, baseMetrics.maxPerLine]);
+  }, [paraPosCache, baseMetrics.maxPerLine]);
 
   // --- 2. アンダーレイ（座標マップ）の生成（デバウンス） ---
   // ★ 大規模テキスト（20000文字超≒原稿用紙100枚超）ではハイライトを自動停止
