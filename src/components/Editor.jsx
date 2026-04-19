@@ -150,6 +150,13 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   const appNotifyTimerRef = useRef(null);
   const debouncedDocTimerRef = useRef(null);
 
+  // ★ 外部からの value 変更（フォーマット適用・AI補完・検索置換等）を同期
+  const prevValueRef2 = useRef(value);
+  useEffect(() => {
+    const prev = prevValueRef2.current;
+    prevValueRef2.current = value;
+    if (value === localTextRef.current) return;
+    if (value === prev) return;
     // ファイル切替等の外部変更 → applyText で DOM を更新（onChange は呼ばない）
     applyText(value);
   }, [value, applyText]);
