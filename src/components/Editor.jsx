@@ -150,12 +150,15 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   //    localText は localDocument から派生する読み取り専用の値。
   //    外部（App.jsx）とのインターフェースは従来どおり文字列のまま変わらない。
   const [localDocument, setLocalDocument] = useState(() => textToDocument(value));
-  const localText = useMemo(() => documentToText(localDocument), [localDocument]);
   const appNotifyTimerRef = useRef(null);
-  const localTextRef = useRef(localText); // ★ composition ハンドラ用（deps から localText を除外するため）
-  localTextRef.current = localText;
   const localDocumentRef = useRef(localDocument); // ★ handleChange 内で最新の localDocument を参照するため
   localDocumentRef.current = localDocument;
+
+  // --- v3 Ref 移行: localText は state ではなく Ref で一元管理 ---
+  const localTextRef = useRef(documentToText(localDocumentRef.current));
+  useEffect(() => {
+    localTextRef.current = documentToText(localDocument);
+  }, [localDocument]);
 
   // ★ 外部からの value 変更（フォーマット適用・AI補完・検索置換等）を同期
   //    Editor → App → Editor の往復で value が debounce 遅延つきで戻ってくるため、
@@ -295,7 +298,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     positionsReqIdRef.current += 1;
     lineCountReqIdRef.current += 1;
     setCharPositionsCache({ positions: [], charArray: [], utf16ToCharIdx: new Map() });
-    setDebouncedValue(value);
+    // setDebouncedValue(value) -> debouncedDocument 側で処理されるため削除
   }, [fileId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ファイル切替・縦横切替時の初期スクロール（文頭＝縦書き右端へ）
@@ -329,20 +332,17 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   //    ブラウザ・React の両方を破綻させるため、highlights を諦めて
   //    打鍵だけを軽くする方針。
   const MASSIVE_TEXT_THRESHOLD = 100000;
-  const isMassiveText = localText.length > MASSIVE_TEXT_THRESHOLD;
+  const isMassiveText = useMemo(() => {
+    const len = localDocument.reduce((acc, p) => acc + p.text.length, 0);
+    return len > MASSIVE_TEXT_THRESHOLD;
+  }, [localDocument]);
   const isMassiveTextRef = useRef(isMassiveText);
-  isMassiveTextRef.current = isMassiveText;
+  useEffect(() => { isMassiveTextRef.current = isMassiveText; }, [isMassiveText]);
 
-  const [debouncedValue, setDebouncedValue] = useState(localText);
-  const debouncePrevLenRef = useRef(localText.length);
-
-  useEffect(() => {
-    // 大規模時は debouncedValue を更新しない（消費側が使わないため）
-    if (isMassiveTextRef.current) return;
-    debouncePrevLenRef.current = localText.length;
-    const timer = setTimeout(() => setDebouncedValue(localText), 300);
-    return () => clearTimeout(timer);
-  }, [localText]);
+  // debouncedValue state は廃止し、debouncedDocument から派生する memo に変更
+  const debouncedText = useMemo(() => documentToText(debouncedDocument), [debouncedDocument]);
+  const debouncePrevLenRef = useRef(debouncedText.length);
+  useEffect(() => { debouncePrevLenRef.current = debouncedText.length; }, [debouncedText]);
 
   // --- 1a. ベース寸法（設定のみ依存、valueに依存しない） ---
   const baseMetrics = useMemo(() => {
@@ -437,22 +437,24 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     if (!debouncedDocument || debouncedDocument.length === 0) return 10;
     // 大規模テキスト: paraPosCache を作らないので文字数÷行幅で概算する
     if (isMassiveText) {
+      const textLen = localTextRef.current.length;
       const approx = baseMetrics.maxPerLine > 0
-        ? Math.ceil(localText.length / baseMetrics.maxPerLine)
+        ? Math.ceil(textLen / baseMetrics.maxPerLine)
         : 10;
       return Math.max(approx, 10);
     }
     const cached = [...paraPosCache.values()];
     if (cached.length === 0) {
       // キャッシュが空：文字数÷1行文字数で概算
+      const textLen = localTextRef.current.length;
       const approx = baseMetrics.maxPerLine > 0
-        ? Math.ceil(localText.length / baseMetrics.maxPerLine)
+        ? Math.ceil(textLen / baseMetrics.maxPerLine)
         : 10;
       return Math.max(approx, 10);
     }
     const total = cached.reduce((sum, p) => sum + (p.totalLines || 1), 0);
     return Math.max(total, 10);
-  }, [debouncedDocument, paraPosCache, baseMetrics.maxPerLine, localText, isMassiveText]);
+  }, [debouncedDocument, paraPosCache, baseMetrics.maxPerLine, isMassiveText]);
 
   const [charPositionsCache, setCharPositionsCache] = useState(
     () => ({ positions: [], charArray: [], utf16ToCharIdx: new Map() })
@@ -719,18 +721,18 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       perfMeasure('Editor.highlights', t0, { kind: 'skipped (disabled)' });
       return [];
     }
-    if (!debouncedValue) {
+    if (!debouncedText) {
       perfMeasure('Editor.highlights', t0, { kind: 'skipped (empty)' });
       return [];
     }
-    if (debouncedValue.length > HIGHLIGHT_CHAR_LIMIT) {
-      perfMeasure('Editor.highlights', t0, { kind: 'skipped (massive)', len: debouncedValue.length });
+    if (debouncedText.length > HIGHLIGHT_CHAR_LIMIT) {
+      perfMeasure('Editor.highlights', t0, { kind: 'skipped (massive)', len: debouncedText.length });
       return [];
     }
     const { cell } = baseMetrics;
     const { positions, utf16ToCharIdx } = charPositionsCache;
     const isVert = settings.isVertical;
-
+ 
     const patterns = [
       { type: 'link',         regex: /\[\[.*?\]\]|［［.*?］］/g, color: settings.syntaxColors?.link || '#2980b9' },
       { type: 'emphasis',     regex: /『.*?』/g,                  color: settings.syntaxColors?.emphasis || '#c0392b' },
@@ -740,14 +742,14 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       { type: 'font',         regex: /\{font[:：].*?\}|\{\/font\}/g, color: settings.syntaxColors?.aozora || '#8e44ad' },
       { type: 'bold',         regex: /\*\*.*?\*\*/g,             color: settings.syntaxColors?.emphasis || '#c0392b' },
     ];
-
+ 
     const list = [];
     patterns.forEach(({ type, regex, color, isConversation }) => {
       let match;
-      while ((match = regex.exec(debouncedValue)) !== null) {
+      while ((match = regex.exec(debouncedText)) !== null) {
         const matchStart = match.index;
         const matchEnd = match.index + match[0].length;
-        const visualStart = utf16ToCharIdx.get(matchStart) ?? splitString(debouncedValue.substring(0, matchStart)).length;
+        const visualStart = utf16ToCharIdx.get(matchStart) ?? splitString(debouncedText.substring(0, matchStart)).length;
         const visualLen = splitString(match[0]).length;
         for (let i = 0; i < visualLen; i++) {
           const p = positions[visualStart + i];
@@ -760,9 +762,9 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         }
       }
     });
-    perfMeasure('Editor.highlights', t0, { count: list.length, len: debouncedValue.length });
+    perfMeasure('Editor.highlights', t0, { count: list.length, len: debouncedText.length });
     return list;
-  }, [charPositionsCache, debouncedValue, baseMetrics, settings.isVertical, settings.syntaxColors, settings.editorSyntaxColors]);
+  }, [charPositionsCache, debouncedText, baseMetrics, settings.isVertical, settings.syntaxColors, settings.editorSyntaxColors]);
 
   // --- 3a. ゴーストテキスト座標計算 ---
   const ghostHighlights = useMemo(() => {
@@ -806,31 +808,31 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   // --- 3b. 校正ハイライト座標計算（デバウンス + キャッシュ共有） ---
   const correctionHighlights = useMemo(() => {
     const t0 = perfNow();
-    if (!corrections || corrections.length === 0 || !debouncedValue) {
+    if (!corrections || corrections.length === 0 || !debouncedText) {
       perfMeasure('Editor.correctionHighlights', t0, { kind: 'skipped' });
       return [];
     }
-
+ 
     const { charArray, positions } = charPositionsCache;
     const { cell } = baseMetrics;
-
+ 
     const list = [];
-
+ 
     corrections.forEach(corr => {
       if (!corr.original) return;
       let searchIndex = 0;
-      let index = debouncedValue.indexOf(corr.original, searchIndex);
-
+      let index = debouncedText.indexOf(corr.original, searchIndex);
+ 
       while (index !== -1) {
         const len = splitString(corr.original).length;
         // ★ splitString(preStr) は index 文字分の Array.from → utf16ToCharIdx でゼロコスト化
-        const startCharIdx = utf16ToCharIdx.get(index) ?? splitString(debouncedValue.slice(0, index)).length;
-
+        const startCharIdx = utf16ToCharIdx.get(index) ?? splitString(debouncedText.slice(0, index)).length;
+ 
         for (let i = 0; i < len; i++) {
           const p = positions[startCharIdx + i];
           if (p) {
-            const x = settings.isVertical ? -p.line * cell : (p.pos * cell);
-            const y = settings.isVertical ? (pos * cell) : (line * cell);
+            const x = isVert ? -p.line * cell : (p.pos * cell);
+            const y = isVert ? (p.pos * cell) : (p.line * cell);
             list.push({
               corrId: corr.id, matchIndex: index, charOffset: i,
               x, y,
@@ -842,10 +844,10 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         break;
       }
     });
-
+ 
     perfMeasure('Editor.correctionHighlights', t0, { count: list.length });
     return list;
-  }, [debouncedValue, corrections, charPositionsCache, baseMetrics, settings.isVertical]);
+  }, [debouncedText, corrections, charPositionsCache, baseMetrics, settings.isVertical]);
 
 
 
@@ -857,14 +859,15 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   const displayParaCacheRef = useRef(new Map()); // paraId -> { text, displayText }
   const displayValue = useMemo(() => {
     const t0 = perfNow();
+    const currentText = localTextRef.current;
 
     if (!settings.isVertical) {
       perfMeasure('Editor.displayValue', t0, {
         vertical: false,
         paraCount: localDocument.length,
-        textLength: localText.length,
+        textLength: currentText.length,
       });
-      return localText;
+      return currentText;
     }
 
     const cache = displayParaCacheRef.current;
@@ -894,11 +897,11 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     perfMeasure('Editor.displayValue', t0, {
       vertical: true,
       paraCount: localDocument.length,
-      textLength: localText.length,
+      textLength: currentText.length,
       outLength: out.length,
     });
     return out;
-  }, [localDocument, localText, settings.isVertical]);
+  }, [localDocument, settings.isVertical]);
 
   const handleChange = useCallback((e) => {
     const t0 = perfNow();
@@ -1116,7 +1119,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       onCursorStats({
         start: textareaRef.current.selectionStart,
         end: textareaRef.current.selectionEnd,
-        total: localText.length
+        total: localTextRef.current.length
       });
     }
   };
@@ -1242,7 +1245,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     }
 
     const { maxPerLine, cell, padding } = baseMetrics;
-    const text = settings.isVertical ? toVerticalDisplay(localText) : localText;
+    const currentText = localTextRef.current;
+    const text = settings.isVertical ? toVerticalDisplay(currentText) : currentText;
 
     let line = 0;
     let pos = 0;
@@ -1492,16 +1496,17 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         // カーソル位置に挿絵記法を挿入
         const ta = textareaRef.current;
         const pos = ta.selectionStart;
+        const currentText = localTextRef.current;
         // 前後が改行されていない場合は改行で挟むなどの調整が可能（今回はシンプルに改行挟み）
         const insertion = `\n［＃挿絵（${fileName}）入る］\n`;
-        const newValue = localText.substring(0, pos) + insertion + localText.substring(pos);
+        const newValue = currentText.substring(0, pos) + insertion + currentText.substring(pos);
         const newCursor = pos + insertion.length;
-        pushHistory(localText, newValue, pos);
+        pushHistory(currentText, newValue, pos);
         applyText(newValue, newCursor);
         appNotifyTimerRef.current = setTimeout(() => onChange(newValue), 500);
       }
     }
-  }, [localText, applyText, pushHistory, onImageDrop, onChange]);
+  }, [applyText, pushHistory, onImageDrop, onChange]);
 
   return (
     <div lang="ja" className={`editor-container ${settings.isVertical ? 'vertical' : 'horizontal'} ${paperClass}`}>
@@ -1687,7 +1692,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
                       const wrapped = `{font:${f.name}}${selected}{/font}`;
                       const newValue = rawValue.substring(0, start) + wrapped + rawValue.substring(end);
                       const newCursor = start + wrapped.length;
-                      pushHistory(localText, newValue, start);
+                      pushHistory(localTextRef.current, newValue, start);
                       applyText(newValue, newCursor);
                       appNotifyTimerRef.current = setTimeout(() => onChange(newValue), 500);
                       setEditorContextMenu(null);
