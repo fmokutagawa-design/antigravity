@@ -208,15 +208,6 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   //      3. 直近 ECHO_SUPPRESS_MS 以内に打鍵があった（App 側で serializeNote 等により
   //         微小に変わった値が返ってくる可能性 — その間は打鍵優先）
   //    ファイル切替は [fileId] の useEffect が別途扱う。
-  // ★ 外部からの value 変更（フォーマット適用・AI補完・検索置換等）への同期
-  //    注意：打鍵 → Editor内で localTextRef 更新 → onChange(restored) → App側 setText
-  //    → App debouncedText → editorValue が更新 → ここに戻ってくる という往復がある。
-  //    この往復でtextareaを書き換えるとカーソルが飛ぶので、次の条件で全部無視する：
-  //      1. value === localTextRef.current（完全一致＝単なるエコー）
-  //      2. value === prev（変化なし）
-  //      3. 直近 ECHO_SUPPRESS_MS 以内に打鍵があった（App 側で serializeNote 等により
-  //         微小に変わった値が返ってくる可能性 — その間は打鍵優先）
-  //    ファイル切替は [fileId] の useEffect が別途扱う。
   const prevValueRef2 = useRef(value);
   useEffect(() => {
     const prev = prevValueRef2.current;
