@@ -204,7 +204,15 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       appNotifyTimerRef.current = null;
     }
 
-    // 2. documentModel を差分更新
+    // 2. DOM を直接書き換え（Uncontrolled 化の核心）
+    if (textareaRef.current) {
+      const displayVal = settings.isVertical 
+        ? toVerticalDisplay(newValue) 
+        : newValue;
+      textareaRef.current.value = displayVal;
+    }
+
+    // 3. documentModel を差分更新（内部状態の同期）
     const newDoc = updateDocument(
       localDocumentRef.current,
       newValue,
@@ -212,13 +220,19 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     );
     setLocalDocument(newDoc);
 
-    // 3. カーソル位置を保存（useLayoutEffect で復元される）
+    // 4. カーソル位置を保存
     if (cursorPos != null) {
       nextCursorPos.current = cursorPos;
+      // selection を強制適用（React の再レンダリングを待たずに適用）
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          textareaRef.current.setSelectionRange(cursorPos, cursorPos);
+        }
+      });
     }
 
     // 注: onChange は呼ばない（呼び出し側の責任）
-  }, []);
+  }, [settings.isVertical]);
 
   const { initHistory, pushHistory, undo, redo, handleKeyDown: undoKeyDown, pendingCursor: pendingCursorRef, currentCursor: currentCursorRef } = useUndoHistory(localOnChange);
   // --- クリップボード履歴 ---
@@ -903,6 +917,14 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     return out;
   }, [localDocument, settings.isVertical]);
 
+  // ★ displayValue が変わった時（外部由来の更新やファイル切替）に DOM を強制同期
+  //    defaultValue の初期化だけでは不十分なケースをカバーする
+  useLayoutEffect(() => {
+    if (textareaRef.current && textareaRef.current.value !== displayValue) {
+      textareaRef.current.value = displayValue;
+    }
+  }, [displayValue]);
+
   const handleChange = useCallback((e) => {
     const t0 = perfNow();
     const ta = e.target;
@@ -1565,7 +1587,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         lang="ja"
         ref={textareaRef}
         className={`native-grid-editor ${paperClass}`}
-        value={displayValue}
+        defaultValue={displayValue}
         onChange={handleChange}
         onCompositionStart={handleCompositionStart}
         onCompositionEnd={handleCompositionEnd}
