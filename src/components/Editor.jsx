@@ -150,6 +150,12 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   const appNotifyTimerRef = useRef(null);
   const debouncedDocTimerRef = useRef(null);
 
+  // ★ エコー抑制: 直近打鍵の時刻を記録する。打鍵直後は value prop の
+  //    外部変更ハンドラをスキップする（往復自己エコーでカーソルが飛ぶのを防ぐ）。
+  //    ユーザーが最後に打鍵してから ECHO_SUPPRESS_MS だけは外部 value を無視する。
+  const lastLocalMutationTsRef = useRef(0);
+  const ECHO_SUPPRESS_MS = 1500;
+
   const scheduleDebouncedDocumentUpdate = useCallback((newDoc) => {
     if (debouncedDocTimerRef.current) clearTimeout(debouncedDocTimerRef.current);
     debouncedDocTimerRef.current = setTimeout(() => {
@@ -158,18 +164,9 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     }, 800);
   }, []);
 
-  // ★ 外部からの value 変更（フォーマット適用・AI補完・検索置換等）
-  //    (ファイル切替処理は [fileId] の useEffect で別途行うため、ここでは localTextRef との整合のみチェック)
-  const prevValueRef2 = useRef(value);
-  useEffect(() => {
-    const prev = prevValueRef2.current;
-    prevValueRef2.current = value;
-    if (value === localTextRef.current) return;
-    if (value === prev) return;
-    // 外部からの強制書換（AI補完等）
-    applyText(value);
-  }, [value, applyText]);
-
+  // ★ applyText: 外部からのテキスト差し替え窓口（DOM 直接操作）
+  //    呼び出し元の責任: onChange は applyText の外で明示的に呼ぶこと
+  //    IME 変換中は何もしない（バッファ破壊防止）
   const applyText = useCallback((newValue, cursorPos = null) => {
     const ta = textareaRef.current;
     if (!ta) return;
@@ -185,7 +182,10 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     }
 
     const displayed = settings.isVertical ? toVerticalDisplay(newValue) : newValue;
-    ta.value = displayed;
+    // 同一内容なら DOM を書き換えない（カーソル保持）
+    if (ta.value !== displayed) {
+      ta.value = displayed;
+    }
 
     if (cursorPos != null) {
       ta.setSelectionRange(cursorPos, cursorPos);
@@ -194,9 +194,43 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     const newDoc = updateDocument(localDocumentRef.current, newValue, cursorPos ?? 0);
     localDocumentRef.current = newDoc;
     localTextRef.current = newValue;
+    lastLocalMutationTsRef.current = Date.now();
 
     scheduleDebouncedDocumentUpdate(newDoc);
   }, [settings.isVertical, scheduleDebouncedDocumentUpdate]);
+
+  // ★ 外部からの value 変更（フォーマット適用・AI補完・検索置換等）への同期
+  //    注意：打鍵 → Editor内で localTextRef 更新 → onChange(restored) → App側 setText
+  //    → App debouncedText → editorValue が更新 → ここに戻ってくる という往復がある。
+  //    この往復でtextareaを書き換えるとカーソルが飛ぶので、次の条件で全部無視する：
+  //      1. value === localTextRef.current（完全一致＝単なるエコー）
+  //      2. value === prev（変化なし）
+  //      3. 直近 ECHO_SUPPRESS_MS 以内に打鍵があった（App 側で serializeNote 等により
+  //         微小に変わった値が返ってくる可能性 — その間は打鍵優先）
+  //    ファイル切替は [fileId] の useEffect が別途扱う。
+  // ★ 外部からの value 変更（フォーマット適用・AI補完・検索置換等）への同期
+  //    注意：打鍵 → Editor内で localTextRef 更新 → onChange(restored) → App側 setText
+  //    → App debouncedText → editorValue が更新 → ここに戻ってくる という往復がある。
+  //    この往復でtextareaを書き換えるとカーソルが飛ぶので、次の条件で全部無視する：
+  //      1. value === localTextRef.current（完全一致＝単なるエコー）
+  //      2. value === prev（変化なし）
+  //      3. 直近 ECHO_SUPPRESS_MS 以内に打鍵があった（App 側で serializeNote 等により
+  //         微小に変わった値が返ってくる可能性 — その間は打鍵優先）
+  //    ファイル切替は [fileId] の useEffect が別途扱う。
+  const prevValueRef2 = useRef(value);
+  useEffect(() => {
+    const prev = prevValueRef2.current;
+    prevValueRef2.current = value;
+    if (value === localTextRef.current) return;
+    if (value === prev) return;
+    // IME変換中は絶対に外部書換しない（applyText 側でもガードするが、ここで即弾く）
+    if (isComposingRef.current) return;
+    // 直近打鍵中ならエコーとみなし無視
+    const sinceLastMutation = Date.now() - lastLocalMutationTsRef.current;
+    if (sinceLastMutation < ECHO_SUPPRESS_MS) return;
+    // value と localTextRef が本当に食い違っている（＝外部からの強制書換）
+    applyText(value);
+  }, [value, applyText]);
 
   // Undo/Redo 用のコールバック（applyText + onChange）
   const undoRedoCallbackRef = useRef(null);
@@ -241,6 +275,10 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
     if (debouncedDocTimerRef.current) clearTimeout(debouncedDocTimerRef.current);
     nextCursorPos.current = null;
+
+    // value useEffect の二重発動防止と、古いエコー抑制の引き継ぎ防止
+    prevValueRef2.current = value;
+    lastLocalMutationTsRef.current = 0;
   }, [fileId]);
 
   // React再レンダリング直後にカーソル位置を復元（useLayoutEffectでペイント前に実行）
@@ -861,6 +899,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
 
     localDocumentRef.current = newDoc;
     localTextRef.current = restored;
+    lastLocalMutationTsRef.current = Date.now();
 
     if (!isComposingRef.current) {
       pushHistory(prevText, restored, cursorPos);
@@ -891,6 +930,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
 
     localDocumentRef.current = newDoc;
     localTextRef.current = restored;
+    lastLocalMutationTsRef.current = Date.now();
 
     pushHistory(beforeComposition, restored, cursorPos);
     if (currentCursorRef) currentCursorRef.current = cursorPos;
@@ -1551,7 +1591,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
                     const cleaned = selected.replace(/\{font[:：][^}]*\}/g, '').replace(/\{\/font\}/g, '');
                     const newValue = rawValue.substring(0, start) + cleaned + rawValue.substring(end);
                     const newCursor = start + cleaned.length;
-                    pushHistory(localText, newValue, start);
+                    pushHistory(localTextRef.current, newValue, start);
                     applyText(newValue, newCursor);
                     appNotifyTimerRef.current = setTimeout(() => onChange(newValue), 500);
                     setEditorContextMenu(null);
@@ -1573,7 +1613,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
                   const before = ta.value.substring(0, cursorPos);
                   const after = ta.value.substring(ta.selectionEnd);
                   const newValue = settings.isVertical ? fromVerticalDisplay(before + after) : (before + after);
-                  pushHistory(localText, newValue, cursorPos);
+                  pushHistory(localTextRef.current, newValue, cursorPos);
                   applyText(newValue, cursorPos);
                   appNotifyTimerRef.current = setTimeout(() => onChange(newValue), 500);
                 }
@@ -1608,7 +1648,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
               const rawVal = settings.isVertical ? fromVerticalDisplay(currentVal) : currentVal;
               const newValue = rawVal.substring(0, start) + text + rawVal.substring(end);
               const newCursor = start + text.length;
-              pushHistory(localText, newValue, start);
+              pushHistory(localTextRef.current, newValue, start);
               applyText(newValue, newCursor);
               appNotifyTimerRef.current = setTimeout(() => onChange(newValue), 500);
               addToClipboard(text);
