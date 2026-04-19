@@ -228,6 +228,25 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     // 直近打鍵中ならエコーとみなし無視
     const sinceLastMutation = Date.now() - lastLocalMutationTsRef.current;
     if (sinceLastMutation < ECHO_SUPPRESS_MS) return;
+    // ★ fuzzy エコー判定：App.jsx の serializeNote/parseNote ラウンドトリップは
+    //    本文末尾に余分な改行や METADATA ブロック、メタデータ名前行(＃ ...)が
+    //    付着する既知バグがあるため、完全一致にならない。
+    //    local = value の先頭 prefix なら、差分は末尾に追加されただけ＝エコー扱い。
+    const local = localTextRef.current;
+    if (local && value.length >= local.length && value.startsWith(local)) {
+      const tail = value.slice(local.length);
+      // 許容されるテイルパターン（1つでも当てはまればエコー扱い）：
+      //   a) 空白・改行のみ
+      //   b) METADATA Sentinelタグを含む
+      //   c) 空白・改行の後に # or ＃ で始まる行 + 任意の続きのみ
+      //      （parseNoteが name header "＃ xxx" を body に誤混入する既知バグへの対処）
+      const isWhitespaceOnly = /^\s*$/.test(tail);
+      const containsMetadata = /[［\[]\s*\/?\s*METADATA\s*[］\]]/.test(tail);
+      const isMetaNameTail = /^\s*[#＃][^\n]*\n?$/.test(tail);
+      if (isWhitespaceOnly || containsMetadata || isMetaNameTail) {
+        return;
+      }
+    }
     // value と localTextRef が本当に食い違っている（＝外部からの強制書換）
     applyText(value);
   }, [value, applyText]);
@@ -886,7 +905,6 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
 
 
   // --- 3. 約物フィルター (縦書き時のみ — メモ化でローカルテキストベース) ---
-  const displayParaCacheRef = useRef(new Map()); // paraId -> { text, displayText }
 
   const handleChange = useCallback((e) => {
     const ta = e.target;
