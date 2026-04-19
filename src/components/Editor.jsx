@@ -143,115 +143,84 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   const compositionTextRef = useRef(null); // composition 開始前のテキストを保持
 
   // ★ パフォーマンス根治: ローカルテキスト状態
-  // タイピング時は localDocument のみ更新（Editor 内部の再レンダリングだけ）
-  // App への通知（onChange）は 500ms デバウンスで行い、App の再レンダリングを回避
-  //
-  // ★ 文書モデル化：内部では段落配列（localDocument）を正として保持する。
-  //    localText は localDocument から派生する読み取り専用の値。
-  //    外部（App.jsx）とのインターフェースは従来どおり文字列のまま変わらない。
-  const [localDocument, setLocalDocument] = useState(() => textToDocument(value));
+  // 文書モデル化：内部では段落配列（localDocumentRef.current）を正として保持する。
+  const localDocumentRef = useRef(textToDocument(value));
+  const localTextRef = useRef(value);
+
   const appNotifyTimerRef = useRef(null);
-  const localDocumentRef = useRef(localDocument); // ★ handleChange 内で最新の localDocument を参照するため
-  localDocumentRef.current = localDocument;
+  const debouncedDocTimerRef = useRef(null);
 
-  // --- v3 Ref 移行: localText は state ではなく Ref で一元管理 ---
-  const localTextRef = useRef(documentToText(localDocumentRef.current));
-  useEffect(() => {
-    localTextRef.current = documentToText(localDocument);
-  }, [localDocument]);
+    // ファイル切替等の外部変更 → applyText で DOM を更新（onChange は呼ばない）
+    applyText(value);
+  }, [value, applyText]);
 
-  // ★ 外部からの value 変更（フォーマット適用・AI補完・検索置換等）を同期
-  //    Editor → App → Editor の往復で value が debounce 遅延つきで戻ってくるため、
-  //    localText と value が一致している場合は何もしない（カーソル位置を守る）。
-  //    ファイル切替は fileId の useEffect で処理するため、ここでは扱わない。
-  const prevValueRef2 = useRef(value);
-  useEffect(() => {
-    const prev = prevValueRef2.current;
-    prevValueRef2.current = value;
-    // localText と value が既に一致していれば往復なので無視
-    if (value === localTextRef.current) return;
-    // prev と value が同じであれば変化なし
-    if (value === prev) return;
-    // 外部から意図的に書き換えられた → 確実に反映する
-    setLocalDocument(textToDocument(value));
-  }, [value]);
+  // localOnChange は handleChange と等価な処理を snippet に基づき統合するため削除
 
-  // --- Undo/Redo スタック ---
-  const localOnChange = useCallback((newText) => {
-    // ローカル状態を即座に更新（文書モデルとして保持）
-    setLocalDocument(textToDocument(newText));
-    // App への通知はデバウンス（500ms）
-    if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
-    appNotifyTimerRef.current = setTimeout(() => {
-      onChange(newText);
-    }, 500);
-  }, [onChange]);
-
-  /**
-   * 外部からの全文差し替え窓口（フェーズ1はまだ state ベース、
-   * フェーズ3で DOM 直接操作に変わる）。
-   *
-   * 不変条件:
-   *   - pending な debounce タイマーを全て clearTimeout する
-   *   - onChange は絶対に呼ばない（呼び出し元が明示的に呼ぶ）
-   *   - IME 変換中（isComposingRef.current）でも呼ばれる可能性があるが、
-   *     呼び出し側の責任で発火可否を判断する
-   */
   const applyText = useCallback((newValue, cursorPos = null) => {
-    // 1. pending な debounce タイマーを全部破棄
+    const ta = textareaRef.current;
+    if (!ta) return;
+    if (isComposingRef.current) return;
+
     if (appNotifyTimerRef.current) {
       clearTimeout(appNotifyTimerRef.current);
       appNotifyTimerRef.current = null;
     }
-
-    // 2. DOM を直接書き換え（Uncontrolled 化の核心）
-    if (textareaRef.current) {
-      const displayVal = settings.isVertical 
-        ? toVerticalDisplay(newValue) 
-        : newValue;
-      textareaRef.current.value = displayVal;
+    if (debouncedDocTimerRef.current) {
+      clearTimeout(debouncedDocTimerRef.current);
+      debouncedDocTimerRef.current = null;
     }
 
-    // 3. documentModel を差分更新（内部状態の同期）
-    const newDoc = updateDocument(
-      localDocumentRef.current,
-      newValue,
-      cursorPos ?? 0
-    );
-    setLocalDocument(newDoc);
+    const displayed = settings.isVertical ? toVerticalDisplay(newValue) : newValue;
+    ta.value = displayed;
+    if (cursorPos != null) ta.setSelectionRange(cursorPos, cursorPos);
 
-    // 4. カーソル位置を保存
-    if (cursorPos != null) {
-      nextCursorPos.current = cursorPos;
-      // selection を強制適用（React の再レンダリングを待たずに適用）
-      requestAnimationFrame(() => {
-        if (textareaRef.current) {
-          textareaRef.current.setSelectionRange(cursorPos, cursorPos);
-        }
-      });
-    }
+    const newDoc = updateDocument(localDocumentRef.current, newValue, cursorPos ?? 0);
+    localDocumentRef.current = newDoc;
+    localTextRef.current = newValue;
 
-    // 注: onChange は呼ばない（呼び出し側の責任）
+    debouncedDocTimerRef.current = setTimeout(() => {
+      setDebouncedDocument(newDoc);
+      debouncedDocTimerRef.current = null;
+    }, 800);
   }, [settings.isVertical]);
 
-  const { initHistory, pushHistory, undo, redo, handleKeyDown: undoKeyDown, pendingCursor: pendingCursorRef, currentCursor: currentCursorRef } = useUndoHistory(localOnChange);
+  // Undo/Redo 用のコールバック（applyText + onChange）
+  const undoRedoCallbackRef = useRef(null);
+  const undoRedoCallback = useCallback((newText) => {
+    if (undoRedoCallbackRef.current) undoRedoCallbackRef.current(newText);
+  }, []);
+
+  const { initHistory, pushHistory, undo, redo, handleKeyDown: undoKeyDown, pendingCursor: pendingCursorRef, currentCursor: currentCursorRef } = useUndoHistory(undoRedoCallback);
+
+  undoRedoCallbackRef.current = (newText) => {
+    const pos = (pendingCursorRef && pendingCursorRef.current) || null;
+    if (pendingCursorRef) pendingCursorRef.current = null;
+    applyText(newText, pos);
+    onChange(newText); // Undo/Redo 結果を App に即時通知
+  };
   // --- クリップボード履歴 ---
   const { clipboardHistory, addToClipboard } = useClipboardHistory();
 
-  // カーソル位置を追跡するref（全てのonChange呼び出しで更新）
   const nextCursorPos = useRef(null);
 
+  // 初回マウント/ファイル切替時のみ計算する defaultValue 用の値
+  const initialDisplayValue = useMemo(() => {
+    return settings.isVertical ? toVerticalDisplay(value) : value;
+  }, [fileId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ファイル切替時: localText・undo履歴・debounce タイマーを確実にリセット
-  // value ではなく fileId を監視することで「編集中の往復」と「ファイル切替」を明確に分離する
   useEffect(() => {
-    // App から渡された最新テキストで localDocument を強制上書き
-    setLocalDocument(textToDocument(value));
-    // undo/redo 履歴を新ファイルで初期化（前ファイルの履歴混入を防ぐ）
+    // App から渡された最新テキストで内部モデルを強制上書き
+    localDocumentRef.current = textToDocument(value);
+    localTextRef.current = value;
+    // undo/redo 履歴を新ファイルで初期化
     initHistory(value);
-    // 進行中の App 通知タイマーをキャンセル（前ファイルの内容を App に送らない）
+    // 進行中のタイマーをキャンセル
     if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
-    // カーソル位置リセット
-    nextCursorPos.current = null;
+    if (debouncedDocTimerRef.current) clearTimeout(debouncedDocTimerRef.current);
+    // ハイライト即時同期
+    setDebouncedDocument(localDocumentRef.current);
+    debouncePrevLenRef.current = value.length;
   }, [fileId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // React再レンダリング直後にカーソル位置を復元（useLayoutEffectでペイント前に実行）
@@ -347,9 +316,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   //    打鍵だけを軽くする方針。
   const MASSIVE_TEXT_THRESHOLD = 100000;
   const isMassiveText = useMemo(() => {
-    const len = localDocument.reduce((acc, p) => acc + p.text.length, 0);
-    return len > MASSIVE_TEXT_THRESHOLD;
-  }, [localDocument]);
+    return debouncedDocument.reduce((acc, p) => acc + p.text.length, 0) > MASSIVE_TEXT_THRESHOLD;
+  }, [debouncedDocument]);
   const isMassiveTextRef = useRef(isMassiveText);
   useEffect(() => { isMassiveTextRef.current = isMassiveText; }, [isMassiveText]);
 
@@ -389,12 +357,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   const lineCountReqIdRef = useRef(0);
   const positionsReqIdRef = useRef(0);
 
-  // debouncedDocument（800ms 遅延）を監視
-  const [debouncedDocument, setDebouncedDocument] = useState(localDocument);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedDocument(localDocument), 800);
-    return () => clearTimeout(timer);
-  }, [localDocument]);
+  // debouncedDocument を監視
+  const [debouncedDocument, setDebouncedDocument] = useState(() => localDocumentRef.current);
 
   const debouncedDocumentRef = useRef(debouncedDocument);
   useEffect(() => { debouncedDocumentRef.current = debouncedDocument; }, [debouncedDocument]);
@@ -871,219 +835,66 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   //    打鍵で変わる段落は通常 1 つだけなので、段落ごとに変換結果をキャッシュし、
   //    id と text が同じ段落は使い回す。
   const displayParaCacheRef = useRef(new Map()); // paraId -> { text, displayText }
-  const displayValue = useMemo(() => {
-    const t0 = perfNow();
-    const currentText = localTextRef.current;
-
-    if (!settings.isVertical) {
-      perfMeasure('Editor.displayValue', t0, {
-        vertical: false,
-        paraCount: localDocument.length,
-        textLength: currentText.length,
-      });
-      return currentText;
-    }
-
-    const cache = displayParaCacheRef.current;
-    const parts = new Array(localDocument.length);
-    for (let i = 0; i < localDocument.length; i++) {
-      const para = localDocument[i];
-      const cached = cache.get(para.id);
-      if (cached && cached.text === para.text) {
-        parts[i] = cached.displayText;
-      } else {
-        const paraT0 = perfNow();
-        const displayText = toVerticalDisplay(para.text);
-        perfMeasure('Editor.displayValue.toVerticalDisplay.singlePara', paraT0, {
-          paraId: para.id,
-          paraLen: para.text.length,
-        });
-        cache.set(para.id, { text: para.text, displayText });
-        parts[i] = displayText;
-      }
-    }
-    // 生きていない paraId の掃除
-    if (cache.size > localDocument.length * 2) {
-      const alive = new Set(localDocument.map(p => p.id));
-      for (const id of cache.keys()) if (!alive.has(id)) cache.delete(id);
-    }
-    const out = parts.join('\n');
-    perfMeasure('Editor.displayValue', t0, {
-      vertical: true,
-      paraCount: localDocument.length,
-      textLength: currentText.length,
-      outLength: out.length,
-    });
-    return out;
-  }, [localDocument, settings.isVertical]);
-
-  // ★ displayValue が変わった時（外部由来の更新やファイル切替）に DOM を強制同期
-  //    defaultValue の初期化だけでは不十分なケースをカバーする
-  useLayoutEffect(() => {
-    if (textareaRef.current && textareaRef.current.value !== displayValue) {
-      textareaRef.current.value = displayValue;
-    }
-  }, [displayValue]);
 
   const handleChange = useCallback((e) => {
-    const t0 = perfNow();
     const ta = e.target;
     const raw = ta.value;
-
-    const restoreT0 = perfNow();
     const restored = settings.isVertical ? fromVerticalDisplay(raw) : raw;
-    perfMeasure('Editor.handleChange.restoreDisplay', restoreT0, {
-      rawLength: raw.length,
-      restoredLength: restored.length,
-      vertical: settings.isVertical,
-    });
-
     const cursorPos = ta.selectionStart;
 
-    if (isComposingRef.current) {
-      const docT0 = perfNow();
-      const newDoc = updateDocument(localDocumentRef.current, restored, cursorPos);
-      perfMeasure('Editor.handleChange.composing.updateDocument', docT0, {
-        cursorPos,
-        prevParas: localDocumentRef.current.length,
-        nextParas: newDoc.length,
-        textLength: restored.length,
-      });
+    const prevText = localTextRef.current;
+    const newDoc = updateDocument(localDocumentRef.current, restored, cursorPos);
 
-      const setDocT0 = perfNow();
-      setLocalDocument(newDoc);
-      perfMeasure('Editor.handleChange.composing.setLocalDocument', setDocT0, {
-        nextParas: newDoc.length,
-      });
+    localDocumentRef.current = newDoc;
+    localTextRef.current = restored;
 
-      perfMeasure('Editor.handleChange.composing.total', t0, {
-        cursorPos,
-        textLength: restored.length,
-      });
-      return;
+    if (!isComposingRef.current) {
+      pushHistory(prevText, restored, cursorPos);
+      if (currentCursorRef) currentCursorRef.current = cursorPos;
     }
 
-    const docT0 = perfNow();
-    const newDoc = updateDocument(localDocumentRef.current, restored, cursorPos);
-    perfMeasure('Editor.handleChange.updateDocument', docT0, {
-      cursorPos,
-      prevParas: localDocumentRef.current.length,
-      nextParas: newDoc.length,
-      textLength: restored.length,
-    });
-
-    const toTextT0 = perfNow();
-    const newText = documentToText(newDoc);
-    perfMeasure('Editor.handleChange.documentToText', toTextT0, {
-      nextParas: newDoc.length,
-      textLength: newText.length,
-    });
-
-    const historyT0 = perfNow();
-    pushHistory(localTextRef.current, newText, cursorPos);
-    perfMeasure('Editor.handleChange.pushHistory', historyT0, {
-      cursorPos,
-    });
-
-    if (currentCursorRef) currentCursorRef.current = cursorPos;
-    nextCursorPos.current = cursorPos;
-
-    const setDocT0 = perfNow();
-    setLocalDocument(newDoc);
-    perfMeasure('Editor.handleChange.setLocalDocument', setDocT0, {
-      nextParas: newDoc.length,
-    });
-
-    const timerT0 = perfNow();
     if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
-    appNotifyTimerRef.current = setTimeout(() => {
-      const notifyT0 = perfNow();
-      onChange(newText);
-      perfMeasure('Editor.handleChange.debouncedOnChange', notifyT0, {
-        textLength: newText.length,
-      });
-    }, 500);
-    perfMeasure('Editor.handleChange.scheduleOnChange', timerT0, {
-      textLength: newText.length,
-    });
+    appNotifyTimerRef.current = setTimeout(() => onChange(restored), 500);
 
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        perfLog('Editor.handleChange.afterDoubleRAF', {
-          textLength: newText.length,
-          cursorPos,
-        });
-      });
-    });
-
-    perfMeasure('Editor.handleChange.total', t0, {
-      cursorPos,
-      textLength: newText.length,
-      paraCount: newDoc.length,
-    });
+    if (debouncedDocTimerRef.current) clearTimeout(debouncedDocTimerRef.current);
+    debouncedDocTimerRef.current = setTimeout(() => {
+      setDebouncedDocument(newDoc);
+      debouncedDocTimerRef.current = null;
+    }, 800);
   }, [settings.isVertical, pushHistory, currentCursorRef, onChange]);
 
-  // ★ IME composition ハンドラ
-  // localTextRef 経由で参照することで、useCallback の deps から localText を除外
-  // → キー入力ごとのコールバック再生成を回避
   const handleCompositionStart = useCallback(() => {
     isComposingRef.current = true;
     compositionTextRef.current = localTextRef.current;
   }, []);
 
   const handleCompositionEnd = useCallback((e) => {
-    const t0 = perfNow();
-    isComposingRef.current = false;
-    // composition 終了時に最終テキストを確定
     const ta = e.target;
     const raw = ta.value;
-
-    const restoreT0 = perfNow();
     const restored = settings.isVertical ? fromVerticalDisplay(raw) : raw;
-    perfMeasure('Editor.handleCompositionEnd.restoreDisplay', restoreT0, {
-      rawLength: raw.length,
-      restoredLength: restored.length,
-      vertical: settings.isVertical,
-    });
-
     const cursorPos = ta.selectionStart;
-    // 変換開始前のテキストから undo 履歴を記録（中間状態は記録しない）
-    const beforeComposition = compositionTextRef.current ?? localTextRef.current;
-    
-    const historyT0 = perfNow();
-    pushHistory(beforeComposition, restored, cursorPos);
-    perfMeasure('Editor.handleCompositionEnd.pushHistory', historyT0, { cursorPos });
 
-    if (currentCursorRef) currentCursorRef.current = cursorPos;
-    nextCursorPos.current = cursorPos;
+    isComposingRef.current = false;
     
-    const docT0 = perfNow();
+    // モデル更新
     const newDoc = updateDocument(localDocumentRef.current, restored, cursorPos);
-    perfMeasure('Editor.handleCompositionEnd.updateDocument', docT0, {
-      prevParas: localDocumentRef.current.length,
-      nextParas: newDoc.length,
-    });
-
-    const setDocT0 = perfNow();
-    setLocalDocument(newDoc);
-    perfMeasure('Editor.handleCompositionEnd.setLocalDocument', setDocT0, {
-      nextParas: newDoc.length,
-    });
-
-    const timerT0 = perfNow();
+    localDocumentRef.current = newDoc;
+    localTextRef.current = restored;
+    
+    // 履歴と外部への通知
+    pushHistory(compositionTextRef.current, restored, cursorPos);
+    
     if (appNotifyTimerRef.current) clearTimeout(appNotifyTimerRef.current);
-    const finalFullText = documentToText(newDoc);
-    appNotifyTimerRef.current = setTimeout(() => onChange(finalFullText), 500);
-    perfMeasure('Editor.handleCompositionEnd.scheduleOnChange', timerT0, {
-      textLength: finalFullText.length,
-    });
+    appNotifyTimerRef.current = setTimeout(() => onChange(restored), 500);
+
+    if (debouncedDocTimerRef.current) clearTimeout(debouncedDocTimerRef.current);
+    debouncedDocTimerRef.current = setTimeout(() => {
+      setDebouncedDocument(newDoc);
+      debouncedDocTimerRef.current = null;
+    }, 800);
 
     compositionTextRef.current = null;
-    perfMeasure('Editor.handleCompositionEnd.total', t0, {
-      cursorPos,
-      textLength: finalFullText.length,
-    });
-  }, [settings.isVertical, pushHistory, currentCursorRef, onChange]);
+  }, [settings.isVertical, pushHistory, onChange]);
 
   const handleCopy = useCallback((e) => {
     const textarea = textareaRef.current;
@@ -1298,7 +1109,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       const targetScrollTop = Math.max(0, caretY - viewCenter);
       container.scrollTop = targetScrollTop;
     }
-  }, [localText, settings.isVertical, settings.paperStyle, baseMetrics]);
+  }, [localTextRef, settings.isVertical, settings.paperStyle, baseMetrics]);
 
   useImperativeHandle(ref, () => ({
     focus: () => textareaRef.current?.focus(),
@@ -1587,7 +1398,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
         lang="ja"
         ref={textareaRef}
         className={`native-grid-editor ${paperClass}`}
-        defaultValue={displayValue}
+        defaultValue={initialDisplayValue}
         onChange={handleChange}
         onCompositionStart={handleCompositionStart}
         onCompositionEnd={handleCompositionEnd}

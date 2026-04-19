@@ -1,16 +1,13 @@
-# タスクリスト: Editor.jsx Uncontrolled 化 v3 (Phase 0)
+# タスクリスト: Editor.jsx Uncontrolled 化 v3 (Phase 1)
 
-- [ ] **1. ブランチ作成と初期状態の整理**
-    - [ ] `perf/compose-batch-fix` から `feature/uncontrolled-editor-v3` を作成
-    - [ ] 現状の計測ログ（Performance Probe）をコミット
-- [ ] **2. オートセーブ設定の確認**
-    - [ ] `src/hooks/useAutoSave.js` の `AUTO_SAVE_DISABLED` を確認・修正
-- [ ] **3. テスト用フィクスチャの作成**
-    - [ ] `/test_fixtures/` ディレクトリ作成
-    - [ ] `tiny.txt` (1,000字) 作成
-    - [ ] `medium.txt` (50,000字) 作成
-    - [ ] `large.txt` (150,000字) 作成
-    - [ ] `huge.txt` (420,000字) 作成
-- [ ] **4. 動作確認と完了報告**
+- [ ] **1. Editor.jsx への applyText 導入**
+    - [ ] `applyText` 関数の定義追加
+- [ ] **2. 既存メソッドの書き換え (applyText 経由)**
+    - [ ] `insertText` / `pasteFromHistory` / `insertRuby`
+    - [ ] `handleDrop` (画像挿絵)
+    - [ ] `onKeyDown` (Ghost Text Tab 確定)
+    - [ ] `handleCut` (切り取り)
+    - [ ] 右クリックコンテキストメニュー（フォント変更、フォント解除、切り取り、貼り付け）
+- [ ] **3. 動作確認と完了報告**
     - [ ] `npm run build` によるビルド確認
-    - [ ] `git log --oneline -3` の出力
+    - [ ] 手動検証（入力、Undo/Redo、ルビ、AI挿入）
