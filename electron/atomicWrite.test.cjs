@@ -13,6 +13,7 @@ const {
     atomicWriteBinaryFile,
     validateTextPayload,
     classifyShrink,
+    cleanupOrphanedTempFiles,
     ValidationError,
 } = require('./atomicWrite.cjs');
 
@@ -255,6 +256,135 @@ async function testValidateHelper() {
     expect('null char rejected', threw?.code === 'V-4');
 }
 
+// --- tests for cleanupOrphanedTempFiles ---
+
+async function testCleanupRemovesOldTempFiles() {
+    console.log('testCleanupRemovesOldTempFiles');
+    await withTempDir(async (dir) => {
+        const tmpFile = path.join(dir, '.foo.tmp.12345.1700000000000.abc123');
+        fs.writeFileSync(tmpFile, 'stale');
+        // mtime を 2 時間前に設定
+        const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+        fs.utimesSync(tmpFile, twoHoursAgo, twoHoursAgo);
+
+        const removed = await cleanupOrphanedTempFiles(dir);
+        expect('removed 1 file', removed === 1);
+        expect('file is gone', !fs.existsSync(tmpFile));
+    });
+}
+
+async function testCleanupKeepsRecentTempFiles() {
+    console.log('testCleanupKeepsRecentTempFiles');
+    await withTempDir(async (dir) => {
+        const tmpFile = path.join(dir, '.foo.tmp.12345.1700000000000.abc123');
+        fs.writeFileSync(tmpFile, 'fresh');
+        // mtime は新しいまま
+
+        const removed = await cleanupOrphanedTempFiles(dir);
+        expect('removed 0 files', removed === 0);
+        expect('file still exists', fs.existsSync(tmpFile));
+    });
+}
+
+async function testCleanupIgnoresNormalFiles() {
+    console.log('testCleanupIgnoresNormalFiles');
+    await withTempDir(async (dir) => {
+        const normalFile = path.join(dir, 'novel.txt');
+        fs.writeFileSync(normalFile, 'content');
+        const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+        fs.utimesSync(normalFile, twoHoursAgo, twoHoursAgo);
+
+        const removed = await cleanupOrphanedTempFiles(dir);
+        expect('removed 0 files', removed === 0);
+        expect('file still exists', fs.existsSync(normalFile));
+    });
+}
+
+async function testCleanupSkipsNodeModules() {
+    console.log('testCleanupSkipsNodeModules');
+    await withTempDir(async (dir) => {
+        const nmDir = path.join(dir, 'node_modules');
+        fs.mkdirSync(nmDir);
+        const tmpInNm = path.join(nmDir, '.xx.tmp.123.1000.abc');
+        fs.writeFileSync(tmpInNm, 'stale');
+        const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+        fs.utimesSync(tmpInNm, twoHoursAgo, twoHoursAgo);
+
+        const removed = await cleanupOrphanedTempFiles(dir);
+        expect('removed 0 (skipped node_modules)', removed === 0);
+        expect('file still exists', fs.existsSync(tmpInNm));
+    });
+}
+
+async function testCleanupSkipsGitDir() {
+    console.log('testCleanupSkipsGitDir');
+    await withTempDir(async (dir) => {
+        const gitDir = path.join(dir, '.git');
+        fs.mkdirSync(gitDir);
+        const tmpInGit = path.join(gitDir, '.yy.tmp.123.1000.def');
+        fs.writeFileSync(tmpInGit, 'stale');
+        const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+        fs.utimesSync(tmpInGit, twoHoursAgo, twoHoursAgo);
+
+        const removed = await cleanupOrphanedTempFiles(dir);
+        expect('removed 0 (skipped .git)', removed === 0);
+        expect('file still exists', fs.existsSync(tmpInGit));
+    });
+}
+
+async function testCleanupRecursesIntoSubdirs() {
+    console.log('testCleanupRecursesIntoSubdirs');
+    await withTempDir(async (dir) => {
+        const subDir = path.join(dir, 'sub');
+        fs.mkdirSync(subDir);
+        const tmpInSub = path.join(subDir, '.zz.tmp.123.1000.ghi');
+        fs.writeFileSync(tmpInSub, 'stale');
+        const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+        fs.utimesSync(tmpInSub, twoHoursAgo, twoHoursAgo);
+
+        const removed = await cleanupOrphanedTempFiles(dir);
+        expect('removed 1 file', removed === 1);
+        expect('file is gone', !fs.existsSync(tmpInSub));
+    });
+}
+
+async function testCleanupCustomMaxAge() {
+    console.log('testCleanupCustomMaxAge');
+    await withTempDir(async (dir) => {
+        const tmpFile = path.join(dir, '.foo.tmp.12345.1700000000000.abc123');
+        fs.writeFileSync(tmpFile, 'fresh');
+
+        // maxAgeMs: -1 ensures it deletes even if created exactly the same millisecond
+        const removed = await cleanupOrphanedTempFiles(dir, { maxAgeMs: -1 });
+        expect('removed 1 file with maxAgeMs -1', removed === 1);
+        expect('file is gone', !fs.existsSync(tmpFile));
+    });
+}
+
+async function testCleanupReturnsZeroForEmptyDir() {
+    console.log('testCleanupReturnsZeroForEmptyDir');
+    await withTempDir(async (dir) => {
+        const removed = await cleanupOrphanedTempFiles(dir);
+        expect('removed 0 files', removed === 0);
+    });
+}
+
+async function testCleanupNonExistentRoot() {
+    console.log('testCleanupNonExistentRoot');
+    await withTempDir(async (dir) => {
+        const fakeRoot = path.join(dir, 'missing');
+        let threw = false;
+        let removed = -1;
+        try {
+            removed = await cleanupOrphanedTempFiles(fakeRoot);
+        } catch {
+            threw = true;
+        }
+        expect('did not throw', threw === false);
+        expect('removed 0 files', removed === 0);
+    });
+}
+
 // ============================================================
 
 async function main() {
@@ -275,6 +405,15 @@ async function main() {
         testBinaryRejectEmpty,
         testClassifyShrink,
         testValidateHelper,
+        testCleanupRemovesOldTempFiles,
+        testCleanupKeepsRecentTempFiles,
+        testCleanupIgnoresNormalFiles,
+        testCleanupSkipsNodeModules,
+        testCleanupSkipsGitDir,
+        testCleanupRecursesIntoSubdirs,
+        testCleanupCustomMaxAge,
+        testCleanupReturnsZeroForEmptyDir,
+        testCleanupNonExistentRoot,
     ];
 
     for (const t of tests) {
