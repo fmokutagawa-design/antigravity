@@ -70,6 +70,8 @@ import './index.css';
 import { useFileOperations } from './hooks/useFileOperations';
 import { useAutoSave } from './hooks/useAutoSave';
 import { useProjectActions } from './hooks/useProjectActions';
+import { useSplitByChapters } from './hooks/useSplitByChapters';
+import SplitByChaptersModal from './components/SplitByChaptersModal';
 
 function App() {
   const [text, setText] = useState('');
@@ -1128,6 +1130,14 @@ function App() {
     settings,
   });
 
+  const splitChapters = useSplitByChapters({
+    activeFileHandle,
+    text,
+    projectHandle,
+    refreshMaterials,
+    showToast,
+  });
+
   useAutoSave({
     text,
     debouncedText,
@@ -1953,6 +1963,7 @@ function App() {
                       onEpubExport={() => handleEpubExport(null, allMaterialFiles)}
                       onDocxExport={handleDocxExport}
                       onBatchExport={handleBatchExport}
+                      onSplitByChapters={splitChapters.openModal}
                       colorTheme={settings.colorTheme}
                     />
 
@@ -2601,6 +2612,17 @@ function App() {
           }}
         />
       )}
+
+      <SplitByChaptersModal
+        isOpen={splitChapters.isOpen}
+        plan={splitChapters.plan}
+        sourceText={text}
+        isExecuting={splitChapters.isExecuting}
+        onClose={splitChapters.closeModal}
+        onRemoveSegment={splitChapters.handleRemoveSegment}
+        onRenameSegment={splitChapters.handleRenameSegment}
+        onExecute={splitChapters.executeSplit}
+      />
     </div >
   );
 }

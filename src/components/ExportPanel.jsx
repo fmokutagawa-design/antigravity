@@ -6,6 +6,7 @@ const ExportPanel = ({
   onEpubExport,
   onDocxExport,
   onBatchExport,
+  onSplitByChapters,  // 新規追加
   colorTheme
 }) => {
   const isDark = colorTheme === 'dark';
@@ -99,6 +100,21 @@ const ExportPanel = ({
           📖 《 》ルビ記法の一括変換
         </button>
       </div>
+
+      {/* 編集ツールセクション（新規） */}
+      {onSplitByChapters && (
+        <div style={sectionStyle}>
+          <div style={headingStyle}>編集ツール</div>
+          <button
+            onClick={onSplitByChapters}
+            style={btnStyle}
+            onMouseEnter={e => e.target.style.background = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}
+            onMouseLeave={e => e.target.style.background = 'none'}
+          >
+            ✂️ 章ごとにファイル分割
+          </button>
+        </div>
+      )}
 
       {/* 出力セクション */}
       <div style={sectionStyle}>
