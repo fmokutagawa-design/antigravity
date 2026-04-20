@@ -188,7 +188,8 @@ ipcMain.handle('fs:readFileBinary', async (event, filePath) => {
 //    fs:writeFile は既存ファイルの更新を想定しており、空を書くのはまず不正。
 ipcMain.handle('fs:writeFile', async (event, filePath, content) => {
     try {
-        await atomicWriteTextFile(filePath, content);
+        const projectRoot = globalProjectRoot || path.dirname(filePath);
+        await atomicWriteTextFile(filePath, content, { projectRoot });
         return { ok: true };
     } catch (err) {
         if (err instanceof ValidationError) {
@@ -203,7 +204,8 @@ ipcMain.handle('fs:writeFile', async (event, filePath, content) => {
 // Write File Content (Binary)
 ipcMain.handle('fs:writeFileBinary', async (event, filePath, buffer) => {
     try {
-        await atomicWriteBinaryFile(filePath, Buffer.from(buffer));
+        const projectRoot = globalProjectRoot || path.dirname(filePath);
+        await atomicWriteBinaryFile(filePath, Buffer.from(buffer), { projectRoot });
         return { ok: true };
     } catch (err) {
         if (err instanceof ValidationError) {
@@ -232,7 +234,8 @@ ipcMain.handle('fs:createFile', async (event, parentPath, fileName, content = ''
 
     const fullPath = path.join(parentPath, fileName);
     try {
-        await atomicWriteTextFile(fullPath, content, { allowEmpty: true });
+        const projectRoot = globalProjectRoot || parentPath;
+        await atomicWriteTextFile(fullPath, content, { allowEmpty: true, projectRoot });
     } catch (err) {
         if (err instanceof ValidationError) {
             throw new Error(`VALIDATION_FAILED:${err.code}:${err.message}`);
@@ -276,11 +279,19 @@ ipcMain.handle('fs:showInExplorer', async (event, path) => {
 const SETTINGS_FILE = path.join(app.getPath('userData'), 'user_settings.json');
 const FONT_CACHE_FILE = path.join(app.getPath('userData'), 'font_cache.json');
 
+let globalProjectRoot = null;
+
 // Get Application Settings
 ipcMain.handle('app:getSettings', async () => {
     if (fs.existsSync(SETTINGS_FILE)) {
         try {
-            return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'));
+            const settings = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'));
+            if (settings && settings.projectPath) {
+                globalProjectRoot = typeof settings.projectPath === 'string'
+                    ? settings.projectPath
+                    : (settings.projectPath.handle || settings.projectPath.path);
+            }
+            return settings;
         } catch (e) {
             console.error("Failed to parse settings file", e);
         }
@@ -290,6 +301,11 @@ ipcMain.handle('app:getSettings', async () => {
 
 // Save Application Settings
 ipcMain.handle('app:saveSettings', async (event, settings) => {
+    if (settings && settings.projectPath) {
+        globalProjectRoot = typeof settings.projectPath === 'string'
+            ? settings.projectPath
+            : (settings.projectPath.handle || settings.projectPath.path);
+    }
     try {
         await fs.promises.writeFile(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8');
         return true;
