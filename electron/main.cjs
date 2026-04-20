@@ -4,6 +4,7 @@ const fs = require('fs');
 const {
     atomicWriteTextFile,
     atomicWriteBinaryFile,
+    cleanupOrphanedTempFiles,
     ValidationError,
 } = require('./atomicWrite.cjs');
 
@@ -93,8 +94,65 @@ function createWindow() {
     }
 }
 
+async function runStartupCleanup() {
+    let settings = null;
+    try {
+        if (fs.existsSync(SETTINGS_FILE)) {
+            const raw = await fs.promises.readFile(SETTINGS_FILE, 'utf-8');
+            settings = JSON.parse(raw);
+        }
+    } catch (e) {
+        console.warn('[startup] failed to read settings:', e.message);
+        return;
+    }
+
+    if (!settings || !settings.projectPath) {
+        console.log('[startup] no projectPath configured, skipping cleanup');
+        return;
+    }
+
+    const projectRoot = typeof settings.projectPath === 'string'
+        ? settings.projectPath
+        : (settings.projectPath.handle || settings.projectPath.path);
+
+    if (typeof projectRoot !== 'string' || projectRoot.length === 0) {
+        console.warn('[startup] projectPath is not a valid string:', settings.projectPath);
+        return;
+    }
+
+    try {
+        const stat = await fs.promises.stat(projectRoot);
+        if (!stat.isDirectory()) {
+            console.warn('[startup] projectPath is not a directory:', projectRoot);
+            return;
+        }
+    } catch {
+        console.warn('[startup] projectPath does not exist:', projectRoot);
+        return;
+    }
+
+    const t0 = Date.now();
+    const removedCount = await cleanupOrphanedTempFiles(projectRoot);
+    const elapsed = Date.now() - t0;
+
+    if (removedCount > 0) {
+        console.log(
+            `[startup] cleanup: removed ${removedCount} orphaned .tmp files ` +
+            `from ${projectRoot} in ${elapsed}ms`
+        );
+    } else {
+        console.log(`[startup] cleanup: no orphaned .tmp files (scanned in ${elapsed}ms)`);
+    }
+}
+
 app.whenReady().then(() => {
     createWindow();
+
+    // ★ 起動時クリーンアップ：前回クラッシュで残った .tmp.* 残骸を削除
+    //    fire-and-forget。UI 表示を止めない
+    runStartupCleanup().catch(err => {
+        console.warn('[startup] cleanup failed (non-fatal):', err.message);
+    });
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
