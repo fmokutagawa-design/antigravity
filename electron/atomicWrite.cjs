@@ -151,6 +151,12 @@ async function fsyncDir(dirPath) {
  * throws:  ValidationError / システムエラー
  */
 async function atomicWriteTextFile(filePath, content, options = {}) {
+    const { projectRoot } = options;
+    let journal = null;
+    if (projectRoot) {
+        try { journal = require('./journal.cjs'); } catch { /* noop */ }
+    }
+
     // 1. 事前検証
     let previousLength;
     try {
@@ -164,16 +170,43 @@ async function atomicWriteTextFile(filePath, content, options = {}) {
         previousLength = null;
     }
 
-    const validation = validateTextPayload(content, {
-        allowEmpty: options.allowEmpty,
-        previousLength,
-        strictShrink: options.strictShrink,
-    });
+    let validation;
+    try {
+        validation = validateTextPayload(content, {
+            allowEmpty: options.allowEmpty,
+            previousLength,
+            strictShrink: options.strictShrink,
+        });
+    } catch (err) {
+        if (journal && err instanceof ValidationError) {
+            await journal.recordJournal(projectRoot, {
+                ts: new Date().toISOString(),
+                op: 'atomic.write.validation_rejected',
+                path: filePath,
+                code: err.code,
+                reason: err.message,
+            });
+        }
+        throw err;
+    }
 
     // 2. 書き込み
     const expectedHash = sha256(content);
+    const contentBytes = Buffer.byteLength(content, 'utf8');
+
+    if (journal) {
+        await journal.recordJournal(projectRoot, {
+            ts: new Date().toISOString(),
+            op: 'atomic.write.begin',
+            path: filePath,
+            expectedHash,
+            bytes: contentBytes,
+        });
+    }
+
     const tmpPath = tempPathFor(filePath);
     let fh;
+    let phase = 'open/write';
 
     try {
         fh = await open(tmpPath, 'w');
@@ -183,6 +216,7 @@ async function atomicWriteTextFile(filePath, content, options = {}) {
         fh = null;
 
         // 3. 読み直してチェックサム検証
+        phase = 'readback';
         const readBack = await fsp.readFile(tmpPath, 'utf8');
         const readBackHash = sha256(readBack);
         if (readBackHash !== expectedHash) {
@@ -192,15 +226,28 @@ async function atomicWriteTextFile(filePath, content, options = {}) {
         }
 
         // 4. atomic rename
+        phase = 'rename';
         await fsp.rename(tmpPath, filePath);
 
         // 5. 親ディレクトリ fsync
+        phase = 'fsyncDir';
         await fsyncDir(path.dirname(filePath));
+
+        if (journal) {
+            await journal.recordJournal(projectRoot, {
+                ts: new Date().toISOString(),
+                op: 'atomic.write.success',
+                path: filePath,
+                hash: expectedHash,
+                bytes: contentBytes,
+                shrinkClass: validation.shrinkClass,
+            });
+        }
 
         return {
             hash: expectedHash,
             shrinkClass: validation.shrinkClass,
-            bytes: Buffer.byteLength(content, 'utf8'),
+            bytes: contentBytes,
         };
     } catch (err) {
         // 失敗時の後始末：一時ファイルを掃除する（本番ファイルは触らない）
@@ -208,6 +255,17 @@ async function atomicWriteTextFile(filePath, content, options = {}) {
             try { await fh.close(); } catch { /* noop */ }
         }
         try { await fsp.unlink(tmpPath); } catch { /* noop */ }
+        
+        if (journal) {
+            await journal.recordJournal(projectRoot, {
+                ts: new Date().toISOString(),
+                op: 'atomic.write.fail',
+                path: filePath,
+                error: String(err),
+                phase,
+            });
+        }
+        
         throw err;
     }
 }
@@ -216,7 +274,13 @@ async function atomicWriteTextFile(filePath, content, options = {}) {
  * バイナリ版の atomic write（画像等）。
  * 空文字列ガード等は不要なので単純。
  */
-async function atomicWriteBinaryFile(filePath, buffer) {
+async function atomicWriteBinaryFile(filePath, buffer, options = {}) {
+    const { projectRoot } = options;
+    let journal = null;
+    if (projectRoot) {
+        try { journal = require('./journal.cjs'); } catch { /* noop */ }
+    }
+
     if (!Buffer.isBuffer(buffer)) {
         throw new ValidationError('V-2', `content is not a Buffer: ${typeof buffer}`);
     }
@@ -228,6 +292,7 @@ async function atomicWriteBinaryFile(filePath, buffer) {
     const expectedHash = sha256Buffer(buffer);
     const tmpPath = tempPathFor(filePath);
     let fh;
+    let phase = 'open/write';
 
     try {
         fh = await open(tmpPath, 'w');
@@ -236,6 +301,7 @@ async function atomicWriteBinaryFile(filePath, buffer) {
         await fh.close();
         fh = null;
 
+        phase = 'readback';
         const readBack = await fsp.readFile(tmpPath);
         const readBackHash = sha256Buffer(readBack);
         if (readBackHash !== expectedHash) {
@@ -244,8 +310,21 @@ async function atomicWriteBinaryFile(filePath, buffer) {
             );
         }
 
+        phase = 'rename';
         await fsp.rename(tmpPath, filePath);
+        
+        phase = 'fsyncDir';
         await fsyncDir(path.dirname(filePath));
+
+        if (journal) {
+            await journal.recordJournal(projectRoot, {
+                ts: new Date().toISOString(),
+                op: 'atomic.write.binary.success',
+                path: filePath,
+                hash: expectedHash,
+                bytes: buffer.length,
+            });
+        }
 
         return {
             hash: expectedHash,
@@ -256,6 +335,17 @@ async function atomicWriteBinaryFile(filePath, buffer) {
             try { await fh.close(); } catch { /* noop */ }
         }
         try { await fsp.unlink(tmpPath); } catch { /* noop */ }
+        
+        if (journal) {
+            await journal.recordJournal(projectRoot, {
+                ts: new Date().toISOString(),
+                op: 'atomic.write.binary.fail',
+                path: filePath,
+                error: String(err),
+                phase,
+            });
+        }
+
         throw err;
     }
 }
