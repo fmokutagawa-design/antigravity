@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { fileSystem } from '../utils/fileSystem';
+import { fileSystem, isNative } from '../utils/fileSystem';
 import {
     createSplitPlan,
     removeSegment,
@@ -10,83 +10,87 @@ import {
 
 /**
  * 分割を実行する。
- *
- * 1. 元ファイルのディレクトリと基本情報を特定
- * 2. 元ファイルを <dir>/.backup/<name>_original_<ts>.txt にコピー（atomic）
- * 3. 新ファイル群を atomic write で順次作成
- *    - 既存ファイル名と衝突したら自動回避（resolveFileNameCollision）
- * 4. 途中で失敗したら、これまで作った新ファイルを削除（ロールバック）
- *    - バックアップは残す（ユーザーが手動で復元可能）
- * 5. 全部成功したら resolve
- *
- * 元ファイルは削除しない。両方存在する。
  */
 async function performSplit({ plan, activeFileHandle, projectHandle, sourceText }) {
     // Step 1: ディレクトリ特定
-    const filePath = typeof activeFileHandle === 'string'
-        ? activeFileHandle
-        : (activeFileHandle.handle || activeFileHandle.path);
-    if (typeof filePath !== 'string') {
-        throw new Error('cannot determine file path');
+    let parentDirHandle;
+    if (isNative) {
+        const filePath = typeof activeFileHandle === 'string'
+            ? activeFileHandle
+            : (activeFileHandle.handle || activeFileHandle.path);
+        if (typeof filePath !== 'string') {
+            throw new Error('cannot determine file path in native mode');
+        }
+        const sep = filePath.includes('\\') ? '\\' : '/';
+        const parentPath = filePath.substring(0, filePath.lastIndexOf(sep));
+        parentDirHandle = { handle: parentPath, name: parentPath.split(sep).pop(), kind: 'directory' };
+    } else {
+        // Web API Mode
+        try {
+            const pathParts = await fileSystem.resolvePath(projectHandle, activeFileHandle);
+            if (pathParts && pathParts.length > 0) {
+                pathParts.pop();
+                parentDirHandle = await fileSystem.getDirectoryHandleFromPath(projectHandle, pathParts);
+            } else {
+                parentDirHandle = projectHandle;
+            }
+        } catch (e) {
+            parentDirHandle = projectHandle;
+        }
     }
-    const sep = filePath.includes('\\') ? '\\' : '/';
-    const parentDir = filePath.substring(0, filePath.lastIndexOf(sep));
 
     // Step 2: バックアップ作成
-    //   .backup/ ディレクトリが無ければ作る
-    const backupDirPath = `${parentDir}${sep}.backup`;
+    let backupDirHandle;
     try {
-        await fileSystem.createFolder(
-            { handle: parentDir, name: parentDir.split(sep).pop(), kind: 'directory' },
-            '.backup'
-        );
+        backupDirHandle = await fileSystem.createFolder(parentDirHandle, '.backup');
     } catch (e) {
-        // 既にある場合は無視
+        if (isNative) {
+            const pPath = parentDirHandle.handle || parentDirHandle.path || parentDirHandle;
+            const sep = pPath.includes('\\') ? '\\' : '/';
+            const cleanP = pPath.endsWith(sep) ? pPath.slice(0, -1) : pPath;
+            backupDirHandle = { handle: `${cleanP}${sep}.backup`, name: '.backup', kind: 'directory' };
+        } else {
+            throw e;
+        }
     }
+
     const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const backupFileName = `${plan.baseName}_original_${ts}${plan.extension}`;
-    const backupPath = `${backupDirPath}${sep}${backupFileName}`;
-    await fileSystem.writeFile(
-        { handle: backupPath, name: backupFileName, kind: 'file' },
-        sourceText
-    );
+    await fileSystem.createFile(backupDirHandle, backupFileName, sourceText);
 
     // Step 3: 既存ファイル一覧を取得して衝突チェック
-    const parentDirHandle = { handle: parentDir, name: parentDir.split(sep).pop(), kind: 'directory' };
     const existingEntries = await fileSystem.readDirectory(parentDirHandle);
     const existingNames = (existingEntries || [])
         .filter(e => e.kind === 'file')
         .map(e => e.name);
 
     // Step 4: 新ファイル群を atomic write で作成
-    const createdPaths = [];
+    const createdHandles = [];
     try {
         for (const segment of plan.segments) {
             const targetName = resolveFileNameCollision(segment.proposedFileName, existingNames);
-            const targetPath = `${parentDir}${sep}${targetName}`;
-            await fileSystem.writeFile(
-                { handle: targetPath, name: targetName, kind: 'file' },
-                segment.content
-            );
-            createdPaths.push(targetPath);
+            const targetHandle = await fileSystem.createFile(parentDirHandle, targetName, segment.content);
+            createdHandles.push(targetHandle);
             existingNames.push(targetName);  // 次の衝突チェックに反映
         }
     } catch (err) {
         // Step 5: ロールバック
         console.error('[split] error, rolling back:', err);
-        for (const p of createdPaths) {
+        for (const h of createdHandles) {
             try {
-                await fileSystem.deleteEntry({ handle: p, name: p.split(sep).pop(), kind: 'file' });
+                if (isNative) {
+                    await fileSystem.deleteEntry(h);
+                } else {
+                    await fileSystem.deleteEntryWithParent(h, parentDirHandle);
+                }
             } catch (e) {
-                console.warn('[split] rollback delete failed for', p, e);
+                console.warn('[split] rollback delete failed for', h, e);
             }
         }
-        // バックアップは残す（復元の手がかり）
         throw err;
     }
 
-    // Step 6: 成功。元ファイルは削除せずそのまま。
-    return { createdCount: createdPaths.length, backupPath };
+    return { createdCount: createdHandles.length, backupPath: backupFileName };
 }
 
 /**
