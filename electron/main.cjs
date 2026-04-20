@@ -1,6 +1,11 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const {
+    atomicWriteTextFile,
+    atomicWriteBinaryFile,
+    ValidationError,
+} = require('./atomicWrite.cjs');
 
 const isDev = !app.isPackaged;
 
@@ -177,16 +182,36 @@ ipcMain.handle('fs:readFileBinary', async (event, filePath) => {
 });
 
 // Write File Content (Text)
-// ★ 非同期版を使う。同期 writeFileSync はメインプロセスをブロックし、
-//    大規模ファイル（42万字＝UTF-8で約1MB）を毎秒保存するとIPCキューが
-//    詰まりレンダラがフリーズする。
+// ★ atomic write 経由で書き込む。途中クラッシュで半端なファイルが残らない。
+//    空文字列や NULL 文字は事前検証で弾く（原稿消失事故の防止）。
+// ★ 呼び出し側が意図的に空ファイルを作りたい場合は fs:createFile を使う。
+//    fs:writeFile は既存ファイルの更新を想定しており、空を書くのはまず不正。
 ipcMain.handle('fs:writeFile', async (event, filePath, content) => {
-    return fs.promises.writeFile(filePath, content, 'utf-8');
+    try {
+        await atomicWriteTextFile(filePath, content);
+        return { ok: true };
+    } catch (err) {
+        if (err instanceof ValidationError) {
+            // 原稿を守るために書き込みを拒否した場合は、呼び出し側が認識できる形で返す
+            console.warn(`[atomicWrite] rejected: ${err.message}`, { filePath, code: err.code });
+            throw new Error(`VALIDATION_FAILED:${err.code}:${err.message}`);
+        }
+        throw err;
+    }
 });
 
 // Write File Content (Binary)
 ipcMain.handle('fs:writeFileBinary', async (event, filePath, buffer) => {
-    return fs.promises.writeFile(filePath, Buffer.from(buffer));
+    try {
+        await atomicWriteBinaryFile(filePath, Buffer.from(buffer));
+        return { ok: true };
+    } catch (err) {
+        if (err instanceof ValidationError) {
+            console.warn(`[atomicWrite] binary rejected: ${err.message}`, { filePath });
+            throw new Error(`VALIDATION_FAILED:${err.code}:${err.message}`);
+        }
+        throw err;
+    }
 });
 
 // Create Folder
@@ -199,12 +224,21 @@ ipcMain.handle('fs:createFolder', async (event, parentPath, folderName) => {
 });
 
 // Create File (Empty or with content)
+// ★ 新規ファイル作成は atomic write を使うが、空文字列で作ることを許可する
+//    （allowEmpty: true）。すでに同名ファイルがある場合の上書き時も同じ経路を通る。
 ipcMain.handle('fs:createFile', async (event, parentPath, fileName, content = '') => {
     // Ensure extension
     if (!fileName.includes('.')) fileName += '.txt'; // Default to txt if unspecified
 
     const fullPath = path.join(parentPath, fileName);
-    fs.writeFileSync(fullPath, content, 'utf-8');
+    try {
+        await atomicWriteTextFile(fullPath, content, { allowEmpty: true });
+    } catch (err) {
+        if (err instanceof ValidationError) {
+            throw new Error(`VALIDATION_FAILED:${err.code}:${err.message}`);
+        }
+        throw err;
+    }
     return fullPath;
 });
 

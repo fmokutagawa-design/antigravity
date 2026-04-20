@@ -1,0 +1,6 @@
+- [ ] `electron/atomicWrite.cjs` の作成
+- [ ] `electron/atomicWrite.test.cjs` の作成
+- [ ] ユニットテストの実行 (`node electron/atomicWrite.test.cjs`)
+- [ ] `electron/main.cjs` の修正 (IPC ハンドラの差し替え)
+- [ ] `src/utils/fileSystem.electron.js` の修正
+- [ ] 動作確認 (正常な保存、空ファイル作成)

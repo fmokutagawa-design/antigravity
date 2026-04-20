@@ -59,11 +59,12 @@ export const electronFileSystem = {
     const dirPath = toPath(dirHandle);
     const separator = pathSep(dirPath);
     const filePath = `${dirPath}${separator}${fileName}`;
-    // Ensure file exists by attempting to write empty if not present
+    // Ensure file exists. V-1（空文字列 writeFile 拒否）に引っかからないよう、
+    // 空ファイル作成は createFile 経由で行う（内部で allowEmpty:true を使う）。
     try {
       await window.api.fs.readFile(filePath);
     } catch {
-      await window.api.fs.writeFile(filePath, '');
+      await window.api.fs.createFile(dirPath, fileName, '');
     }
     return { handle: filePath, name: fileName, kind: 'file' };
   },
