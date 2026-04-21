@@ -57,6 +57,17 @@ export function findBoundaryCandidates(text, options = {}) {
             const titleCandidate = fullLine.substring(marker.length).trim();
             addCandidate(offset, 'chapter', marker, titleCandidate, 0.9);
         }
+
+        // 序章・終章などの特殊な章タイトル detector
+        const specialChapterRegex = /^(序章|終章|終局|幕間|あとがき|プロローグ|エピローグ|番外編).*/gm;
+        while ((match = specialChapterRegex.exec(text)) !== null) {
+            const offset = match.index;
+            const fullLine = match[0];
+            const markerMatch = fullLine.match(/^(序章|終章|終局|幕間|あとがき|プロローグ|エピローグ|番外編)/);
+            const marker = markerMatch ? markerMatch[0] : '';
+            const titleCandidate = fullLine.substring(marker.length).trim();
+            addCandidate(offset, 'chapter', marker, titleCandidate, 0.9);
+        }
     }
 
     if (includeMarkdown) {
