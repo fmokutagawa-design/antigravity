@@ -22,6 +22,7 @@ export function useAutoSave({
   activeFileHandleRef,
   debouncedTextRef,
   settings, // 追加
+  showToast,
 }) {
   // Auto-save to active file in project mode
   // ★ debouncedText は Editor(500ms) + App(500ms) で既に約1秒遅延済み
