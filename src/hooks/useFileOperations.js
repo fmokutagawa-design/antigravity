@@ -170,23 +170,15 @@ export function useFileOperations({
         if (projectHandle) await refreshMaterials();
         showToast('保存しました。');
       } else {
-          openInputModal('保存', '新しいファイル名を入力してください:', defaultNewName, async (newName) => {
-            if (!newName) return;
-            // Bug L 修正: text ではなく contentToSave を使う
-            await handleCreateFileInProject(null, newName, contentToSave, {
-              disableJournal: settings?.enableJournaling === false
-            });
-            showToast('プロジェクトルートに保存しました（ブラウザ制限のため場所指定不可）。');
+        openInputModal('保存', '新しいファイル名を入力してください:', defaultNewName, async (newName) => {
+          if (!newName) return;
+          // Bug L 修正: text ではなく contentToSave を使う
+          await handleCreateFileInProject(null, newName, contentToSave, {
+            disableJournal: settings?.enableJournaling === false
           });
-          return;
-        }
-        const newName = window.prompt('新しいファイル名を入力してください:', defaultNewName);
-        if (!newName) return;
-        // Bug L 修正
-        await handleCreateFileInProject(null, newName, contentToSave, {
-          disableJournal: settings?.enableJournaling === false
+          showToast('プロジェクトルートに保存しました（ブラウザ制限のため場所指定不可）。');
         });
-        showToast('プロジェクトルートに保存しました（ブラウザ制限のため場所指定不可）。');
+        return;
       }
     } catch (e) {
       if (e.name !== 'AbortError') {
