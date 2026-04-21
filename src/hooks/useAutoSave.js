@@ -58,6 +58,7 @@ export function useAutoSave({
       const currentHandle = activeFileHandleRef.current;
       const currentText = debouncedTextRef.current;
 
+      try {
         if (!currentHandle) return;
 
         // ジャーナリング設定を反映
