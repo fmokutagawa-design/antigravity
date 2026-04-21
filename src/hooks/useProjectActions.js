@@ -37,6 +37,9 @@ export function useProjectActions({
   setShowReference,
   setReferenceContent,
   setReferenceFileName,
+  textRef, // 追加
+  latestMetadataRef, // 追加
+  lastSavedTextRef, // 追加
 }) {
   // Save project settings helper
   const saveProjectSettings = useCallback(async (newSettings) => {
@@ -231,7 +234,7 @@ export function useProjectActions({
               概要: '',
               importance: 3,
             };
-            contentToWrite = serializeNote(metadata, `\n# ${fileName.replace(/\.txt$/, '')}\n\n`);
+            contentToWrite = serializeNote(`\n# ${fileName.replace(/\.txt$/, '')}\n\n`, metadata); // Bug C 修正: (body, metadata)
           } else {
             contentToWrite = '';
           }
@@ -803,7 +806,8 @@ export function useProjectActions({
     if (!activeFileHandle) return;
 
     try {
-      const { body } = parseNote(text);
+      // Bug D 対策: State の text ではなく Ref の最新テキストを使用
+      const { body } = parseNote(textRef.current);
       const newContent = serializeNote(body, newMetadata);
 
       await fileSystem.writeFile(activeFileHandle, newContent);
@@ -814,12 +818,14 @@ export function useProjectActions({
       }
 
       setText(newContent);
+      lastSavedTextRef.current = newContent; // Bug D 対策
+      latestMetadataRef.current = newMetadata; // Bug A 対策
       await refreshMaterials();
     } catch (e) {
       console.error("Metadata update failed:", e);
       showToast(`メタデータの更新に失敗しました: ${e.message}`);
     }
-  }, [text, activeFileHandle, setActiveFileHandle, setText, autoOrganizeFile, refreshMaterials, showToast]);
+  }, [activeFileHandle, setActiveFileHandle, setText, textRef, latestMetadataRef, lastSavedTextRef, autoOrganizeFile, refreshMaterials, showToast]);
 
   const handleRefreshTree = useCallback(async () => {
     if (!projectHandle) return;

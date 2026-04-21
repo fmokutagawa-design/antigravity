@@ -151,9 +151,9 @@ async function fsyncDir(dirPath) {
  * throws:  ValidationError / システムエラー
  */
 async function atomicWriteTextFile(filePath, content, options = {}) {
-    const { projectRoot } = options;
+    const { projectRoot, disableJournal } = options;
     let journal = null;
-    if (projectRoot) {
+    if (projectRoot && !disableJournal) {
         try { journal = require('./journal.cjs'); } catch { /* noop */ }
     }
 
@@ -275,9 +275,9 @@ async function atomicWriteTextFile(filePath, content, options = {}) {
  * 空文字列ガード等は不要なので単純。
  */
 async function atomicWriteBinaryFile(filePath, buffer, options = {}) {
-    const { projectRoot } = options;
+    const { projectRoot, disableJournal } = options;
     let journal = null;
-    if (projectRoot) {
+    if (projectRoot && !disableJournal) {
         try { journal = require('./journal.cjs'); } catch { /* noop */ }
     }
 

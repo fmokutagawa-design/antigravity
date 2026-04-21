@@ -35,7 +35,8 @@ export function useFileOperations({
       try {
         const { metadata } = parseNote(text);
 
-        await fileSystem.writeFile(activeFileHandle, text);
+        const options = { disableJournal: settings?.enableJournaling === false };
+        await fileSystem.writeFile(activeFileHandle, text, options);
 
         // Trigger Auto-Organize
         const newHandle = await autoOrganizeFile(activeFileHandle, metadata);
@@ -60,24 +61,40 @@ export function useFileOperations({
         showToast('ファイルの保存に失敗しました。');
       }
     }
-  }, [text, activeFileHandle, projectHandle, autoOrganizeFile, setActiveFileHandle, refreshMaterials, setLastSaved, lastSavedTextRef, showToast]);
+  }, [text, activeFileHandle, projectHandle, autoOrganizeFile, setActiveFileHandle, refreshMaterials, setLastSaved, lastSavedTextRef, showToast, settings?.enableJournaling]);
 
   // Keep ref in sync
   handleSaveFileRef.current = handleSaveFile;
 
   const handleUpdateFile = useCallback(async (handle, newContent) => {
     try {
-      await fileSystem.writeFile(handle, newContent);
+      const options = { disableJournal: settings?.enableJournaling === false };
+      await fileSystem.writeFile(handle, newContent, options);
       await refreshMaterials();
-      if (activeFileHandle && (activeFileHandle.handle === handle || activeFileHandle === handle)) {
+
+      // Bug K 対策: ブラウザ版のハンドル比較に対応
+      const isSame = async (h1, h2) => {
+        if (!h1 || !h2) return false;
+        if (isNative) {
+          const p1 = typeof h1 === 'string' ? h1 : h1.handle;
+          const p2 = typeof h2 === 'string' ? h2 : h2.handle;
+          return p1 === p2;
+        }
+        if (h1 === h2) return true;
+        if (h1.isSameEntry) return await h1.isSameEntry(h2);
+        return false;
+      };
+
+      if (await isSame(activeFileHandle, handle)) {
         setText(newContent);
+        lastSavedTextRef.current = newContent; // 同期
       }
       return true;
     } catch (e) {
       console.error("Failed to update file:", e);
       return false;
     }
-  }, [activeFileHandle, setText, refreshMaterials]);
+  }, [activeFileHandle, setText, refreshMaterials, lastSavedTextRef, settings?.enableJournaling]);
 
   const handleLoadFile = useCallback(async (file) => {
     try {
@@ -122,7 +139,9 @@ export function useFileOperations({
         const newPath = await fileSystem.saveFile(defaultPath);
         if (!newPath) return; // Cancelled
 
-        await fileSystem.writeFile(newPath, contentToSave);
+        await fileSystem.writeFile(newPath, contentToSave, {
+          disableJournal: settings?.enableJournaling === false
+        });
 
         const projectPath = typeof projectHandle === 'string' ? projectHandle : projectHandle?.handle;
         if (projectPath) {
@@ -143,24 +162,30 @@ export function useFileOperations({
           }],
         });
         const writable = await handle.createWritable();
-        await writable.write(text);
+        // Bug L 修正: text ではなく contentToSave を使う
+        await writable.write(contentToSave);
         await writable.close();
 
         setActiveFileHandle(handle);
         if (projectHandle) await refreshMaterials();
         showToast('保存しました。');
       } else {
-        if (openInputModal) {
           openInputModal('保存', '新しいファイル名を入力してください:', defaultNewName, async (newName) => {
             if (!newName) return;
-            await handleCreateFileInProject(null, newName, text);
+            // Bug L 修正: text ではなく contentToSave を使う
+            await handleCreateFileInProject(null, newName, contentToSave, {
+              disableJournal: settings?.enableJournaling === false
+            });
             showToast('プロジェクトルートに保存しました（ブラウザ制限のため場所指定不可）。');
           });
           return;
         }
         const newName = window.prompt('新しいファイル名を入力してください:', defaultNewName);
         if (!newName) return;
-        await handleCreateFileInProject(null, newName, text);
+        // Bug L 修正
+        await handleCreateFileInProject(null, newName, contentToSave, {
+          disableJournal: settings?.enableJournaling === false
+        });
         showToast('プロジェクトルートに保存しました（ブラウザ制限のため場所指定不可）。');
       }
     } catch (e) {
@@ -224,7 +249,9 @@ export function useFileOperations({
         const defaultPath = (projectHandle?.handle || projectHandle || '') + '/exported.txt';
         const savePath = await fileSystem.saveFile(defaultPath);
         if (savePath) {
-          await fileSystem.writeFile({ handle: savePath, name: 'exported.txt' }, merged);
+          await fileSystem.writeFile({ handle: savePath, name: 'exported.txt' }, merged, {
+            disableJournal: settings?.enableJournaling === false
+          });
           showToast(`${targetFiles.length}ファイルを結合して書き出しました。`);
         }
       } else {

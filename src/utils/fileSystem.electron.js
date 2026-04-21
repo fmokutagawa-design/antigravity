@@ -73,12 +73,12 @@ export const electronFileSystem = {
     return await window.api.fs.readFile(toPath(fileHandle));
   },
 
-  async writeFile(fileHandle, content) {
-    return await window.api.fs.writeFile(toPath(fileHandle), content);
+  async writeFile(fileHandle, content, options = {}) {
+    return await window.api.fs.writeFile(toPath(fileHandle), content, options);
   },
 
-  async createFile(parentHandle, fileName, content = '') {
-    const path = await window.api.fs.createFile(toPath(parentHandle), fileName, content);
+  async createFile(parentHandle, fileName, content = '', options = {}) {
+    const path = await window.api.fs.createFile(toPath(parentHandle), fileName, content, options);
     return { handle: path, name: extractName(path), kind: 'file' };
   },
 

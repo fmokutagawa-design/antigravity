@@ -77,9 +77,14 @@ function App() {
   const [text, setText] = useState('');
   const [debouncedText, setDebouncedText] = useState('');
   const textRef = useRef(''); // ★ 最新テキストへの即時アクセス用
+  const debouncedTextRef = useRef(''); // ★ 最新のデバウンス済みテキスト
+  const latestMetadataRef = useRef({ tags: [] }); // ★ 最新のメタデータ
+  const activeFileHandleRef = useRef(null); // ★ 最新のハンドル (Bug B, F 対策)
 
-  // textRef を常に同期
+  // Refs を常に同期
   useEffect(() => { textRef.current = text; }, [text]);
+  useEffect(() => { debouncedTextRef.current = debouncedText; }, [debouncedText]);
+  useEffect(() => { activeFileHandleRef.current = activeFileHandle; }, [activeFileHandle]);
 
   useEffect(() => {
     const scheduledAt = perfNow();
@@ -121,6 +126,7 @@ function App() {
     },
     strictManuscriptMode: false,
     enableGhostText: true, // Ghost Text Toggle
+    enableJournaling: true, // ジャーナリング (操作ログ) のオン・オフ
     customCSS: '', // User custom CSS
   });
 
@@ -253,6 +259,7 @@ function App() {
 
             // Ensure folders exist
             let targetHandle = projectHandle;
+            latestMetadataRef.current = { ...latestMetadataRef.current, tags: [tagName] }; // Bug A 対策
 
             // Check/Create root
             let rootHandle;
@@ -274,7 +281,8 @@ function App() {
 
             // Write initial content with tag
             const initialContent = `-- -\ntags: [${tagName}]\n-- -\n# ${fullName.replace('.txt', '')} \n\n`;
-            await fileSystem.writeFile(fileHandle, initialContent);
+            const options = { disableJournal: settings?.enableJournaling === false };
+            await fileSystem.writeFile(fileHandle, initialContent, options);
 
             // Refresh and Open
             await refreshMaterials();
@@ -604,6 +612,9 @@ function App() {
       setText(content);
       setDebouncedText(content);
       lastSavedTextRef.current = content;
+      // Bug A 対策: ファイル読み込み時に最新メタデータを Ref に保持する
+      const { metadata } = parseNote(content);
+      latestMetadataRef.current = metadata;
       setActiveFileHandle(targetHandle);
       setActiveTab('editor');
 
@@ -1074,6 +1085,8 @@ function App() {
   } = useProjectActions({
     text,
     setText,
+    textRef, // 追加
+    latestMetadataRef, // 追加
     projectHandle,
     setProjectHandle,
     fileTree,
@@ -1149,6 +1162,9 @@ function App() {
     showToast,
     setProjectSettings,
     setIsRapidMode,
+    activeFileHandleRef, // 追加
+    debouncedTextRef, // 追加
+    settings, // 追加
   });
 
 
@@ -1156,11 +1172,11 @@ function App() {
     if (showMetadata) {
       setText(newContent);
     } else {
-      // parsedNote.metadata を再利用することで parseNote の二重実行を排除。
-      // メタデータは本文編集中に変わらないため、debouncedTextベースの parsedNote で十分。
-      setText(serializeNote(newContent, parsedNote.metadata ?? {}));
+      // Bug A 対策: 500ms 遅延する parsedNote.metadata ではなく最新の Ref を使用する
+      const content = serializeNote(newContent, latestMetadataRef.current);
+      setText(content);
     }
-  }, [showMetadata, parsedNote]);
+  }, [showMetadata]);
 
 
 
@@ -1347,11 +1363,12 @@ function App() {
   // ウィンドウを閉じる前に未保存チェック
   useEffect(() => {
     const handleBeforeUnload = (e) => {
-      if (isProjectMode && text !== lastSavedTextRef.current) {
-        // 最後の変更を即座に保存試行
-        if (activeFileHandle) {
+      // Bug B 対策: 引数の text ではなく Ref の最新値を使う
+      const currentText = textRef.current;
+      if (isProjectMode && currentText !== lastSavedTextRef.current) {
+        if (activeFileHandleRef.current) {
           try {
-            fileSystem.writeFile(activeFileHandle, text);
+            fileSystem.writeFile(activeFileHandleRef.current, currentText);
           } catch { /* best effort */ }
         }
         e.preventDefault();
@@ -1360,7 +1377,7 @@ function App() {
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [text, isProjectMode, activeFileHandle]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleContextMenu = (event) => {
     // Prevent default context menu

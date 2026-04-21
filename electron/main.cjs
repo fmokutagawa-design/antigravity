@@ -244,10 +244,10 @@ ipcMain.handle('fs:readFileBinary', async (event, filePath) => {
 //    空文字列や NULL 文字は事前検証で弾く（原稿消失事故の防止）。
 // ★ 呼び出し側が意図的に空ファイルを作りたい場合は fs:createFile を使う。
 //    fs:writeFile は既存ファイルの更新を想定しており、空を書くのはまず不正。
-ipcMain.handle('fs:writeFile', async (event, filePath, content) => {
+ipcMain.handle('fs:writeFile', async (event, filePath, content, options = {}) => {
     try {
         const projectRoot = globalProjectRoot || path.dirname(filePath);
-        await atomicWriteTextFile(filePath, content, { projectRoot });
+        await atomicWriteTextFile(filePath, content, { projectRoot, ...options });
         return { ok: true };
     } catch (err) {
         if (err instanceof ValidationError) {
@@ -260,10 +260,10 @@ ipcMain.handle('fs:writeFile', async (event, filePath, content) => {
 });
 
 // Write File Content (Binary)
-ipcMain.handle('fs:writeFileBinary', async (event, filePath, buffer) => {
+ipcMain.handle('fs:writeFileBinary', async (event, filePath, buffer, options = {}) => {
     try {
         const projectRoot = globalProjectRoot || path.dirname(filePath);
-        await atomicWriteBinaryFile(filePath, Buffer.from(buffer), { projectRoot });
+        await atomicWriteBinaryFile(filePath, Buffer.from(buffer), { projectRoot, ...options });
         return { ok: true };
     } catch (err) {
         if (err instanceof ValidationError) {
@@ -286,14 +286,14 @@ ipcMain.handle('fs:createFolder', async (event, parentPath, folderName) => {
 // Create File (Empty or with content)
 // ★ 新規ファイル作成は atomic write を使うが、空文字列で作ることを許可する
 //    （allowEmpty: true）。すでに同名ファイルがある場合の上書き時も同じ経路を通る。
-ipcMain.handle('fs:createFile', async (event, parentPath, fileName, content = '') => {
+ipcMain.handle('fs:createFile', async (event, parentPath, fileName, content = '', options = {}) => {
     // Ensure extension
     if (!fileName.includes('.')) fileName += '.txt'; // Default to txt if unspecified
 
     const fullPath = path.join(parentPath, fileName);
     try {
         const projectRoot = globalProjectRoot || parentPath;
-        await atomicWriteTextFile(fullPath, content, { allowEmpty: true, projectRoot });
+        await atomicWriteTextFile(fullPath, content, { allowEmpty: true, projectRoot, ...options });
     } catch (err) {
         if (err instanceof ValidationError) {
             throw new Error(`VALIDATION_FAILED:${err.code}:${err.message}`);

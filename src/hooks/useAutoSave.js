@@ -17,9 +17,11 @@ export function useAutoSave({
   projectHandle,
   setLastSaved,
   lastSavedTextRef,
-  showToast,
   setProjectSettings,
   setIsRapidMode,
+  activeFileHandleRef,
+  debouncedTextRef,
+  settings, // 追加
 }) {
   // Auto-save to active file in project mode
   // ★ debouncedText は Editor(500ms) + App(500ms) で既に約1秒遅延済み
@@ -52,30 +54,31 @@ export function useAutoSave({
 
     const doSave = async () => {
       const tStart = perfNow();
-      // 保存直前にもう一度ハンドルを確認（非同期の間に切り替わっていないか）
-      const currentHandle = activeFileHandle;
-      try {
-        if (currentHandle !== activeFileHandle) {
-          perfLog('useAutoSave.doSave.blockedHandleSwitch', {
-            textLength: debouncedText.length,
-          });
-          return;
-        }
+      // Bug F 対策: closure の debouncedText/activeFileHandle ではなく Ref の最新値を使う
+      const currentHandle = activeFileHandleRef.current;
+      const currentText = debouncedTextRef.current;
 
-        await fileSystem.writeFile(currentHandle, debouncedText);
+        if (!currentHandle) return;
+
+        // ジャーナリング設定を反映
+        const options = {
+          disableJournal: settings?.enableJournaling === false
+        };
+
+        await fileSystem.writeFile(currentHandle, currentText, options);
         setLastSaved(new Date());
-        lastSavedTextRef.current = debouncedText;
+        lastSavedTextRef.current = currentText;
         lastSaveTimeRef.current = Date.now();
         perfMeasure('useAutoSave.doSave', tStart, {
           ok: true,
-          textLength: debouncedText.length,
+          textLength: currentText.length,
           throttleMs,
           elapsed,
         });
       } catch (error) {
         perfMeasure('useAutoSave.doSave', tStart, {
           ok: false,
-          textLength: debouncedText.length,
+          textLength: currentText.length,
           throttleMs,
           elapsed,
           error: String(error),
@@ -93,7 +96,7 @@ export function useAutoSave({
       const timer = setTimeout(doSave, throttleMs - elapsed);
       return () => clearTimeout(timer);
     }
-  }, [debouncedText, isProjectMode, activeFileHandle, setLastSaved, lastSavedTextRef, showToast]);
+  }, [debouncedText, isProjectMode, activeFileHandle, setLastSaved, lastSavedTextRef, showToast, activeFileHandleRef, debouncedTextRef, settings?.enableJournaling]);
 
   // Auto-snapshot: 5分間隔 or 500文字以上の変更で自動スナップショット
   const lastSnapshotRef = useRef({ text: '', time: 0 });
@@ -112,21 +115,26 @@ export function useAutoSave({
       const now = Date.now();
       const lastText = lastSnapshotRef.current.text;
       const lastTime = lastSnapshotRef.current.time;
-      const charDiff = Math.abs(debouncedText.length - lastText.length);
+
+      // Bug G, H 対策: closure の debouncedText ではなく Ref の最新値を使う
+      const currentText = debouncedTextRef.current;
+      if (!currentText) return;
+
+      const charDiff = Math.abs(currentText.length - lastText.length);
       const timeDiff = now - lastTime;
 
       if (timeDiff >= INTERVAL || charDiff >= CHAR_THRESHOLD) {
-        if (debouncedText !== lastText) {
+        if (currentText !== lastText) {
           const snapT0 = perfNow();
-          saveSnapshot(filePath, debouncedText, debouncedText.length)
+          saveSnapshot(filePath, currentText, currentText.length)
             .then(() => {
-              perfMeasure('useAutoSave.snapshot.tick', snapT0, { len: debouncedText.length });
+              perfMeasure('useAutoSave.snapshot.tick', snapT0, { len: currentText.length });
             })
             .catch(e => {
               perfMeasure('useAutoSave.snapshot.tick.fail', snapT0, { error: String(e) });
               console.warn('Snapshot save failed:', e);
             });
-          lastSnapshotRef.current = { text: debouncedText, time: now };
+          lastSnapshotRef.current = { text: currentText, time: now };
         }
       }
     }, 30000); // 30秒ごとにチェック

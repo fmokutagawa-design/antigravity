@@ -109,6 +109,7 @@ const Toolbar = ({
 
                     <Toggle active={showMetadata} onClick={() => setShowMetadata(!showMetadata)} label="メタ表示" />
                     <Toggle active={settings.showLogo !== false} onClick={() => handleChange('showLogo', settings.showLogo === false)} label="ロゴ表示" />
+                    <Toggle active={settings.enableJournaling !== false} onClick={() => handleChange('enableJournaling', settings.enableJournaling === false)} label="操作ログ" />
 
                     <div className="control-item">
                         <label>UIスケール</label>
