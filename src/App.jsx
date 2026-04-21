@@ -2074,58 +2074,11 @@ function App() {
                         if (activeFileHandle) await handleSaveFile();
                         handleFileSelect(handle);
                       }}
-                      onSplitDocument={async () => {
-                        if (!projectHandle) return;
-                        if (!text) return;
-                        if (!await requestConfirm("章分割の実行", "現在の原稿を章（# や第xx章）ごとに分割して manuscript フォルダへ保存しますか？\n（元のファイルは残ります）")) return;
-
-                        try {
-                          // manuscript フォルダを作成
-                          let manuscriptHandle;
-                          try {
-                            manuscriptHandle = await projectHandle.getDirectoryHandle('manuscript');
-                          } catch {
-                            manuscriptHandle = await projectHandle.getDirectoryHandle('manuscript', { create: true });
-                          }
-
-                          // 分割処理
-                          const lines = text.split('\n');
-                          const jpRegex = /^(第[0-9０-９一二三四五六七八九十百千万]+[章話節幕編部]).*/;
-                          let currentChapterText = [];
-                          let chapterCount = 0;
-                          let firstChapterName = "";
-
-                          const saveChapter = async (name, content) => {
-                            if (!content.trim()) return;
-                            const fileName = `${String(chapterCount).padStart(3, '0')}_${name.replace(/[\\/:*?"<>|]/g, '_')}.txt`;
-                            const fileHandle = await manuscriptHandle.getFileHandle(fileName, { create: true });
-                            const writable = await fileHandle.createWritable();
-                            await writable.write(content);
-                            await writable.close();
-                            if (!firstChapterName) firstChapterName = fileHandle;
-                          };
-
-                          let currentHeader = "序";
-                          for (const line of lines) {
-                            const isHeader = line.startsWith('#') || jpRegex.test(line);
-                            if (isHeader && currentChapterText.length > 0) {
-                              chapterCount++;
-                              await saveChapter(currentHeader, currentChapterText.join('\n'));
-                              currentChapterText = [];
-                              currentHeader = line.replace(/^#+\s*/, '').trim() || `第${chapterCount}章`;
-                            }
-                            currentChapterText.push(line);
-                          }
-                          if (currentChapterText.length > 0) {
-                            chapterCount++;
-                            await saveChapter(currentHeader, currentChapterText.join('\n'));
-                          }
-
-                          showToast(`${chapterCount}個の章に分割しました。`);
-                          refreshMaterials();
-                          setSidebarTab('manuscript');
-                        } catch (err) {
-                          showToast("分割失敗: " + err.message);
+                      onSplitDocument={() => {
+                        if (activeFileHandle && text) {
+                          splitChapters.openModal();
+                        } else {
+                          showToast('分割するファイルが開かれていません');
                         }
                       }}
                     />
