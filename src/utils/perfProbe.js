@@ -1,5 +1,5 @@
 export function perfEnabled() {
-  return true;
+  return window.ENABLE_PERF_LOGGING === true;
 }
 
 export function perfNow() {

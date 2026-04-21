@@ -42,7 +42,7 @@ import './components/MaterialsPanel.css';
 import './components/LinkPanel.css';
 
 import { saveTextFile, loadTextFile } from './utils/fileUtils';
-import { fileSystem, isElectron, isNative } from './utils/fileSystem';
+import { fileSystem, isElectron, isNative, isTauri } from './utils/fileSystem';
 import ManuscriptPanel from './components/ManuscriptPanel';
 import { generateEpub, downloadBlob } from './utils/epubExporter'; // EPUB Exporter
 import { generateDocx, downloadBlob as downloadDocxBlob } from './utils/docxExporter'; // DOCX Exporter
@@ -81,10 +81,9 @@ function App() {
   const latestMetadataRef = useRef({ tags: [] }); // ★ 最新のメタデータ
   const activeFileHandleRef = useRef(null); // ★ 最新のハンドル (Bug B, F 対策)
 
-  // Refs を常に同期
+  // Refs を常に同期 (activeFileHandle は宣言後に同期)
   useEffect(() => { textRef.current = text; }, [text]);
   useEffect(() => { debouncedTextRef.current = debouncedText; }, [debouncedText]);
-  useEffect(() => { activeFileHandleRef.current = activeFileHandle; }, [activeFileHandle]);
 
   useEffect(() => {
     const scheduledAt = perfNow();
@@ -127,6 +126,7 @@ function App() {
     strictManuscriptMode: false,
     enableGhostText: true, // Ghost Text Toggle
     enableJournaling: true, // ジャーナリング (操作ログ) のオン・オフ
+    enablePerfLogging: false, // 開発・分析用ログ (PERF) のオン・オフ
     customCSS: '', // User custom CSS
   });
 
@@ -137,6 +137,11 @@ function App() {
   const [isRapidMode, setIsRapidMode] = useState(false);
   const [pendingImport, setPendingImport] = useState(null); // Data from Checklist to Board
   const [pendingFileSelect, setPendingFileSelect] = useState(null);
+
+  // Perf Toggle Sync
+  useEffect(() => {
+    window.ENABLE_PERF_LOGGING = settings.enablePerfLogging === true;
+  }, [settings.enablePerfLogging]);
 
 
   const [showInputModal, setShowInputModal] = useState(false);
@@ -163,6 +168,9 @@ function App() {
   const [fileTree, setFileTree] = useState([]);
   const [activeFileHandle, setActiveFileHandle] = useState(null);
   const [isProjectMode, setIsProjectMode] = useState(false);
+
+  // Bug 1 修正: 宣言後に Ref を同期させる
+  useEffect(() => { activeFileHandleRef.current = activeFileHandle; }, [activeFileHandle]);
   const [showReader, setShowReader] = useState(false);
   const [projectSettings, setProjectSettings] = useState({
     targetPages: 300,     // 目標枚数 (400字詰め)
@@ -619,7 +627,7 @@ function App() {
       setActiveTab('editor');
 
       try {
-        const usageKey = `file_usage_${projectHandle ? (typeof projectHandle === 'string' ? projectHandle : projectHandle.name) : 'default'} `;
+        const usageKey = `file_usage_${projectHandle ? (typeof projectHandle === 'string' ? projectHandle : projectHandle.name) : 'default'}`;
         let filePath = fileName;
         if (options.path) {
           filePath = options.path;
@@ -1172,7 +1180,8 @@ function App() {
     if (showMetadata) {
       setText(newContent);
     } else {
-      // Bug A 対策: 500ms 遅延する parsedNote.metadata ではなく最新の Ref を使用する
+      // Bug A 対策 / Bug 2 指摘対応: 500ms 遅延する parsedNote.metadata ではなく最新の Ref を使用する。
+      // latestMetadataRef.current は handleOpenFile 等で常に最新に同期されていることを前提とする。
       const content = serializeNote(newContent, latestMetadataRef.current);
       setText(content);
     }
@@ -1207,7 +1216,9 @@ function App() {
 
   // Save to local storage on change (Web fallback) — debounced to avoid sync I/O on every keystroke
   useEffect(() => {
-    if (isProjectMode && activeFileHandle) return; // ファイル保存で十分
+    // Bug 4 修正: ファイル（Native/Project）が開いている場合は localStorage への保存を完全に抑止する
+    if (activeFileHandle) return; 
+    if (isProjectMode) return; 
     if (!debouncedText && debouncedText !== '') return;
 
     const t0 = perfNow();
