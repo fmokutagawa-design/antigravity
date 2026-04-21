@@ -486,22 +486,17 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
 
   const debouncedLineCount = useMemo(() => {
     if (!debouncedDocument || debouncedDocument.length === 0) return 10;
-    // 大規模テキスト: paraPosCache を作らないので文字数÷行幅で概算する
+    // 大規模テキスト: paraPosCache を作らないが、幅の不足で右側が空白化するのを防ぐため、
+    // 軽量な computeTotalLines ループで正確な行数を計算する（JS上で非常に高速）。
     if (isMassiveText) {
-      const textLen = localTextRef.current.length;
-      const approx = baseMetrics.maxPerLine > 0
-        ? Math.ceil(textLen / baseMetrics.maxPerLine)
-        : 10;
-      return Math.max(approx, 10);
+      const exactLines = computeTotalLines(localTextRef.current, baseMetrics.maxPerLine);
+      return Math.max(exactLines, 10);
     }
     const cached = [...paraPosCache.values()];
     if (cached.length === 0) {
-      // キャッシュが空：文字数÷1行文字数で概算
-      const textLen = localTextRef.current.length;
-      const approx = baseMetrics.maxPerLine > 0
-        ? Math.ceil(textLen / baseMetrics.maxPerLine)
-        : 10;
-      return Math.max(approx, 10);
+      // キャッシュが空の場合も、正確な行数を取得して幅を合わせる
+      const exactLines = computeTotalLines(localTextRef.current, baseMetrics.maxPerLine);
+      return Math.max(exactLines, 10);
     }
     const total = cached.reduce((sum, p) => sum + (p.totalLines || 1), 0);
     return Math.max(total, 10);
