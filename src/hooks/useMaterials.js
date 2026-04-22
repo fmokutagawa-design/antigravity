@@ -93,73 +93,30 @@ export const useMaterials = (projectHandle) => {
             const BATCH_SIZE = 2; // 指示書に基づき 2 件ずつ処理 (IPC負荷軽減の極大化)
 
             const processFile = async ({ item, filePath }) => {
-                try {
-                    const lastModified = item.lastModified || 0;
-                    
-                    // Cache check
-                    if (newCache.has(filePath) && newCache.get(filePath).lastModified === lastModified) {
-                        const cached = newCache.get(filePath).data;
-                        if (cached.metadata?.tags) cached.metadata.tags.forEach(t => newTags.add(t));
-                        if (cached.tags) cached.tags.forEach(t => newTags.add(t));
-                        return { ...cached, path: filePath };
-                    }
+                // 指示に基づき、初期ロード時はファイルの中身を読み込まない。
+                // 雲マークのファイル（OneDrive等）がスタックしてアプリ全体を道連れにするのを防ぐため。
+                const lastModified = item.lastModified || 0;
+                
+                const fileData = {
+                    ...item,
+                    path: filePath,
+                    metadata: {}, // 後で読み込まれる
+                    tags: [],     // 後で読み込まれる
+                    lastModified
+                };
 
-                    // Partial read for scanning (14万字などの巨大ファイル対策)
-                    const scanContent = await throttledRead(item.handle, { length: 4096 });
-                    
-                    // Parse metadata/tags
-                    const { metadata } = parseNote(scanContent);
-                    const fileTags = new Set();
-                    
-                    if (metadata.tags && Array.isArray(metadata.tags)) {
-                        metadata.tags.forEach(tag => {
-                            newTags.add(tag);
-                            fileTags.add(tag);
-                        });
-                    }
-
-                    const tagRegex = /#[\w\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uff00-\uff9f\u4e00-\u9faf\u3400-\u4dbf]+/g;
-                    const matches = scanContent.match(tagRegex);
-                    if (matches) {
-                        matches.forEach(tag => {
-                            if (/^#ch\d+$/i.test(tag)) return;
-                            if (/^#[0-9A-Fa-f]{6}$|^#[0-9A-Fa-f]{3}$/.test(tag)) return;
-                            newTags.add(tag);
-                            fileTags.add(tag);
-                        });
-                    }
-
-                    const fileData = {
-                        ...item,
-                        path: filePath,
-                        metadata,
-                        tags: Array.from(fileTags),
-                        lastModified
-                    };
-
-                    newCache.set(filePath, { lastModified, data: fileData });
-                    cacheUpdated = true;
-                    return fileData;
-                } catch (e) {
-                    console.error(`[useMaterials] Skip file due to error: ${filePath}`, e);
-                    // 個別の失敗を許容（指示書 [修正 B]）
-                    return null;
-                }
+                return fileData;
             };
 
-            // バッチ処理（指示書 [修正 A]）
+            // バッチ処理（構造は維持するが、中身は読まないので高速）
             for (let i = 0; i < fileEntries.length; i += BATCH_SIZE) {
                 const batch = fileEntries.slice(i, i + BATCH_SIZE);
+                // processFile が Promise を返すため Promise.all を使用
                 const results = await Promise.all(batch.map(processFile));
                 
                 results.forEach(res => {
                     if (res) flatList.push(res);
                 });
-
-                // IPC の飽和を防ぐため、バッチ間に極小の遅延を挟む
-                if (i + BATCH_SIZE < fileEntries.length) {
-                    await new Promise(resolve => setTimeout(resolve, 0));
-                }
             }
 
             setAllMaterialFiles(flatList);
