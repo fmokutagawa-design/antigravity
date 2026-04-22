@@ -63,8 +63,11 @@ export const browserFileSystem = {
     return await dirHandle.getFileHandle(fileName, { create: true });
   },
 
-  async readFile(fileHandle) {
+  async readFile(fileHandle, options = {}) {
     const file = await fileHandle.getFile();
+    if (options.length) {
+      return await file.slice(0, options.length).text();
+    }
     return await file.text();
   },
 

@@ -54,7 +54,7 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink, projectHandl
         };
 
         loadImages();
-    }, [text, workText, showFullWork, isNexusFile, projectHandle]);
+    }, [displayText, projectHandle]);
 
     // クリーンアップ: コンポーネントのアンマウント時に revokeObjectURL を実行
     useEffect(() => {
@@ -233,7 +233,7 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink, projectHandl
         if (resolved) {
             onOpenSegmentFile(resolved.file, resolved.localOffset);
         }
-    }, [showFullWork, resolveOffset, onOpenSegmentFile, settings.charsPerLine, settings.linesPerPage]);
+    }, [showFullWork, resolveOffset, onOpenSegmentFile, settings.charsPerLine, settings.linesPerPage, displayText]);
 
     /**
      * Plain モードでの行クリック
@@ -251,7 +251,7 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink, projectHandl
         if (resolved) {
             onOpenSegmentFile(resolved.file, resolved.localOffset);
         }
-    }, [showFullWork, resolveOffset, onOpenSegmentFile, workText, isNexusFile, text]);
+    }, [showFullWork, resolveOffset, onOpenSegmentFile, displayText]);
 
     // Render logic continues below...
     const renderManuscript = () => {

@@ -37,9 +37,7 @@ export function useFileOperations({
     isSavingRef.current = true;
     try {
       if (activeFileHandle && projectHandle) {
-      try {
         const { metadata } = parseNote(text);
-
         const options = { disableJournal: settings?.enableJournaling === false };
         await fileSystem.writeFile(activeFileHandle, text, options);
 
@@ -52,19 +50,13 @@ export function useFileOperations({
         setLastSaved(new Date());
         lastSavedTextRef.current = text;
         showToast('💾 保存しました');
-
-      } catch (error) {
-        console.error('Failed to save file:', error);
-        showToast('ファイルの保存に失敗しました。');
-      }
-    } else {
-      // Fallback to download
-      try {
+      } else {
+        // Fallback to download
         saveTextFile(text);
-      } catch (error) {
-        console.error('Failed to save file:', error);
-        showToast('ファイルの保存に失敗しました。');
       }
+    } catch (error) {
+      console.error('Failed to save file:', error);
+      showToast('ファイルの保存に失敗しました。');
     } finally {
       isSavingRef.current = false;
     }

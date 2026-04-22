@@ -175,7 +175,7 @@ export function useWorkText({ activeFileHandle, projectHandle, currentText }) {
     }
 
     return { computedWorkText: concatenated, computedOffsetMap: offsets };
-  }, [rawSegments, currentFileName]); // currentText を依存から外すことで、入力ごとの再計算を完全に停止
+  }, [rawSegments, currentFileName, currentText]); // currentText (debounced) が変わったタイミングで再計算する
 
   /**
    * 連結テキスト内の位置から、元のセグメントファイルとローカル位置を逆引きする。

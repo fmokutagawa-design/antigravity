@@ -14,117 +14,130 @@ export const useMaterials = (projectHandle) => {
     const [fileCache, setFileCache] = useState(new Map());
 
     const loadMaterials = useCallback(async () => {
-        if (!projectHandle) return;
+        if (!projectHandle) {
+            setMaterialsTree([]);
+            setAllMaterialFiles([]);
+            setTags(new Set());
+            setLinkGraph(new Map());
+            return;
+        }
 
         setIsLoading(true);
         try {
-            // Read tree using adapter
+            // 1. Read the whole tree structure first
             const tree = await fileSystem.readDirectory(projectHandle);
 
-            // Wrap in root folder for UI display
+            // Filter out .nexus folders recursively for the sidebar tree
+            const filterTree = (items) => {
+                return items
+                    .filter(item => !(item.kind === 'directory' && (item.name === '.nexus' || item.name.endsWith('.nexus'))))
+                    .map(item => {
+                        if (item.kind === 'directory' && item.children) {
+                            return { ...item, children: filterTree(item.children) };
+                        }
+                        return item;
+                    });
+            };
+            const filteredTree = filterTree(tree);
+
             const rootItem = {
-                name: projectHandle.name,
+                name: projectHandle.name || 'Project',
                 kind: 'directory',
                 handle: projectHandle,
-                children: tree
+                children: filteredTree
             };
             setMaterialsTree([rootItem]);
 
-            // Create flat list and extract metadata
-            const flatList = [];
-            const newTags = new Set();
-            const newCache = new Map(fileCache); // Copy existing cache
-            let cacheUpdated = false;
-
-            const traverse = async (items, pathPrefix = '') => {
+            // 2. Flatten files for processing
+            const fileEntries = [];
+            const collectFiles = (items, pathPrefix = '') => {
                 for (const item of items) {
                     if (item.kind === 'file') {
                         const filePath = pathPrefix ? `${pathPrefix}/${item.name}` : item.name;
-                        try {
-                            // Unified read
-                            let content = '';
-                            let lastModified = 0;
-
-                            if (isNative) {
-                                content = await fileSystem.readFile(item.handle);
-                                // No cache usage for Electron v1 for simplicity (local is fast)
-                            } else {
-                                // Browser: Use Cache if possible to avoid slow disk access
-                                const file = await item.handle.getFile();
-                                lastModified = file.lastModified;
-
-                                if (newCache.has(filePath) && newCache.get(filePath).lastModified === lastModified) {
-                                    // Use cached data
-                                    const cachedData = newCache.get(filePath).data;
-                                    flatList.push(cachedData);
-
-                                    // Extract tags (re-add to Set)
-                                    if (cachedData.metadata?.tags) cachedData.metadata.tags.forEach(t => newTags.add(t));
-                                    // Note: we don't re-regex but it should be fine if metadata is correct
-                                    continue; // Skip reading
-                                }
-                                content = await file.text();
-                            }
-
-                            // Parse note into body and metadata
-                            const { body, metadata } = parseNote(content);
-
-                            const fileData = {
-                                ...item,
-                                content,
-                                body,
-                                metadata,
-                                path: filePath
-                            };
-
-                            if (!isNative) {
-                                newCache.set(filePath, { lastModified, data: fileData });
-                                cacheUpdated = true;
-                            }
-
-                            flatList.push(fileData);
-
-                            // Extract tags from metadata
-                            if (fileData.metadata.tags && Array.isArray(fileData.metadata.tags)) {
-                                fileData.metadata.tags.forEach(tag => newTags.add(tag));
-                            }
-
-                            // Also extract old-style #tags for backward compatibility
-                            const tagRegex = /#[\w\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uff00-\uff9f\u4e00-\u9faf\u3400-\u4dbf]+/g;
-                            const matches = fileData.content.match(tagRegex);
-                            if (matches) {
-                                matches.forEach(tag => {
-                                    // Exclude #chXX format (often used for plot structure, not categorization)
-                                    if (/^#ch\d+$/i.test(tag)) return;
-
-                                    // Exclude Hex Colors (e.g. #E3F2FD, #FFF)
-                                    // Users confusingly see color codes as tags if they have CSS or color refs in notes
-                                    if (/^#[0-9A-Fa-f]{6}$|^#[0-9A-Fa-f]{3}$/.test(tag)) return;
-
-                                    newTags.add(tag);
-                                });
-                            }
-                        } catch (e) {
-                            console.error('Error reading file for tags:', item.name, e);
-                            flatList.push({
-                                ...item,
-                                content: '',
-                                body: '',
-                                metadata: { tags: [], 種別: '', 状態: '', 作品: '' },
-                                path: filePath
-                            });
+                        // Only process text files
+                        if (item.name.endsWith('.txt') || item.name.endsWith('.md')) {
+                            fileEntries.push({ item, filePath });
                         }
                     } else if (item.kind === 'directory') {
-                        // .nexus フォルダはシステム管理用のため除外
                         if (item.name === '.nexus' || item.name.endsWith('.nexus')) continue;
                         if (item.children) {
-                            await traverse(item.children, pathPrefix ? `${pathPrefix}/${item.name}` : item.name);
+                            collectFiles(item.children, pathPrefix ? `${pathPrefix}/${item.name}` : item.name);
                         }
                     }
                 }
             };
+            collectFiles(tree);
 
-            await traverse(tree);
+            // 3. Process files with concurrency limit
+            const flatList = [];
+            const newTags = new Set();
+            const newCache = new Map(fileCache);
+            let cacheUpdated = false;
+            const CONCURRENCY = 8;
+
+            const processFile = async ({ item, filePath }) => {
+                try {
+                    const lastModified = item.lastModified || 0;
+                    
+                    // Cache check
+                    if (newCache.has(filePath) && newCache.get(filePath).lastModified === lastModified) {
+                        const cached = newCache.get(filePath).data;
+                        if (cached.metadata?.tags) cached.metadata.tags.forEach(t => newTags.add(t));
+                        if (cached.tags) cached.tags.forEach(t => newTags.add(t));
+                        return { ...cached, path: filePath };
+                    }
+
+                    // Partial read for scanning (Fix #7)
+                    const scanContent = await fileSystem.readFile(item.handle, { length: 4096 });
+                    
+                    // Parse metadata/tags
+                    const { metadata } = parseNote(scanContent);
+                    const fileTags = new Set();
+                    
+                    if (metadata.tags && Array.isArray(metadata.tags)) {
+                        metadata.tags.forEach(tag => {
+                            newTags.add(tag);
+                            fileTags.add(tag);
+                        });
+                    }
+
+                    const tagRegex = /#[\w\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uff00-\uff9f\u4e00-\u9faf\u3400-\u4dbf]+/g;
+                    const matches = scanContent.match(tagRegex);
+                    if (matches) {
+                        matches.forEach(tag => {
+                            if (/^#ch\d+$/i.test(tag)) return;
+                            if (/^#[0-9A-Fa-f]{6}$|^#[0-9A-Fa-f]{3}$/.test(tag)) return;
+                            newTags.add(tag);
+                            fileTags.add(tag);
+                        });
+                    }
+
+                    const fileData = {
+                        ...item,
+                        path: filePath,
+                        metadata,
+                        tags: Array.from(fileTags),
+                        lastModified
+                    };
+
+                    newCache.set(filePath, { lastModified, data: fileData });
+                    cacheUpdated = true;
+                    return fileData;
+                } catch (e) {
+                    console.error(`[useMaterials] Skip file due to error: ${filePath}`, e);
+                    return null;
+                }
+            };
+
+            // Limit parallel execution
+            for (let i = 0; i < fileEntries.length; i += CONCURRENCY) {
+                const chunk = fileEntries.slice(i, i + CONCURRENCY);
+                const results = await Promise.all(chunk.map(processFile));
+                results.forEach(res => {
+                    if (res) flatList.push(res);
+                });
+            }
+
             setAllMaterialFiles(flatList);
             setTags(newTags);
 
@@ -141,13 +154,13 @@ export const useMaterials = (projectHandle) => {
         } finally {
             setIsLoading(false);
         }
-    }, [projectHandle, fileCache]); // Add fileCache to dependencies
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [projectHandle]);
 
     // Initial load
     useEffect(() => {
         loadMaterials();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [projectHandle]); // dependencies reduced
+    }, [projectHandle, loadMaterials]);
 
     return {
         materialsTree,

@@ -69,8 +69,8 @@ export const electronFileSystem = {
     return { handle: filePath, name: fileName, kind: 'file' };
   },
 
-  async readFile(fileHandle) {
-    return await window.api.fs.readFile(toPath(fileHandle));
+  async readFile(fileHandle, options = {}) {
+    return await window.api.fs.readFile(toPath(fileHandle), options);
   },
 
   async writeFile(fileHandle, content, options = {}) {
