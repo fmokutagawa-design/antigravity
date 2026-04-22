@@ -3,6 +3,23 @@ import { fileSystem, isNative } from '../utils/fileSystem';
 import { parseNote } from '../utils/metadataParser';
 import { buildLinkGraph } from '../utils/linkAnalyzer';
 
+// --- 全局 I/O セマフォ ---
+// 同時発行数を「物理的に3つ」に制限するカウンター
+let activeQueries = 0;
+const MAX_CONCURRENT_IO = 3;
+
+const throttledRead = async (handle, options = {}) => {
+  while (activeQueries >= MAX_CONCURRENT_IO) {
+    await new Promise(r => setTimeout(r, 50));
+  }
+  activeQueries++;
+  try {
+    return await fileSystem.readFile(handle, options);
+  } finally {
+    activeQueries--;
+  }
+};
+
 export const useMaterials = (projectHandle) => {
     const [materialsTree, setMaterialsTree] = useState([]);
     const [allMaterialFiles, setAllMaterialFiles] = useState([]);
@@ -88,7 +105,7 @@ export const useMaterials = (projectHandle) => {
                     }
 
                     // Partial read for scanning (14万字などの巨大ファイル対策)
-                    const scanContent = await fileSystem.readFile(item.handle, { length: 4096 });
+                    const scanContent = await throttledRead(item.handle, { length: 4096 });
                     
                     // Parse metadata/tags
                     const { metadata } = parseNote(scanContent);
