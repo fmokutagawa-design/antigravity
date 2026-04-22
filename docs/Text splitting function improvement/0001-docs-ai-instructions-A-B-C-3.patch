@@ -1,0 +1,1385 @@
+From 0b591cfc1537ad28d306134e3103303b349d91a1 Mon Sep 17 00:00:00 2001
+From: Claude <claude@anthropic.com>
+Date: Sun, 19 Apr 2026 21:55:09 +0000
+Subject: [PATCH] =?UTF-8?q?docs(ai-instructions):=20A/B/C=20=E3=81=AE?=
+ =?UTF-8?q?=E5=AE=9F=E8=A3=85=E6=8C=87=E7=A4=BA=E6=9B=B8=203=20=E6=9C=AC?=
+ =?UTF-8?q?=E3=82=92=E4=BF=9D=E5=AD=98?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Sonnet / Gemini 3 Flash 向けの、1 ターンで実装完了できる粒度の指示書。
+設計書 15 万字の分割機構全体は AI には重すぎるため、その中から独立性が
+高く価値のある 3 タスクに切り出した。
+
+- A_journal_log.md: 全書き込みを JSONL で記録するジャーナル機構
+- B_tmp_cleanup.md: 起動時の .tmp 残骸クリーンアップ組み込み
+- C_boundary_detector.md: 章・節境界検出ユーティリティ（純粋関数）
+
+各指示書は独立しており、どの順序でも実装可能。1 つ失敗しても他は影響なし。
+
+各指示書の構造:
+  - 前提（ブランチ・派生コミット・コミットメッセージ雛形）
+  - 目的（3-5 行）
+  - ファイル構成（新規・変更・禁止）
+  - 実装仕様（シグネチャ・契約・エラーハンドリング）
+  - テスト（ケース一覧）
+  - 絶対遵守ルール（本番原稿に触らない等）
+  - 完了条件（機械的チェック可能）
+  - 詰まったら（Opus 相談の合図）
+  - 範囲外（やらないこと）
+---
+ docs/ai_instructions/A_journal_log.md       | 453 +++++++++++++++++++
+ docs/ai_instructions/B_tmp_cleanup.md       | 458 ++++++++++++++++++++
+ docs/ai_instructions/C_boundary_detector.md | 414 ++++++++++++++++++
+ 3 files changed, 1325 insertions(+)
+ create mode 100644 docs/ai_instructions/A_journal_log.md
+ create mode 100644 docs/ai_instructions/B_tmp_cleanup.md
+ create mode 100644 docs/ai_instructions/C_boundary_detector.md
+
+diff --git a/docs/ai_instructions/A_journal_log.md b/docs/ai_instructions/A_journal_log.md
+new file mode 100644
+index 0000000..270b871
+--- /dev/null
++++ b/docs/ai_instructions/A_journal_log.md
+@@ -0,0 +1,453 @@
++# 指示書 A：ジャーナルログ機構の実装
++
++> コーディングエージェント（Sonnet / Gemini 3 Flash）向け。  
++> **1 ターンで実装完了できる粒度**。詰まったら即座に止めて Claude Opus に戻す。
++
++---
++
++## 0. 前提
++
++### 0.1 作業環境
++
++- **リポジトリ**：https://github.com/fmokutagawa-design/antigravity.git
++- **派生元ブランチ**：`feature/uncontrolled-editor-v3`
++- **派生元コミット**：`5ac247a`（atomic write 実装の直後）
++- **新ブランチ名**：`feature/journal-log`
++
++### 0.2 ブランチ作成手順
++
++```bash
++git checkout feature/uncontrolled-editor-v3
++git pull
++git checkout -b feature/journal-log
++```
++
++### 0.3 完了後のコミットメッセージ雛形
++
++```
++feat(durability): append-only journal log for all file mutations
++
++Records every atomic write (text/binary) and every createFile operation
++as JSONL in .nexus-project/journal.log within the project root.
++
++- journal.cjs: pure append-only logger, no external deps
++- integrated into atomicWriteTextFile / atomicWriteBinaryFile
++- main.cjs passes projectRoot when invoking atomic writes
++- .nexus-project/ directory is auto-created on first write
++- silent failure: if journal write fails, main operation still proceeds
++  (logging must never block real work)
++
++Closes instruction A.
++```
++
++---
++
++## 1. 目的
++
++NEXUS のすべてのファイル書き込み操作を**追記専用ジャーナル**に記録する。設計書 B §2.5 の実装。
++
++目的：
++
++1. 原稿消失が起きた場合の**事後調査**に使える一次資料
++2. 将来のスナップショット機構・復旧フローの基礎
++3. バグ診断の強力な武器（「いつ何が起きたか」がファイル 1 つで追える）
++
++ジャーナルはデバッグ用ではなく**運用必須のログ**。ただし**ジャーナル書き込み失敗が本番操作を止めてはいけない**。ログが欠ける程度の被害に留める。
++
++---
++
++## 2. ファイル構成
++
++### 2.1 新規作成するファイル
++
++- `electron/journal.cjs` — ジャーナル実装本体
++- `electron/journal.test.cjs` — 単体テスト（Electron 不要、`node` で実行）
++
++### 2.2 変更する既存ファイル
++
++- `electron/atomicWrite.cjs` — 関数シグネチャに `projectRoot` パラメータを追加、成功／失敗時にジャーナル記録を呼ぶ
++- `electron/main.cjs` — `fs:writeFile` / `fs:writeFileBinary` / `fs:createFile` ハンドラで、呼び出し時に project root を特定して渡す
++
++### 2.3 絶対に触らないファイル
++
++- `src/` 配下のすべて（renderer 側のコードは変更禁止）
++- `src/components/Editor.jsx`（特に厳禁、触ると uncontrolled 化の echo suppression が壊れる）
++
++---
++
++## 3. 実装仕様
++
++### 3.1 `electron/journal.cjs` のインターフェース
++
++```js
++/**
++ * journal.cjs
++ * Append-only JSONL logger for file mutations.
++ */
++const fs = require('fs');
++const fsp = require('fs/promises');
++const path = require('path');
++
++/**
++ * Determine the project root for a given file path.
++ * 
++ * Project root is the closest ancestor directory that contains (or will
++ * contain) a .nexus-project/ subdirectory. For the initial implementation,
++ * we adopt a simple rule: project root is passed explicitly by the caller.
++ * 
++ * If projectRoot is null/undefined, no journal is written (journal is
++ * silently skipped for operations outside of a project, e.g. temp files).
++ */
++async function ensureJournalDir(projectRoot) { /* ... */ }
++
++/**
++ * Record an entry in the journal.
++ * 
++ * @param {string} projectRoot - Absolute path to project root
++ * @param {object} entry - Entry to log. Must have at least { op, path }.
++ * @returns {Promise<void>}
++ * 
++ * 失敗しても throw しない（catch して console.warn まで）。
++ * ジャーナル記録が本番操作を止めてはいけない。
++ */
++async function recordJournal(projectRoot, entry) { /* ... */ }
++
++/**
++ * Read all journal entries (for debugging / recovery).
++ * 
++ * @param {string} projectRoot
++ * @param {object} options - { sinceTs?: string } で時刻フィルタ可
++ * @returns {Promise<object[]>} entry の配列
++ */
++async function readJournal(projectRoot, options = {}) { /* ... */ }
++
++/**
++ * Rotate the journal if it exceeds size or age thresholds.
++ * Current journal becomes .nexus-project/journal.archive/YYYY-MM.log.
++ * 
++ * Called lazily from recordJournal when the journal grows large.
++ * 
++ * @param {string} projectRoot
++ * @returns {Promise<{ rotated: boolean, archivePath?: string }>}
++ */
++async function rotateJournalIfNeeded(projectRoot) { /* ... */ }
++
++module.exports = {
++    recordJournal,
++    readJournal,
++    rotateJournalIfNeeded,
++    ensureJournalDir,
++};
++```
++
++### 3.2 ジャーナルエントリの形式（JSONL）
++
++各行は 1 つの JSON オブジェクト。**必須フィールド**：
++
++```json
++{"ts":"2026-04-19T15:23:11.123+09:00","op":"atomic.write.success","path":"/Users/.../foo.txt","hash":"sha256:a3f2c1...","bytes":42180}
++```
++
++- `ts`: ISO 8601 拡張形式、ミリ秒精度、タイムゾーン付き
++- `op`: 操作種別（下記 3.3 参照）
++- `path`: 絶対パス（project root の下にあるべき）
++- 他のフィールドは op ごとに自由
++
++### 3.3 `op` 値の網羅リスト
++
++実装時は以下の op を記録すること：
++
++| op 値 | いつ | 追加フィールド |
++|---|---|---|
++| `atomic.write.begin` | テキスト atomic write 開始時 | `expectedHash`, `bytes` |
++| `atomic.write.success` | テキスト atomic write 成功時 | `hash`, `bytes`, `shrinkClass` |
++| `atomic.write.fail` | テキスト atomic write 失敗時 | `error`, `phase`（writeFile/rename/fsync など） |
++| `atomic.write.validation_rejected` | validation で拒否 | `code`（V-1/V-2/V-3b/V-4）, `reason` |
++| `atomic.write.binary.success` | バイナリ atomic write 成功時 | `hash`, `bytes` |
++| `atomic.write.binary.fail` | バイナリ atomic write 失敗時 | `error`, `phase` |
++| `createFile.success` | fs:createFile 成功時 | `bytes`, `allowedEmpty: true` |
++
++### 3.4 実装の詳細要件
++
++#### 3.4.1 ディレクトリ構成
++
++`.nexus-project/` が project root 直下になければ作成する（`fs.mkdir` with `recursive: true`）。
++
++```
++<projectRoot>/
++└── .nexus-project/
++    ├── journal.log              ← 現行ジャーナル（JSONL）
++    └── journal.archive/
++        └── 2026-04.log          ← ローテート済み
++```
++
++#### 3.4.2 追記専用
++
++ジャーナル書き込みは `fs.promises.appendFile` で行う。**絶対に上書きモード（`w` フラグ）を使わない**。
++
++#### 3.4.3 失敗の握りつぶし
++
++`recordJournal` 内部で：
++
++```js
++try {
++    // ジャーナル書き込み処理
++} catch (err) {
++    console.warn(`[journal] failed to record entry: ${err.message}`, { entry });
++    // throw しない
++}
++```
++
++これにより、ジャーナル書き込みでディスクフルが起きても、本番の atomic write は止まらない。
++
++#### 3.4.4 ローテーション条件
++
++- ファイルサイズが **100 MB を超える**、または
++- 月が変わった（現在の月と最終更新月が違う）
++
++のいずれかで自動ローテート。ローテート先は `.nexus-project/journal.archive/YYYY-MM.log`（gzip 圧縮は**しない**、当面はプレーンテキスト）。
++
++ローテーションは `recordJournal` 内で「書き込み前にチェック」のスタイル。頻繁にチェックすると重いので、**直近 1 分以内にチェック済みならスキップ**するキャッシュを内部に持つ。
++
++#### 3.4.5 projectRoot の決定
++
++**atomic write の呼び出し側**（`main.cjs` の IPC ハンドラ）が projectRoot を特定して渡す。当面は以下の簡便なルールで決定：
++
++```js
++// electron/main.cjs の中で
++function findProjectRoot(filePath) {
++    // activeProjectPath グローバル（= 現在開いているプロジェクトフォルダ）があれば優先
++    if (globalProjectRoot && filePath.startsWith(globalProjectRoot)) {
++        return globalProjectRoot;
++    }
++    // フォールバック: 親ディレクトリを遡り、親の親ディレクトリ名が
++    // よくあるプロジェクト配置に見えたら採用（当面は filePath のディレクトリ）
++    return path.dirname(filePath);
++}
++```
++
++**重要**：`globalProjectRoot` は新規にグローバル変数として `main.cjs` に持つ。`app:saveSettings` で `projectPath` を受け取る IPC ハンドラが既にあるので、**ここでグローバルに保存する**処理を追加する（後述 §3.5.3）。
++
++### 3.5 `electron/atomicWrite.cjs` の変更
++
++#### 3.5.1 `atomicWriteTextFile` のシグネチャ変更
++
++```js
++// 変更前
++async function atomicWriteTextFile(filePath, content, options = {}) { ... }
++
++// 変更後
++async function atomicWriteTextFile(filePath, content, options = {}) {
++    // options.projectRoot が渡ってきたら、その値を使ってジャーナル記録する
++    const { projectRoot } = options;
++    
++    // ジャーナルは電動遅延 require（循環依存回避）
++    let journal = null;
++    if (projectRoot) {
++        try { journal = require('./journal.cjs'); } catch { /* noop */ }
++    }
++    
++    // ... 既存の処理 ...
++    
++    // ValidationError の際
++    if (journal) {
++        await journal.recordJournal(projectRoot, {
++            ts: new Date().toISOString(),
++            op: 'atomic.write.validation_rejected',
++            path: filePath,
++            code: err.code,
++            reason: err.message,
++        });
++    }
++    throw err;  // 既存挙動通り throw
++    
++    // 成功時
++    if (journal) {
++        await journal.recordJournal(projectRoot, {
++            ts: new Date().toISOString(),
++            op: 'atomic.write.success',
++            path: filePath,
++            hash: expectedHash,
++            bytes: ...,
++            shrinkClass: validation.shrinkClass,
++        });
++    }
++    
++    // writeFile/rename/fsync のどこかで失敗した場合
++    if (journal) {
++        await journal.recordJournal(projectRoot, {
++            ts: new Date().toISOString(),
++            op: 'atomic.write.fail',
++            path: filePath,
++            error: String(err),
++            phase: '...',  // どの phase で失敗したか
++        });
++    }
++}
++```
++
++同様に `atomicWriteBinaryFile` も変更する。
++
++#### 3.5.2 循環依存の回避
++
++`atomicWrite.cjs` の冒頭で `require('./journal.cjs')` すると循環依存の危険がある（journal.cjs は atomic write を使わないので実際には循環しないが、明示的に遅延 require する）。
++
++`journal` 変数は関数内でローカルに `require` する方式を徹底する。
++
++#### 3.5.3 `main.cjs` の変更
++
++```js
++// グローバル状態（既にある activeProjectPath があればそれを使う。なければ新規）
++let globalProjectRoot = null;
++
++ipcMain.handle('app:saveSettings', async (event, data) => {
++    // 既存処理...
++    if (data.projectPath) {
++        globalProjectRoot = typeof data.projectPath === 'string'
++            ? data.projectPath
++            : (data.projectPath.handle || data.projectPath.path);
++    }
++    // ...
++});
++
++// すべての fs:* ハンドラで projectRoot を渡す
++ipcMain.handle('fs:writeFile', async (event, filePath, content) => {
++    try {
++        await atomicWriteTextFile(filePath, content, {
++            projectRoot: globalProjectRoot || path.dirname(filePath),
++        });
++        return { ok: true };
++    } catch (err) {
++        // 既存処理
++    }
++});
++```
++
++**既存の挙動を保つ**：`projectRoot` が特定できない場合でも、`path.dirname(filePath)` をフォールバックとして渡す（ジャーナルがファイルのすぐ隣に作られるだけで、本番機能は動く）。
++
++---
++
++## 4. テスト
++
++### 4.1 `electron/journal.test.cjs`
++
++独立した node スクリプト。Electron 不要。既存の `atomicWrite.test.cjs` と同じスタイル：
++
++```js
++#!/usr/bin/env node
++const fs = require('fs');
++const path = require('path');
++const os = require('os');
++const { recordJournal, readJournal, rotateJournalIfNeeded } = require('./journal.cjs');
++
++let passed = 0, failed = 0;
++function expect(name, cond, detail) { /* atomic write と同じ */ }
++async function withTempProject(fn) { /* mkdtempSync + rmSync */ }
++
++async function testRecordAndRead() { /* ... */ }
++async function testDirectoryAutoCreate() { /* ... */ }
++async function testAppendOnly() { /* ... */ }
++async function testSilentFailOnMissingParent() { /* ... */ }
++async function testJsonlFormat() { /* ... */ }
++async function testRotateBySize() { /* ... */ }
++async function testRotateByMonth() { /* ... */ }
++async function testReadWithTimeFilter() { /* ... */ }
++async function testConcurrentWrites() { /* ... */ }
++
++async function main() {
++    const tests = [ /* ... */ ];
++    for (const t of tests) await t();
++    console.log(`\nResults: ${passed} passed, ${failed} failed`);
++    process.exit(failed === 0 ? 0 : 1);
++}
++main();
++```
++
++### 4.2 テストケース詳細
++
++| テスト名 | 期待挙動 |
++|---|---|
++| `testRecordAndRead` | エントリを記録し、`readJournal` で読み戻して同一内容を取得 |
++| `testDirectoryAutoCreate` | `.nexus-project/` がなくても自動作成される |
++| `testAppendOnly` | 複数回 `recordJournal` してもファイルが上書きされず追記される |
++| `testSilentFailOnMissingParent` | projectRoot が存在しないパスでも throw せず console.warn のみ |
++| `testJsonlFormat` | 各行が独立した有効な JSON、`\n` 区切り |
++| `testRotateBySize` | 100 MB 超で archive にローテート |
++| `testRotateByMonth` | 月が変わったら archive にローテート |
++| `testReadWithTimeFilter` | `{ sinceTs }` フィルタで新しいエントリのみ取得 |
++| `testConcurrentWrites` | 複数の `recordJournal` を Promise.all で同時発行して、10 件全部が記録される（順序は問わない） |
++
++### 4.3 既存テスト `atomicWrite.test.cjs` への影響
++
++**既存テストが全部 pass のままであること**を確認する。ジャーナル統合後も：
++
++```bash
++node electron/atomicWrite.test.cjs
++# → 39 passed, 0 failed
++```
++
++が出ることが完了条件の 1 つ。ジャーナル引数を渡さない（projectRoot なし）場合、ジャーナル記録は完全にスキップされ、既存挙動と同じになる。
++
++---
++
++## 5. 絶対遵守ルール
++
++1. **本番原稿ディレクトリに絶対に触らない**。テストは `os.tmpdir()` 内の `mkdtempSync` で作った一時ディレクトリのみ使う
++2. **ジャーナル書き込み失敗で本番操作を止めない**。`recordJournal` 内部は try-catch で握りつぶす（console.warn のみ）
++3. **追記専用**。`fs.writeFile` や `fs.truncate` を絶対に使わない。`appendFile` のみ
++4. **既存の `atomic.test.cjs` を壊さない**。39 件全 pass を維持
++5. **`src/` 配下を触らない**。renderer 側の変更は一切不要
++6. **ビルド（`npm run build`）が通らないコミットを push しない**
++7. **詰まったら即座に止める**。4 回以上コミットを書き直したら即座に Claude Opus に戻す（過去の Phase 3 の迷走パターン再発防止）
++
++---
++
++## 6. 完了条件
++
++以下全部 [x] で完了：
++
++- [ ] `feature/journal-log` ブランチが作成されている
++- [ ] `electron/journal.cjs` が作成され、§3.1 のインターフェースを実装している
++- [ ] `electron/journal.test.cjs` が作成され、§4.2 の 9 テスト全部 pass
++- [ ] `electron/atomicWrite.cjs` が §3.5.1 に従って変更されている
++- [ ] `electron/main.cjs` が §3.5.3 に従って変更されている
++- [ ] `node electron/atomicWrite.test.cjs` が 39 passed, 0 failed
++- [ ] `node electron/journal.test.cjs` が 9 passed, 0 failed
++- [ ] `npm run build` が成功
++- [ ] Electron を起動し、既存のファイル編集・保存が問題なく動く（手動確認）
++- [ ] 編集・保存後に `<project>/.nexus-project/journal.log` が実際に作られ、エントリが書かれている（手動確認）
++- [ ] §0.3 のコミットメッセージ雛形でコミット、push
++
++---
++
++## 7. 詰まったら
++
++以下のいずれかに当てはまったら**即座に作業を止めて** Claude Opus に相談する。
++
++- コミットを 3 回書き直しても §6 の完了条件を満たせない
++- `atomic.test.cjs` が 39 passed を維持できない
++- 既存の NEXUS で保存が失敗する回帰バグが出た
++- `main.cjs` の既存 IPC ハンドラ周りで何を変えていいか判断がつかない
++- `globalProjectRoot` のフォールバック挙動が分からない
++
++相談する際は：
++
++1. 現在のブランチの `git log --oneline -5` を貼る
++2. `node electron/journal.test.cjs` の出力を貼る
++3. 詰まっている具体的なファイル名と行番号を明示する
++4. 推測で進めずに止める
++
++---
++
++## 8. この指示書の範囲外（やらないこと）
++
++以下は別の指示書で扱うため、この実装では**やらない**：
++
++- `.tmp.*` 残骸のクリーンアップ（指示書 B）
++- 境界検出（指示書 C）
++- スナップショット機構（将来）
++- UI での journal 表示（将来）
++- ロック機構（将来）
++- マニフェスト管理（将来）
++
++範囲外のことに手を出さない。1 指示書 1 責務。
+diff --git a/docs/ai_instructions/B_tmp_cleanup.md b/docs/ai_instructions/B_tmp_cleanup.md
+new file mode 100644
+index 0000000..61fcc51
+--- /dev/null
++++ b/docs/ai_instructions/B_tmp_cleanup.md
+@@ -0,0 +1,458 @@
++# 指示書 B：起動時 `.tmp.*` 残骸クリーンアップ
++
++> コーディングエージェント（Sonnet / Gemini 3 Flash）向け。  
++> **1 ターンで実装完了できる粒度**。詰まったら即座に止めて Claude Opus に戻す。
++
++---
++
++## 0. 前提
++
++### 0.1 作業環境
++
++- **リポジトリ**：https://github.com/fmokutagawa-design/antigravity.git
++- **派生元ブランチ**：`feature/uncontrolled-editor-v3`
++- **派生元コミット**：`5ac247a`（atomic write 実装直後）
++- **新ブランチ名**：`feature/tmp-cleanup`
++
++### 0.2 ブランチ作成手順
++
++```bash
++git checkout feature/uncontrolled-editor-v3
++git pull
++git checkout -b feature/tmp-cleanup
++```
++
++### 0.3 完了後のコミットメッセージ雛形
++
++```
++feat(durability): cleanup orphaned .tmp.* files on startup
++
++Calls cleanupOrphanedTempFiles() (already defined in atomicWrite.cjs) at
++Electron startup, targeting the currently configured project folder.
++
++- Loads projectPath from user_settings.json
++- Recursively walks the project tree, removing .tmp.* files older than 1h
++- Skips node_modules and .git directories
++- Logs cleanup summary to console
++- Silent failure: if cleanup throws, app startup still proceeds
++
++Closes instruction B.
++```
++
++---
++
++## 1. 目的
++
++atomic write が異常終了したときに残る `.<basename>.tmp.<pid>.<ts>.<rand>` 形式の一時ファイルを、**次回 Electron 起動時に自動掃除**する。
++
++現状：
++- `atomicWrite.cjs` は正常終了時は一時ファイルを rename か unlink で始末している
++- 異常終了（クラッシュ・電源断）で残骸が残る可能性あり
++- 残骸は手動で消さない限り永遠に残る
++- Finder で見えて不快、またディスク容量を徐々に圧迫
++
++**既に実装済みの `cleanupOrphanedTempFiles` 関数を Electron 起動時に呼ぶだけ**。新規ロジックはほぼ書かない。
++
++---
++
++## 2. ファイル構成
++
++### 2.1 新規作成するファイル
++
++- なし
++
++### 2.2 変更する既存ファイル
++
++- `electron/main.cjs` — `app.whenReady().then(...)` の中で cleanup を呼ぶ
++- `electron/atomicWrite.test.cjs` — cleanupOrphanedTempFiles のテストを追加
++
++### 2.3 絶対に触らないファイル
++
++- `electron/atomicWrite.cjs`（本体は既に完成、触らない）
++- `src/` 配下すべて
++- `electron/preload.cjs`
++
++---
++
++## 3. 実装仕様
++
++### 3.1 呼び出し先：既存の `cleanupOrphanedTempFiles`
++
++`electron/atomicWrite.cjs` 内に既に存在：
++
++```js
++// 現状のシグネチャ（変更しない）
++async function cleanupOrphanedTempFiles(rootDir, options = {}) {
++    const maxAgeMs = options.maxAgeMs ?? (60 * 60 * 1000);
++    // ... 再帰スキャン、.tmp.* パターン一致＆1時間以上古いもののみ unlink ...
++    return removedCount; // number
++}
++```
++
++`module.exports` からも既に export 済み：
++
++```js
++module.exports = {
++    atomicWriteTextFile,
++    atomicWriteBinaryFile,
++    validateTextPayload,
++    classifyShrink,
++    cleanupOrphanedTempFiles,  // ← ここ
++    ValidationError,
++};
++```
++
++### 3.2 `electron/main.cjs` への追加
++
++#### 3.2.1 import 更新
++
++ファイル冒頭付近の require を更新：
++
++```js
++// 変更前
++const {
++    atomicWriteTextFile,
++    atomicWriteBinaryFile,
++    ValidationError,
++} = require('./atomicWrite.cjs');
++
++// 変更後（cleanupOrphanedTempFiles を追加）
++const {
++    atomicWriteTextFile,
++    atomicWriteBinaryFile,
++    cleanupOrphanedTempFiles,
++    ValidationError,
++} = require('./atomicWrite.cjs');
++```
++
++#### 3.2.2 起動時呼び出し
++
++`app.whenReady().then(() => { ... })` 内に cleanup を追加。**`createWindow()` の直後**。
++
++```js
++app.whenReady().then(() => {
++    createWindow();
++
++    // ★ 起動時クリーンアップ：前回クラッシュで残った .tmp.* 残骸を削除
++    //    fire-and-forget。UI 表示を止めない
++    runStartupCleanup().catch(err => {
++        console.warn('[startup] cleanup failed (non-fatal):', err.message);
++    });
++
++    app.on('activate', () => {
++        if (BrowserWindow.getAllWindows().length === 0) {
++            createWindow();
++        }
++    });
++});
++```
++
++#### 3.2.3 `runStartupCleanup` 関数の追加
++
++`app.whenReady()` の下あたり、かつ IPC ハンドラ宣言より前に追加：
++
++```js
++/**
++ * 起動時の .tmp.* 残骸クリーンアップ。
++ *
++ * - user_settings.json から projectPath を読む
++ * - projectPath が未設定/無効なら何もしない（起動を止めない）
++ * - 1 時間以上古い .tmp.* のみ削除
++ * - 失敗しても throw せず console.warn で終わる
++ */
++async function runStartupCleanup() {
++    // 設定ファイル読み込み（存在しなければ skip）
++    let settings = null;
++    try {
++        if (fs.existsSync(SETTINGS_FILE)) {
++            const raw = await fs.promises.readFile(SETTINGS_FILE, 'utf-8');
++            settings = JSON.parse(raw);
++        }
++    } catch (e) {
++        console.warn('[startup] failed to read settings:', e.message);
++        return;
++    }
++
++    if (!settings || !settings.projectPath) {
++        console.log('[startup] no projectPath configured, skipping cleanup');
++        return;
++    }
++
++    // projectPath は string でも { handle, path } でもあり得る（レガシー対応）
++    const projectRoot = typeof settings.projectPath === 'string'
++        ? settings.projectPath
++        : (settings.projectPath.handle || settings.projectPath.path);
++
++    if (typeof projectRoot !== 'string' || projectRoot.length === 0) {
++        console.warn('[startup] projectPath is not a valid string:', settings.projectPath);
++        return;
++    }
++
++    // 存在確認
++    try {
++        const stat = await fs.promises.stat(projectRoot);
++        if (!stat.isDirectory()) {
++            console.warn('[startup] projectPath is not a directory:', projectRoot);
++            return;
++        }
++    } catch {
++        console.warn('[startup] projectPath does not exist:', projectRoot);
++        return;
++    }
++
++    const t0 = Date.now();
++    const removedCount = await cleanupOrphanedTempFiles(projectRoot);
++    const elapsed = Date.now() - t0;
++
++    if (removedCount > 0) {
++        console.log(
++            `[startup] cleanup: removed ${removedCount} orphaned .tmp files ` +
++            `from ${projectRoot} in ${elapsed}ms`
++        );
++    } else {
++        console.log(`[startup] cleanup: no orphaned .tmp files (scanned in ${elapsed}ms)`);
++    }
++}
++```
++
++### 3.3 `SETTINGS_FILE` 定数の位置
++
++`SETTINGS_FILE` は既に main.cjs 内に定義済み。JS の hoisting により、`runStartupCleanup` 関数内から参照可能。**定義位置を移動する必要はない**。
++
++### 3.4 絶対に守ること
++
++1. **`await runStartupCleanup()` で起動を待たせない**。`.catch()` で fire-and-forget
++2. **projectPath が取れないときは黙って return**。エラーにしない
++3. **cleanup が throw しても起動は続く**。`.catch()` で握る
++4. **同期 API（`fs.readFileSync` 等）を新規追加しない**。`fs.promises` で統一
++5. **既存の `atomicWrite.cjs` を編集しない**。呼び出すだけ
++6. **`fs.existsSync` は既存コードとの互換で使っている既存箇所のみ**。新規では使わず `fs.promises.stat` の try/catch で判定
++
++---
++
++## 4. テスト
++
++### 4.1 既存 `atomicWrite.test.cjs` に追加するテスト
++
++現状 `cleanupOrphanedTempFiles` のテストが無いため、この機会に追加する。
++
++既存の 39 テストはそのまま維持し、**9 テスト追加**。合計 48 テスト。
++
++### 4.2 追加するテスト一覧
++
++| テスト名 | 内容 | 期待結果 |
++|---|---|---|
++| `testCleanupRemovesOldTempFiles` | 1時間以上古い `.tmp.*` ファイルを作って cleanup 実行 | `removed === 1`、ファイル消えている |
++| `testCleanupKeepsRecentTempFiles` | 作ったばかりの `.tmp.*` で cleanup 実行 | `removed === 0`、ファイル残っている |
++| `testCleanupIgnoresNormalFiles` | `novel.txt` を 2時間前にしても cleanup 実行 | `removed === 0`、ファイル残っている |
++| `testCleanupSkipsNodeModules` | `node_modules/.xx.tmp.123.1000.abc` を 2時間前で作成 | `removed === 0`、ファイル残っている |
++| `testCleanupSkipsGitDir` | `.git/.yy.tmp.123.1000.def` を 2時間前で作成 | `removed === 0`、ファイル残っている |
++| `testCleanupRecursesIntoSubdirs` | `sub/.zz.tmp.123.1000.ghi` を 2時間前で作成 | `removed === 1`、ファイル消える |
++| `testCleanupCustomMaxAge` | `maxAgeMs: 0` を渡して、新しいファイルも削除 | `removed === 1` |
++| `testCleanupReturnsZeroForEmptyDir` | 空ディレクトリで cleanup | `removed === 0` |
++| `testCleanupNonExistentRoot` | 存在しないパスで cleanup | `removed === 0`、throw せず |
++
++### 4.3 実装パターン
++
++既存の `withTempDir` ヘルパーを再利用する。実装例：
++
++```js
++async function testCleanupRemovesOldTempFiles() {
++    console.log('testCleanupRemovesOldTempFiles');
++    await withTempDir(async (dir) => {
++        const tmpFile = path.join(dir, '.foo.tmp.12345.1700000000000.abc123');
++        fs.writeFileSync(tmpFile, 'stale');
++        // mtime を 2 時間前に設定
++        const twoHoursAgo = (Date.now() - 2 * 60 * 60 * 1000) / 1000;
++        fs.utimesSync(tmpFile, twoHoursAgo, twoHoursAgo);
++
++        const removed = await cleanupOrphanedTempFiles(dir);
++        expect('removed 1 file', removed === 1);
++        expect('file is gone', !fs.existsSync(tmpFile));
++    });
++}
++
++async function testCleanupKeepsRecentTempFiles() {
++    console.log('testCleanupKeepsRecentTempFiles');
++    await withTempDir(async (dir) => {
++        const tmpFile = path.join(dir, '.foo.tmp.12345.1700000000000.abc123');
++        fs.writeFileSync(tmpFile, 'fresh');
++        // mtime は新しいまま
++
++        const removed = await cleanupOrphanedTempFiles(dir);
++        expect('removed 0 files', removed === 0);
++        expect('file still exists', fs.existsSync(tmpFile));
++    });
++}
++
++async function testCleanupSkipsNodeModules() {
++    console.log('testCleanupSkipsNodeModules');
++    await withTempDir(async (dir) => {
++        const nmDir = path.join(dir, 'node_modules');
++        fs.mkdirSync(nmDir);
++        const tmpInNm = path.join(nmDir, '.xx.tmp.123.1000.abc');
++        fs.writeFileSync(tmpInNm, 'stale');
++        const twoHoursAgo = (Date.now() - 2 * 60 * 60 * 1000) / 1000;
++        fs.utimesSync(tmpInNm, twoHoursAgo, twoHoursAgo);
++
++        const removed = await cleanupOrphanedTempFiles(dir);
++        expect('removed 0 (skipped node_modules)', removed === 0);
++        expect('file still exists', fs.existsSync(tmpInNm));
++    });
++}
++
++// 他のテストも同様のパターンで書く
++```
++
++### 4.4 require 追加
++
++`atomicWrite.test.cjs` の冒頭で既に分割代入が使われているはずなので、そこに `cleanupOrphanedTempFiles` を追加：
++
++```js
++// 変更前
++const {
++    atomicWriteTextFile,
++    atomicWriteBinaryFile,
++    validateTextPayload,
++    classifyShrink,
++    ValidationError,
++} = require('./atomicWrite.cjs');
++
++// 変更後
++const {
++    atomicWriteTextFile,
++    atomicWriteBinaryFile,
++    validateTextPayload,
++    classifyShrink,
++    cleanupOrphanedTempFiles,  // ← 追加
++    ValidationError,
++} = require('./atomicWrite.cjs');
++```
++
++### 4.5 `main()` の `tests` 配列への追加
++
++```js
++async function main() {
++    const tests = [
++        // ... 既存の 16 関数 ...
++        testCleanupRemovesOldTempFiles,
++        testCleanupKeepsRecentTempFiles,
++        testCleanupIgnoresNormalFiles,
++        testCleanupSkipsNodeModules,
++        testCleanupSkipsGitDir,
++        testCleanupRecursesIntoSubdirs,
++        testCleanupCustomMaxAge,
++        testCleanupReturnsZeroForEmptyDir,
++        testCleanupNonExistentRoot,
++    ];
++    // ...
++}
++```
++
++### 4.6 手動確認
++
++ユニットテストに加えて、以下の手動確認を行う：
++
++**シナリオ 1：通常起動（残骸なし）**
++
++1. `npm run build && electron .`（または dev モードで起動）
++2. コンソール出力に `[startup] cleanup: no orphaned .tmp files (scanned in Xms)` が表示される
++3. エディタが正常に起動する
++
++**シナリオ 2：擬似残骸の削除**
++
++1. プロジェクトフォルダに `touch .foo.tmp.12345.1700000000000.abc123` でダミーファイル作成
++2. macOS：`touch -t 202604011200 .foo.tmp.12345.1700000000000.abc123` で mtime を過去に
++3. Electron を起動
++4. コンソールに `[startup] cleanup: removed 1 orphaned .tmp files from <projectRoot> in Xms` が出る
++5. `.foo.tmp.*` が実際に消えている
++
++**シナリオ 3：projectPath 未設定**
++
++1. `~/Library/Application Support/<NEXUS app name>/user_settings.json` を一時退避
++2. Electron 起動
++3. コンソールに `[startup] no projectPath configured, skipping cleanup` が出る
++4. エディタが正常起動（設定は初期状態に戻るが、起動は成功）
++5. 退避した settings を戻す
++
++---
++
++## 5. 絶対遵守ルール
++
++1. **本番原稿に触らない**。テストは `withTempDir` の一時ディレクトリのみ
++2. **パターン一致を厳密に**。`/\.tmp\.\d+\.\d+\.[a-z0-9]+$/` に合致するファイルのみ削除（既存実装そのままを呼ぶ）
++3. **起動を止めない**。cleanup は fire-and-forget で `.catch()` 必須
++4. **既存 `atomicWrite.cjs` のコードを改変しない**。import して呼ぶだけ
++5. **既存 39 テストを絶対に壊さない**。追加 9 を合わせて 48 passed
++6. **`src/` を一切触らない**
++7. **同期 API を新規追加しない**（`fs.promises` で統一）
++8. **コミットを 3 回以上書き直したら止めて Claude Opus に戻す**
++
++---
++
++## 6. 完了条件
++
++以下全部 [x] で完了：
++
++- [ ] `feature/tmp-cleanup` ブランチが作成されている
++- [ ] `electron/main.cjs` の require に `cleanupOrphanedTempFiles` が追加されている
++- [ ] `electron/main.cjs` に `runStartupCleanup` 関数が追加されている
++- [ ] `app.whenReady().then(() => { createWindow(); ... })` 内で fire-and-forget で呼ばれている
++- [ ] `electron/atomicWrite.test.cjs` の require に `cleanupOrphanedTempFiles` が追加されている
++- [ ] `electron/atomicWrite.test.cjs` に §4.2 の 9 テストが追加され、`main()` の tests 配列に登録されている
++- [ ] `node electron/atomicWrite.test.cjs` が **48 passed, 0 failed**
++- [ ] `npm run build` が成功
++- [ ] §4.6 シナリオ 1：通常起動で cleanup ログが出る
++- [ ] §4.6 シナリオ 2：擬似残骸が削除される
++- [ ] §4.6 シナリオ 3：projectPath 未設定でも起動する
++- [ ] 既存のファイル編集・保存が問題なく動く（回帰確認）
++- [ ] §0.3 のコミットメッセージ雛形でコミット、push
++
++---
++
++## 7. 詰まったら
++
++以下のいずれかに当てはまったら**即座に作業を止めて** Claude Opus に相談する。
++
++- コミットを 3 回書き直しても §6 を満たせない
++- 既存 39 テストが 1 つでも fail になる
++- Electron 起動時にクラッシュ・無限ループ・フリーズする
++- `SETTINGS_FILE` の読み込みで予期せぬ型エラー
++- `projectPath` の形式で分岐が判断つかない
++- `cleanupOrphanedTempFiles` が予期せぬファイルを削除してしまう挙動を見つけた
++
++相談時に貼るもの：
++
++1. `git log --oneline -5`
++2. `node electron/atomicWrite.test.cjs` 全出力
++3. Electron 起動時のコンソール出力全文
++4. 詰まっている箇所のファイル名と行番号
++
++---
++
++## 8. この指示書の範囲外（やらないこと）
++
++- ジャーナル記録（指示書 A で扱う）
++- 境界検出（指示書 C で扱う）
++- cleanup 前にスナップショット（将来）
++- UI 通知（将来、当面は console.log のみで十分）
++- 定期実行（起動時 1 回で十分）
++- `cleanupOrphanedTempFiles` 本体のロジック変更（別指示書）
++- パターン追加や除外追加（別指示書）
++
++1 指示書 1 責務。範囲外に手を出さない。
++
++---
++
++## 9. 補足
++
++この指示書は**全 3 本（A/B/C）の中で最も小さい**。実質的な新規実装は：
++
++- `runStartupCleanup` 関数：約 40 行
++- require 2 行追加
++- `app.whenReady()` 内に 4 行追加
++- 既存テストに 9 関数追加：約 150 行
++
++**合計 200 行程度**。Gemini 3 Flash でも十分実装可能な粒度。
++
++atomic write 本体は既に完成しているので、この指示書は**完成した機能を適切なタイミングで呼ぶ配線作業**に過ぎない。精度を求められるのは main.cjs の起動シーケンスへの挿入位置と、テストの網羅性のみ。
+diff --git a/docs/ai_instructions/C_boundary_detector.md b/docs/ai_instructions/C_boundary_detector.md
+new file mode 100644
+index 0000000..f939807
+--- /dev/null
++++ b/docs/ai_instructions/C_boundary_detector.md
+@@ -0,0 +1,414 @@
++# 指示書 C：境界検出ユーティリティの実装
++
++> コーディングエージェント（Sonnet / Gemini 3 Flash）向け。
++> **1 ターンで実装完了できる粒度**。純粋関数なのでテスト書きやすい。
++
++---
++
++## 0. 前提
++
++- **派生元ブランチ**：`feature/uncontrolled-editor-v3`
++- **派生元コミット**：`5ac247a`
++- **新ブランチ名**：`feature/boundary-detector`
++
++### 完了後のコミットメッセージ雛形
++
++```
++feat(boundary): pure utility for detecting chapter/section boundaries
++
++Introduces src/utils/boundaryDetector.js (ES module), a pure function
++library for detecting semantic boundaries in novel text. This is the
++building block for future transparent-segmentation features and manual
++chapter-split helpers.
++
++- findBoundaryCandidates(text, options): returns array of boundary candidates
++  with { offset, type, marker, confidence } fields
++- validateBoundary(text, offset): returns { valid, reason } — verifies the
++  offset does not fall inside ruby, Aozora tags, font tags, or link tags
++- supports markers: ■, 第N章/話/幕, # headings, ［＃大見出し］/［＃中見出し］
++- treats triple-blank-line as section boundary
++- single-blank-line as paragraph boundary
++- never proposes boundaries inside mid-structure markup
++
++No integration with the editor yet. This is a library-only change.
++Unit tests in tests/boundaryDetector.test.js verify all patterns and
++all forbidden-zone cases.
++
++Closes instruction C.
++```
++
++---
++
++## 1. 目的
++
++小説本文から**章・節・段落の境界候補**を検出する純粋関数を作る。
++将来の分割機構・手動分割補助・目次自動生成など、複数機能の基礎部品になる。
++
++**今回はエディタに統合しない**。ライブラリとしてファイル単体を作り、単体テストだけで完結させる。
++
++---
++
++## 2. ファイル構成
++
++### 2.1 新規作成
++
++- `src/utils/boundaryDetector.js` — 実装本体（ES module、pure functions）
++- `tests/boundaryDetector.test.js` — テスト（Vitest または単純な node スクリプト）
++
++### 2.2 既存ファイルの変更
++
++**なし**。エディタ統合や App.jsx 連携は範囲外。
++
++### 2.3 触らないファイル
++
++- `src/` 配下の `boundaryDetector.js` 以外のすべて
++- `electron/` 配下すべて
++
++---
++
++## 3. 実装仕様
++
++### 3.1 `src/utils/boundaryDetector.js` のインターフェース
++
++```js
++/**
++ * boundaryDetector.js
++ * 
++ * Pure utility for detecting semantic boundaries (chapter, section,
++ * paragraph) in Japanese novel text.
++ * 
++ * Used as a building block for future segmentation features.
++ * 
++ * This module has no side effects and no external dependencies.
++ */
++
++/**
++ * @typedef {Object} BoundaryCandidate
++ * @property {number} offset - Character offset (0-indexed) where the boundary
++ *   would be placed. The boundary sits between text[offset-1] and text[offset].
++ *   Zero is never returned (boundary at start of text is meaningless).
++ * @property {'chapter' | 'section' | 'paragraph' | 'sentence'} type
++ * @property {string} marker - The matched text (e.g. "■", "第1章", "# ")
++ * @property {number} confidence - 0.0 to 1.0, for ranking candidates
++ *   - 1.0: explicit chapter marker (■, 第N章, etc.)
++ *   - 0.8: section marker (triple blank lines, ［＃改ページ］)
++ *   - 0.5: paragraph boundary (single blank line)
++ *   - 0.3: sentence boundary (after 。)
++ * @property {{ before: string, after: string }} context
++ *   - before: up to 200 chars immediately preceding the boundary
++ *   - after: up to 200 chars immediately following
++ */
++
++/**
++ * @typedef {Object} DetectionOptions
++ * @property {boolean} includeChapterMarkers  (default true) ■, 第N章 など
++ * @property {boolean} includeMarkdownHeaders (default true) # で始まる行
++ * @property {boolean} includeAozoraTags      (default true) ［＃大見出し］ など
++ * @property {boolean} includeSectionBreaks   (default true) 空行 3 連
++ * @property {boolean} includeParagraphBreaks (default false) 空行 1 つ
++ * @property {boolean} includeSentenceBreaks  (default false) 。直後
++ * @property {number} contextSize (default 200) before/after の文字数
++ */
++
++/**
++ * Find all boundary candidates in the given text.
++ * 
++ * @param {string} text
++ * @param {DetectionOptions} [options]
++ * @returns {BoundaryCandidate[]}
++ */
++export function findBoundaryCandidates(text, options = {}) { /* ... */ }
++
++/**
++ * Check whether an offset is a safe place to split the text.
++ * An offset is unsafe if it falls inside ruby markup, Aozora tags,
++ * font tags, or link markup (any paired structure).
++ * 
++ * @param {string} text
++ * @param {number} offset
++ * @returns {{ valid: boolean, reason?: string }}
++ */
++export function validateBoundary(text, offset) { /* ... */ }
++
++/**
++ * Given an approximate character target (e.g. "split around char 50000"),
++ * find the best nearby boundary candidate. Returns null if no safe
++ * candidate exists within ±maxDeviation characters.
++ * 
++ * @param {string} text
++ * @param {number} targetOffset
++ * @param {Object} [options]
++ * @param {number} [options.maxDeviation] default 10000
++ * @returns {BoundaryCandidate | null}
++ */
++export function findBestBoundaryNear(text, targetOffset, options = {}) { /* ... */ }
++```
++
++### 3.2 検出パターン（詳細）
++
++#### 3.2.1 章マーカー（confidence: 1.0, type: 'chapter'）
++
++行頭で以下のいずれかにマッチするパターン。正規表現はマルチラインモード：
++
++| パターン | 正規表現（断片） | 例 |
++|---|---|---|
++| 黒四角 | `^■` | `■第一章 出会い` |
++| 第N章 | `^第[0-9０-９一二三四五六七八九十百千]+[章話幕節]` | `第1章`, `第十章`, `第一話` |
++| プレフィックス記号 | `^[◆◇◉●▲△▼▽★☆]` + 以降の文字 | `◆ 第2章` |
++
++**重要**：マッチ位置は**行頭の文字の offset**。改行直後なので、`text[offset] === '■'` のような位置になる。
++
++#### 3.2.2 Markdown 見出し（confidence: 1.0, type: 'chapter'）
++
++```
++^#{1,6} [^\n]+
++```
++
++`# タイトル` `## サブタイトル` など。行頭 `#` の位置を offset として返す。
++
++#### 3.2.3 青空文庫タグ（confidence: 1.0, type: 'chapter'）
++
++```
++^［＃(大|中)見出し］
++```
++
++正規表現は `^\[＃[大中]見出し\]` のような形。全角／半角の角括弧両方に注意：
++
++- `［＃大見出し］`（全角角括弧）
++- `［＃中見出し］`
++- `［＃改ページ］` → これは type: 'section', confidence: 0.8
++
++#### 3.2.4 空行 3 連（confidence: 0.8, type: 'section'）
++
++```
++\n\n\n+
++```
++
++3 つ以上連続する改行は章の間の空白として扱う。境界 offset は**最後の改行の次の文字**の位置。
++
++#### 3.2.5 空行 1 つ（confidence: 0.5, type: 'paragraph'）
++
++```
++\n\n
++```
++
++段落区切り。デフォルトでは `includeParagraphBreaks: false` で無効化されているが、option で有効化可能。
++
++#### 3.2.6 文境界（confidence: 0.3, type: 'sentence'）
++
++```
++。
++```
++
++句点の直後。最終手段として使う。デフォルトでは無効。
++
++### 3.3 禁止ゾーン（validateBoundary の根拠）
++
++以下のマークアップの**内部**で境界を引いてはいけない：
++
++#### 3.3.1 ルビ
++
++```
++漢字《ふりがな》
++｜送り仮名《おくりがな》
++```
++
++`《` と `》` のペアの内部、および直前の `|` / `｜` からの 1 文字以上の連続範囲。
++
++#### 3.3.2 青空文庫タグ（開閉ペア）
++
++```
++［＃行頭から４字下げ］...［＃ここから４字下げ終わり］
++```
++
++`［＃` と `］` のペアは 1 タグぶん。ただしペア構造（`ここから〜終わり`）は、開始タグと終了タグの間を 1 つのブロックと見なす。
++
++ただし簡便化のため、この指示書の初版では**各タグの内部（`［＃...］` の中）だけを禁止ゾーンとする**。ブロックまたぎ禁止は将来対応。
++
++#### 3.3.3 フォントタグ
++
++```
++{font:明朝}...{/font}
++```
++
++`{font:...}` と `{/font}` のペア。両者の内部と、両者を跨ぐ位置は禁止。
++
++#### 3.3.4 強調
++
++```
++**太字**
++```
++
++`**` と `**` のペアの内部。
++
++#### 3.3.5 リンク
++
++```
++［［リンクテキスト］］
++[[link]]
++```
++
++`[[` と `]]`、および `［［` と `］］` のペア内部。
++
++### 3.4 validateBoundary の実装方針
++
++offset 位置が禁止ゾーン内にあるかを判定する。
++
++**素朴な方針（推奨）**：
++
++1. `text.slice(0, offset)` と `text.slice(offset)` に切り分ける
++2. 前半末尾から遡って**直前の開き括弧系トークン**（`《`, `［＃`, `{font:`, `**`, `［［`, `[[`）を探す
++3. そのトークン以降に**対応する閉じトークン**が現れる前に offset が入っていれば、禁止ゾーン
++4. 加えて、offset 位置の**前後 3 文字以内**に禁止パターンの境界（`《`, `》`, `［`, `］` など）がある場合は保守的に禁止
++
++擬似コード：
++
++```js
++function validateBoundary(text, offset) {
++    if (offset <= 0 || offset >= text.length) {
++        return { valid: false, reason: 'offset out of range' };
++    }
++
++    const checkForbiddenZone = (pattern) => {
++        // pattern: { open, close } の配列
++        const before = text.slice(0, offset);
++        const after = text.slice(offset);
++        const lastOpen = before.lastIndexOf(pattern.open);
++        if (lastOpen === -1) return null;
++        const closeAfterLastOpen = before.indexOf(pattern.close, lastOpen);
++        if (closeAfterLastOpen !== -1 && closeAfterLastOpen < offset) {
++            return null;  // 既に閉じている
++        }
++        const nextCloseInAfter = after.indexOf(pattern.close);
++        if (nextCloseInAfter !== -1) {
++            return `inside ${pattern.name}`;  // after 側に閉じがある → 禁止ゾーン
++        }
++        return null;
++    };
++
++    const patterns = [
++        { open: '《', close: '》', name: 'ruby' },
++        { open: '｛', close: '｝', name: 'brace_fullwidth' },
++        { open: '{font:', close: '{/font}', name: 'font tag' },
++        { open: '**', close: '**', name: 'bold' },  // これは特殊、後述
++        { open: '[[', close: ']]', name: 'link' },
++        { open: '［［', close: '］］', name: 'link_fullwidth' },
++        { open: '［＃', close: '］', name: 'aozora tag' },
++    ];
++
++    for (const p of patterns) {
++        const reason = checkForbiddenZone(p);
++        if (reason) return { valid: false, reason };
++    }
++
++    return { valid: true };
++}
++```
++
++**注意点**：
++
++- `**...**` はペアが連続して現れる（`a**b**c**d**e` で b と d が太字）ので、「最も近い `**`」で判断すると誤判定する。初版では**「offset の左側の `**` の数が奇数なら禁止ゾーン内」**というルールで簡便化
++- `［＃...］` はネストしないが、全角括弧を忘れない（`[＃...]` と紛らわしいが、本来は全角。両方対応するのが安全）
++
++---
++
++## 4. テスト
++
++### 4.1 `tests/boundaryDetector.test.js`
++
++Vitest が既存プロジェクトで使われていればそれを使う（`package.json` で確認）。なければ `node` で直接走る単純スクリプト形式（`atomicWrite.test.cjs` と同じスタイル、ただし ES module なので `.mjs` 拡張子）。
++
++### 4.2 テストケース一覧
++
++#### 4.2.1 findBoundaryCandidates
++
++| テスト名 | 入力例 | 期待出力 |
++|---|---|---|
++| `testDetectBlackSquare` | `"abc\n■第一章\ndef"` | 1 件、type:'chapter', marker: '■' |
++| `testDetectChapterNumber` | `"abc\n第1章 出会い\ndef"` | 1 件、type:'chapter' |
++| `testDetectChapterKanji` | `"abc\n第十章\ndef"` | 1 件、type:'chapter' |
++| `testDetectMultipleChapters` | 5 章境界ありの長文 | 5 件、順序が offset 順 |
++| `testDetectMarkdownHeader` | `"abc\n# Title\ndef"` | 1 件、confidence:1.0 |
++| `testDetectAozoraBig` | `"abc\n［＃大見出し］X\ndef"` | 1 件 |
++| `testDetectTripleBlankLine` | `"abc\n\n\n\ndef"` | 1 件、type:'section' |
++| `testSortedByOffset` | 混在パターン | 昇順 |
++| `testContextFields` | 短文 | before/after が正しくスライスされる |
++| `testNoFalsePositives` | `"中盤の第二章について"`（行中に第N章） | 0 件（行頭でないため） |
++| `testRespectOptions` | `includeChapterMarkers: false` | 章マーカーが出ない |
++
++#### 4.2.2 validateBoundary
++
++| テスト名 | 入力 | 期待 |
++|---|---|---|
++| `testValidNormal` | `"abc\ndef"`, offset 3 | valid: true |
++| `testInvalidInsideRuby` | `"漢字《ふり"` 直後で切る | valid: false, reason: 'ruby' |
++| `testInvalidInsideAozoraTag` | `"前［＃タ"` 直後 | valid: false |
++| `testInvalidInsideFontTag` | `"{font:明朝}ab"` で ab の間 | valid: false |
++| `testInvalidInsideBold` | `"前**強"` 直後 | valid: false (奇数カウント) |
++| `testValidAfterClosedRuby` | `"漢字《ふり》の後"` で "の後" 直前 | valid: true |
++| `testValidAtBoundaryChar` | offset が `》` の直後 | valid: true（閉じの直後は OK） |
++| `testBoundsCheck` | offset 0 / offset === text.length | valid: false |
++
++#### 4.2.3 findBestBoundaryNear
++
++| テスト名 | 入力 | 期待 |
++|---|---|---|
++| `testFindsExactCandidate` | target=50000, candidate at 50000 | return candidate |
++| `testFindsNearbyChapter` | target=50000, chapter at 49800 | return the 49800 one |
++| `testPrefersHigherConfidence` | 50100 に paragraph, 49500 に chapter、maxDev=1000 | chapter を返す（confidence 優先） |
++| `testReturnsNullIfNoneNear` | maxDev=100, 最寄り候補が 5000 離れている | null |
++| `testSkipsInvalidCandidates` | 候補位置が ruby 内 | その候補をスキップして次を返す |
++
++### 4.3 実行確認
++
++```bash
++# Vitest を使う場合
++npx vitest run tests/boundaryDetector.test.js
++# 全テストがパスすることを確認
++```
++
++---
++
++## 5. 絶対遵守ルール
++
++1. **純粋関数のみ**。ファイル IO、ネットワーク、グローバル状態変更、一切なし
++2. **ES module 形式**（`export function ...`）。`require` を使わない
++3. **外部ライブラリを追加しない**。`package.json` の dependencies は変更しない
++4. **既存ファイルを一切変更しない**。`boundaryDetector.js` と `boundaryDetector.test.js` の 2 つだけ
++5. **行頭判定を厳密に**：`\n` の直後、または文字列先頭のみ。文中の `第1章` は誤検出しない
++6. **ビルドが通ることを確認**：`npm run build`
++7. **既存の 39 atomic write テストは影響を受けないこと**を確認
++
++---
++
++## 6. 完了条件
++
++- [ ] `feature/boundary-detector` ブランチ作成
++- [ ] `src/utils/boundaryDetector.js` が §3.1 のインターフェースで実装されている
++- [ ] `tests/boundaryDetector.test.js` が §4.2 のテストケース全部を実装
++- [ ] 全テストが pass
++- [ ] `npm run build` 成功
++- [ ] `node electron/atomicWrite.test.cjs` が 39 passed を維持
++- [ ] `src/utils/boundaryDetector.js` は 300 行以下（肥大化警報）
++- [ ] §0 のメッセージでコミット、push
++
++---
++
++## 7. 詰まったら
++
++- ルビ・タグの禁止ゾーン判定が複雑で書けない → Claude Opus に相談
++- `**...**` の奇数カウント判定が誤動作する → 具体的な失敗ケースを持ってきて相談
++- Vitest の設定が既存プロジェクトにない → `node` で直接走るスクリプト形式（`.mjs`）に切り替え
++- 3 回書き直しても全テストが通らない → 即止めて Opus
++
++---
++
++## 8. 範囲外（やらないこと）
++
++- エディタへの統合（右クリックメニュー、境界ヒント UI）
++- 実際にセグメント分割する処理（ただの検出ライブラリ）
++- 禁止ゾーンの高度なパース（ブロックまたぎタグなど）
++- 章タイトルの自動抽出
++- 青空文庫タグ以外の日本語組版記法
++
++境界検出**ライブラリ**を作るだけ。1 ファイル 300 行以下の純粋関数群。
+-- 
+2.43.0
+

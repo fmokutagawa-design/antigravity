@@ -1,0 +1,826 @@
+From 5ac247a6bfe5f83cdc4ea3148753636d70f3d438 Mon Sep 17 00:00:00 2001
+From: Claude <claude@anthropic.com>
+Date: Sun, 19 Apr 2026 19:02:13 +0000
+Subject: [PATCH 1/2] feat(durability): atomic write for all main-process file
+ writes
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+原稿消失事故（2026年4月の"5日分飛んだ"事件）を構造的に再発させないための
+最小実装。設計書 B §2.1 の atomic write 契約を electron/ 側で担保する。
+
+## 追加したもの
+
+**electron/atomicWrite.cjs**
+
+pure な atomic write 実装。外部依存なし、Node.js の fs と crypto だけ。
+
+- atomicWriteTextFile(path, content, options)
+- atomicWriteBinaryFile(path, buffer)
+- validateTextPayload(content, options) — V-1, V-2, V-3, V-4 検証
+- classifyShrink(prev, next) — 'normal' / 'moderate-shrink' / 'extreme-shrink'
+- cleanupOrphanedTempFiles(rootDir) — 起動時掃除（将来使う）
+- ValidationError クラス
+
+書き込み手順：
+  1. 同ディレクトリに一時ファイルを作る（POSIX atomic rename のため）
+  2. 内容を書き込む
+  3. fsync で OS バッファを物理ディスクへ
+  4. 読み直してチェックサム検証
+  5. fs.rename で本来のパスへ置換（atomic）
+  6. 親ディレクトリを fsync で rename を確定
+
+書き込み中の異常終了、ディスクフル、権限エラー、どれが起きても本番ファイルは
+"元のまま" か "新しい内容" のどちらかで、半端な状態になることはない。
+
+**electron/atomicWrite.test.cjs**
+
+39件のユニットテスト。Electron 不要で node で走る（node electron/atomicWrite.test.cjs）。
+
+- 正常系: 小・大（42万字相当）・日本語・バイナリ
+- 異常系: 空文字列拒否、型エラー、NULL 文字、95%超縮小
+- 破壊耐性: 拒否時に既存ファイルが守られる、一時ファイル残骸なし
+- classifyShrink のエッジケース（50%/95% 境界）
+
+全39件パス。
+
+## 変更したもの
+
+**electron/main.cjs**
+
+fs:writeFile / fs:writeFileBinary / fs:createFile の3つの IPC ハンドラを
+atomicWrite 経由に差し替え。
+
+- fs:writeFile: atomicWriteTextFile を呼ぶ。V-1（空文字列）を拒否。
+- fs:writeFileBinary: atomicWriteBinaryFile を呼ぶ。
+- fs:createFile: atomicWriteTextFile({ allowEmpty: true }) を呼ぶ。
+  （新規ファイル作成時のみ空を許可）
+
+ValidationError は VALIDATION_FAILED:<code>:<message> の形式で throw される。
+既存の useAutoSave.js の catch 節が受け取って「自動保存に失敗しました」トーストを出す。
+
+**src/utils/fileSystem.electron.js**
+
+getOrCreateFile の「既存ファイルがなければ空を書く」経路を createFile 経由に変更。
+writeFile の V-1 に引っかかるため。
+
+## 守られるようになったこと
+
+- 書き込み中の異常終了で半端なファイルが残らない（atomic rename）
+- 書いた内容を読み直して検証してから rename（silent な破損が届かない）
+- 空文字列・NULL 文字が本番ファイルに書かれない（V-1 / V-4）
+- 一時ファイルが落ちても本番ファイルに触れない
+- 親ディレクトリ fsync で rename が物理ディスクに確定
+
+## 守られないこと（範囲外）
+
+- OS レベルのディスク故障・ビット腐敗
+- ユーザーが Finder で作品ディレクトリごと削除
+- NEXUS バイナリ自体の破損
+- 複数インスタンス同時編集（別途 Phase で対応予定）
+- 意図的な全削除保存（allowEmpty フラグを通る API を将来追加可能）
+
+## 既存挙動への影響
+
+正常系（normal な保存）の挙動は変わらない。IPC 呼び出しの
+シグネチャは維持。例外が投げられる条件が増えただけ（空文字列・NULL 文字）、
+上位の catch 節は既にある。
+
+## 設計書との関係
+
+docs/transparent_segmentation/B_safety_design.md §2.1 "Atomic Write" の
+最小実装。分割機構全体の着手は、AI エージェントの実装能力が追いつく将来に
+繰り延べ。この atomic write だけは先行して入れることで、既存の単一 .txt
+運用においても原稿消失事故を構造的に防げる。
+---
+ electron/atomicWrite.cjs         | 313 +++++++++++++++++++++++++++++++
+ electron/atomicWrite.test.cjs    | 294 +++++++++++++++++++++++++++++
+ electron/main.cjs                |  46 ++++-
+ src/utils/fileSystem.electron.js |   5 +-
+ 4 files changed, 650 insertions(+), 8 deletions(-)
+ create mode 100644 electron/atomicWrite.cjs
+ create mode 100644 electron/atomicWrite.test.cjs
+
+diff --git a/electron/atomicWrite.cjs b/electron/atomicWrite.cjs
+new file mode 100644
+index 0000000..775809b
+--- /dev/null
++++ b/electron/atomicWrite.cjs
+@@ -0,0 +1,313 @@
++/**
++ * atomicWrite.cjs
++ *
++ * 原稿を破壊しないためのファイル書き込み実装。
++ *
++ * 書き込み手順：
++ *   1. 同ディレクトリの一時ファイルに書く
++ *   2. fsync で OS バッファを物理ディスクへ flush
++ *   3. 読み直してチェックサムが期待値と一致することを確認
++ *   4. fs.rename で本来のパスへ置換（POSIX atomic rename）
++ *   5. 親ディレクトリを fsync（rename を確定）
++ *
++ * これにより、書き込み中にプロセスが異常終了しても、
++ * 本来のファイルは「元のまま」か「新しい内容」のどちらかで、
++ * 半端な内容になることは構造的にない。
++ *
++ * 参照: 設計書 B §2.1
++ */
++
++const { promises: fsp } = require('fs');
++const { open } = require('fs/promises');
++const path = require('path');
++const crypto = require('crypto');
++
++/**
++ * ValidationError: 書き込み前のペイロード検証に失敗したとき投げる。
++ * 呼び出し側はこれを catch して、原稿を守る選択肢をユーザーに提示できる。
++ */
++class ValidationError extends Error {
++    constructor(code, message, context = {}) {
++        super(`[${code}] ${message}`);
++        this.name = 'ValidationError';
++        this.code = code;
++        this.context = context;
++    }
++}
++
++/**
++ * ShrinkClassification: ファイルサイズの変化を分類する。
++ *
++ * - 'normal': 縮小なし、または微小
++ * - 'moderate-shrink': 50% 以上の縮小（静かに追加スナップショットを取る契機）
++ * - 'extreme-shrink': 95% 以上の縮小（ユーザー確認ダイアログを出す契機）
++ *
++ * 現状は呼び出し側でこの分類を使って判断する。
++ * このモジュール自体は extreme-shrink でも throw しない（上位の判断を待つ）。
++ */
++function classifyShrink(previousLength, newLength) {
++    if (previousLength == null || previousLength === 0) return 'normal';
++    const ratio = newLength / previousLength;
++    if (ratio < 0.05) return 'extreme-shrink';
++    if (ratio < 0.5) return 'moderate-shrink';
++    return 'normal';
++}
++
++function sha256(content) {
++    return crypto.createHash('sha256').update(content, 'utf8').digest('hex');
++}
++
++function sha256Buffer(buf) {
++    return crypto.createHash('sha256').update(buf).digest('hex');
++}
++
++/**
++ * ペイロードの事前検証。
++ *
++ * options:
++ *   allowEmpty: 新規空ファイル作成時に true を指定すると V-1 を通す
++ *   previousLength: 現状のファイル長（extreme-shrink チェック用、任意）
++ *   strictShrink: true なら extreme-shrink でも throw する（デフォルト false）
++ */
++function validateTextPayload(content, options = {}) {
++    // V-2: 型検証
++    if (typeof content !== 'string') {
++        throw new ValidationError('V-2', `content is not a string: ${typeof content}`);
++    }
++
++    // V-1: 空文字列禁止（allowEmpty フラグで迂回可能）
++    if (!options.allowEmpty && content.length === 0) {
++        throw new ValidationError(
++            'V-1',
++            'refusing to write empty string; pass allowEmpty:true for new-file creation'
++        );
++    }
++
++    // V-4: NULL 文字の検出
++    if (content.indexOf('\u0000') !== -1) {
++        throw new ValidationError('V-4', 'NULL character detected in content');
++    }
++
++    // V-3: 異常短縮の判定（情報として返すだけ、throw するのは strictShrink のみ）
++    let shrinkClass = 'normal';
++    if (options.previousLength != null) {
++        shrinkClass = classifyShrink(options.previousLength, content.length);
++        if (options.strictShrink && shrinkClass === 'extreme-shrink') {
++            throw new ValidationError(
++                'V-3b',
++                `extreme shrink: ${options.previousLength} -> ${content.length} (>95% reduction)`,
++                { previousLength: options.previousLength, newLength: content.length }
++            );
++        }
++    }
++
++    return { shrinkClass };
++}
++
++/**
++ * 一時ファイル名を作る。同じディレクトリに配置するのが重要（atomic rename のため）。
++ * cross-device な tempdir を使うと rename が EXDEV で失敗する。
++ */
++function tempPathFor(targetPath) {
++    const dir = path.dirname(targetPath);
++    const base = path.basename(targetPath);
++    // ピリオド始まりで .tmp を含めて、ディレクトリ一覧で見ても「一時ファイル」と判別可能に
++    return path.join(dir, `.${base}.tmp.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}`);
++}
++
++/**
++ * 親ディレクトリを fsync する。
++ * rename した事実を物理ディスクに確定させる。macOS では F_FULLFSYNC までは呼ばない
++ * （強すぎる。通常の fsync で十分）。
++ */
++async function fsyncDir(dirPath) {
++    let dirFh;
++    try {
++        dirFh = await open(dirPath, 'r');
++        await dirFh.sync();
++    } catch (err) {
++        // 一部の FS（例: Windows の特定構成）では dir fsync が失敗するが、
++        // データそのものは rename で守られているので致命ではない。ログだけ残す。
++        if (err.code !== 'EPERM' && err.code !== 'EINVAL') {
++            throw err;
++        }
++    } finally {
++        if (dirFh) {
++            try { await dirFh.close(); } catch { /* noop */ }
++        }
++    }
++}
++
++/**
++ * テキストファイルの atomic write。
++ *
++ * filePath: 書き込み先の絶対パス
++ * content:  書き込む文字列
++ * options:
++ *   allowEmpty: true で空文字列書き込みを許可（新規作成時のみ想定）
++ *   strictShrink: true で 95% 超縮小を拒否する
++ *
++ * returns: { hash, shrinkClass, bytes }
++ * throws:  ValidationError / システムエラー
++ */
++async function atomicWriteTextFile(filePath, content, options = {}) {
++    // 1. 事前検証
++    let previousLength;
++    try {
++        const stat = await fsp.stat(filePath);
++        // ファイルサイズをバイト単位で取り、粗い指標として使う
++        // （UTF-8 なので厳密な文字数ではないが、extreme-shrink 判定には十分）
++        previousLength = stat.size;
++    } catch (err) {
++        if (err.code !== 'ENOENT') throw err;
++        // ファイルが存在しない：新規作成として扱う
++        previousLength = null;
++    }
++
++    const validation = validateTextPayload(content, {
++        allowEmpty: options.allowEmpty,
++        previousLength,
++        strictShrink: options.strictShrink,
++    });
++
++    // 2. 書き込み
++    const expectedHash = sha256(content);
++    const tmpPath = tempPathFor(filePath);
++    let fh;
++
++    try {
++        fh = await open(tmpPath, 'w');
++        await fh.writeFile(content, 'utf8');
++        await fh.sync();
++        await fh.close();
++        fh = null;
++
++        // 3. 読み直してチェックサム検証
++        const readBack = await fsp.readFile(tmpPath, 'utf8');
++        const readBackHash = sha256(readBack);
++        if (readBackHash !== expectedHash) {
++            throw new Error(
++                `atomic write readback mismatch: expected ${expectedHash}, got ${readBackHash}`
++            );
++        }
++
++        // 4. atomic rename
++        await fsp.rename(tmpPath, filePath);
++
++        // 5. 親ディレクトリ fsync
++        await fsyncDir(path.dirname(filePath));
++
++        return {
++            hash: expectedHash,
++            shrinkClass: validation.shrinkClass,
++            bytes: Buffer.byteLength(content, 'utf8'),
++        };
++    } catch (err) {
++        // 失敗時の後始末：一時ファイルを掃除する（本番ファイルは触らない）
++        if (fh) {
++            try { await fh.close(); } catch { /* noop */ }
++        }
++        try { await fsp.unlink(tmpPath); } catch { /* noop */ }
++        throw err;
++    }
++}
++
++/**
++ * バイナリ版の atomic write（画像等）。
++ * 空文字列ガード等は不要なので単純。
++ */
++async function atomicWriteBinaryFile(filePath, buffer) {
++    if (!Buffer.isBuffer(buffer)) {
++        throw new ValidationError('V-2', `content is not a Buffer: ${typeof buffer}`);
++    }
++    if (buffer.length === 0) {
++        // 空バイナリは禁止ではないが警告扱い。許可するケースがあれば呼び出し側で対処
++        throw new ValidationError('V-1', 'refusing to write empty binary file');
++    }
++
++    const expectedHash = sha256Buffer(buffer);
++    const tmpPath = tempPathFor(filePath);
++    let fh;
++
++    try {
++        fh = await open(tmpPath, 'w');
++        await fh.writeFile(buffer);
++        await fh.sync();
++        await fh.close();
++        fh = null;
++
++        const readBack = await fsp.readFile(tmpPath);
++        const readBackHash = sha256Buffer(readBack);
++        if (readBackHash !== expectedHash) {
++            throw new Error(
++                `atomic write readback mismatch: expected ${expectedHash}, got ${readBackHash}`
++            );
++        }
++
++        await fsp.rename(tmpPath, filePath);
++        await fsyncDir(path.dirname(filePath));
++
++        return {
++            hash: expectedHash,
++            bytes: buffer.length,
++        };
++    } catch (err) {
++        if (fh) {
++            try { await fh.close(); } catch { /* noop */ }
++        }
++        try { await fsp.unlink(tmpPath); } catch { /* noop */ }
++        throw err;
++    }
++}
++
++/**
++ * 起動時のお掃除：前回クラッシュで残った .tmp.* ファイルを消す。
++ * NEXUS 起動時に1回呼ぶ想定。対象はプロジェクトフォルダ配下の全ディレクトリを再帰スキャン。
++ *
++ * 本番ファイル（tmp でないもの）には絶対に触らないため、これが誤動作しても原稿は無事。
++ */
++async function cleanupOrphanedTempFiles(rootDir, options = {}) {
++    const maxAgeMs = options.maxAgeMs ?? (60 * 60 * 1000); // 1時間以上古いものだけ
++    const now = Date.now();
++    let removedCount = 0;
++
++    async function walk(dir) {
++        let entries;
++        try {
++            entries = await fsp.readdir(dir, { withFileTypes: true });
++        } catch {
++            return;
++        }
++        for (const entry of entries) {
++            const full = path.join(dir, entry.name);
++            if (entry.isDirectory()) {
++                // node_modules と .git はスキップ
++                if (entry.name === 'node_modules' || entry.name === '.git') continue;
++                await walk(full);
++            } else if (entry.isFile()) {
++                // atomicWrite の一時ファイル名パターン
++                // パターン: .{basename}.tmp.{pid}.{timestamp}.{rand}
++                if (!/\.tmp\.\d+\.\d+\.[a-z0-9]+$/.test(entry.name)) continue;
++                try {
++                    const stat = await fsp.stat(full);
++                    if (now - stat.mtimeMs > maxAgeMs) {
++                        await fsp.unlink(full);
++                        removedCount++;
++                    }
++                } catch { /* noop */ }
++            }
++        }
++    }
++
++    await walk(rootDir);
++    return removedCount;
++}
++
++module.exports = {
++    atomicWriteTextFile,
++    atomicWriteBinaryFile,
++    validateTextPayload,
++    classifyShrink,
++    cleanupOrphanedTempFiles,
++    ValidationError,
++};
+diff --git a/electron/atomicWrite.test.cjs b/electron/atomicWrite.test.cjs
+new file mode 100644
+index 0000000..095d777
+--- /dev/null
++++ b/electron/atomicWrite.test.cjs
+@@ -0,0 +1,294 @@
++/**
++ * atomicWrite.cjs の動作確認テスト。
++ * 
++ * node electron/atomicWrite.test.cjs で実行。
++ * 通常の単体テストフレームワークは使わず、Electron 不要で直接走らせる。
++ */
++
++const fs = require('fs');
++const path = require('path');
++const os = require('os');
++const {
++    atomicWriteTextFile,
++    atomicWriteBinaryFile,
++    validateTextPayload,
++    classifyShrink,
++    ValidationError,
++} = require('./atomicWrite.cjs');
++
++let passed = 0;
++let failed = 0;
++
++function expect(name, cond, detail) {
++    if (cond) {
++        passed++;
++        console.log(`  ✓ ${name}`);
++    } else {
++        failed++;
++        console.error(`  ✗ ${name}${detail ? ': ' + detail : ''}`);
++    }
++}
++
++async function withTempDir(fn) {
++    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'atomicwrite-test-'));
++    try {
++        return await fn(dir);
++    } finally {
++        try { fs.rmSync(dir, { recursive: true, force: true }); } catch {}
++    }
++}
++
++// ============================================================
++async function testBasicWrite() {
++    console.log('testBasicWrite');
++    await withTempDir(async (dir) => {
++        const target = path.join(dir, 'hello.txt');
++        const result = await atomicWriteTextFile(target, 'hello world');
++        const readBack = fs.readFileSync(target, 'utf8');
++        expect('content matches', readBack === 'hello world');
++        expect('returns hash', typeof result.hash === 'string' && result.hash.length === 64);
++        expect('returns bytes', result.bytes === 11);
++        expect('returns shrinkClass', result.shrinkClass === 'normal');
++    });
++}
++
++async function testOverwrite() {
++    console.log('testOverwrite');
++    await withTempDir(async (dir) => {
++        const target = path.join(dir, 'hello.txt');
++        fs.writeFileSync(target, 'original content');
++        await atomicWriteTextFile(target, 'updated content');
++        const readBack = fs.readFileSync(target, 'utf8');
++        expect('overwrite succeeded', readBack === 'updated content');
++    });
++}
++
++async function testRejectEmpty() {
++    console.log('testRejectEmpty');
++    await withTempDir(async (dir) => {
++        const target = path.join(dir, 'hello.txt');
++        fs.writeFileSync(target, 'original content');
++        let threw = null;
++        try {
++            await atomicWriteTextFile(target, '');
++        } catch (err) {
++            threw = err;
++        }
++        expect('threw ValidationError', threw instanceof ValidationError);
++        expect('code V-1', threw?.code === 'V-1');
++        const readBack = fs.readFileSync(target, 'utf8');
++        expect('original preserved', readBack === 'original content');
++    });
++}
++
++async function testAllowEmpty() {
++    console.log('testAllowEmpty');
++    await withTempDir(async (dir) => {
++        const target = path.join(dir, 'hello.txt');
++        await atomicWriteTextFile(target, '', { allowEmpty: true });
++        expect('empty file created', fs.existsSync(target));
++        expect('is empty', fs.readFileSync(target, 'utf8') === '');
++    });
++}
++
++async function testRejectNonString() {
++    console.log('testRejectNonString');
++    await withTempDir(async (dir) => {
++        const target = path.join(dir, 'hello.txt');
++        let threw = null;
++        try {
++            await atomicWriteTextFile(target, 12345);
++        } catch (err) {
++            threw = err;
++        }
++        expect('threw ValidationError', threw instanceof ValidationError);
++        expect('code V-2', threw?.code === 'V-2');
++    });
++}
++
++async function testRejectNullChar() {
++    console.log('testRejectNullChar');
++    await withTempDir(async (dir) => {
++        const target = path.join(dir, 'hello.txt');
++        let threw = null;
++        try {
++            await atomicWriteTextFile(target, 'abc\u0000def');
++        } catch (err) {
++            threw = err;
++        }
++        expect('threw ValidationError', threw instanceof ValidationError);
++        expect('code V-4', threw?.code === 'V-4');
++    });
++}
++
++async function testExtremeShrinkNotBlocked() {
++    console.log('testExtremeShrinkNotBlocked');
++    // 95%超縮小でも、strictShrink指定がない限りは書き込まれる
++    // （呼び出し側の判断で警告ダイアログを出す設計）
++    await withTempDir(async (dir) => {
++        const target = path.join(dir, 'hello.txt');
++        fs.writeFileSync(target, 'x'.repeat(1000));
++        const result = await atomicWriteTextFile(target, 'short');
++        expect('write succeeded', fs.readFileSync(target, 'utf8') === 'short');
++        expect('shrinkClass reports extreme', result.shrinkClass === 'extreme-shrink');
++    });
++}
++
++async function testStrictShrinkBlocks() {
++    console.log('testStrictShrinkBlocks');
++    await withTempDir(async (dir) => {
++        const target = path.join(dir, 'hello.txt');
++        const original = 'x'.repeat(1000);
++        fs.writeFileSync(target, original);
++        let threw = null;
++        try {
++            await atomicWriteTextFile(target, 'short', { strictShrink: true });
++        } catch (err) {
++            threw = err;
++        }
++        expect('threw ValidationError', threw instanceof ValidationError);
++        expect('code V-3b', threw?.code === 'V-3b');
++        const readBack = fs.readFileSync(target, 'utf8');
++        expect('original preserved', readBack === original);
++    });
++}
++
++async function testModerateShrinkNotBlocked() {
++    console.log('testModerateShrinkNotBlocked');
++    await withTempDir(async (dir) => {
++        const target = path.join(dir, 'hello.txt');
++        fs.writeFileSync(target, 'x'.repeat(1000));
++        const result = await atomicWriteTextFile(target, 'y'.repeat(400), { strictShrink: true });
++        expect('moderate shrink passes', fs.readFileSync(target, 'utf8').length === 400);
++        expect('shrinkClass moderate', result.shrinkClass === 'moderate-shrink');
++    });
++}
++
++async function testNoTempFileLeft() {
++    console.log('testNoTempFileLeft');
++    await withTempDir(async (dir) => {
++        const target = path.join(dir, 'hello.txt');
++        await atomicWriteTextFile(target, 'content');
++        const entries = fs.readdirSync(dir);
++        const temps = entries.filter(n => /\.tmp\./.test(n));
++        expect('no leftover temp files', temps.length === 0, `found: ${temps.join(', ')}`);
++    });
++}
++
++async function testLargeContent() {
++    console.log('testLargeContent');
++    await withTempDir(async (dir) => {
++        const target = path.join(dir, 'big.txt');
++        // 420000字の日本語テキスト（「あ」の繰り返し）
++        const big = 'あ'.repeat(420000);
++        const result = await atomicWriteTextFile(target, big);
++        const readBack = fs.readFileSync(target, 'utf8');
++        expect('content identical', readBack === big);
++        expect('bytes correct', result.bytes === Buffer.byteLength(big, 'utf8'));
++    });
++}
++
++async function testJapaneseContent() {
++    console.log('testJapaneseContent');
++    await withTempDir(async (dir) => {
++        const target = path.join(dir, 'jp.txt');
++        const jp = '吾輩は猫である。名前はまだ無い。\nどこで生れたか頓と見当がつかぬ。\n《ルビ》や［＃タグ］もあり。';
++        await atomicWriteTextFile(target, jp);
++        const readBack = fs.readFileSync(target, 'utf8');
++        expect('japanese preserved', readBack === jp);
++    });
++}
++
++async function testBinaryWrite() {
++    console.log('testBinaryWrite');
++    await withTempDir(async (dir) => {
++        const target = path.join(dir, 'img.bin');
++        const buf = Buffer.from([0, 1, 2, 3, 4, 0xff, 0xfe, 0xfd]);
++        await atomicWriteBinaryFile(target, buf);
++        const readBack = fs.readFileSync(target);
++        expect('binary preserved', Buffer.compare(readBack, buf) === 0);
++    });
++}
++
++async function testBinaryRejectEmpty() {
++    console.log('testBinaryRejectEmpty');
++    await withTempDir(async (dir) => {
++        const target = path.join(dir, 'empty.bin');
++        let threw = null;
++        try {
++            await atomicWriteBinaryFile(target, Buffer.alloc(0));
++        } catch (err) {
++            threw = err;
++        }
++        expect('threw ValidationError', threw instanceof ValidationError);
++    });
++}
++
++async function testClassifyShrink() {
++    console.log('testClassifyShrink');
++    expect('normal (no prev)', classifyShrink(null, 100) === 'normal');
++    expect('normal (zero prev)', classifyShrink(0, 100) === 'normal');
++    expect('normal (growth)', classifyShrink(100, 200) === 'normal');
++    expect('normal (minor shrink)', classifyShrink(100, 90) === 'normal');
++    expect('moderate', classifyShrink(1000, 400) === 'moderate-shrink');
++    expect('extreme', classifyShrink(1000, 40) === 'extreme-shrink');
++    expect('boundary 50%', classifyShrink(1000, 499) === 'moderate-shrink');
++    expect('boundary 95%', classifyShrink(1000, 49) === 'extreme-shrink');
++}
++
++async function testValidateHelper() {
++    console.log('testValidateHelper');
++    let threw;
++    try { validateTextPayload(''); } catch (e) { threw = e; }
++    expect('empty rejected', threw?.code === 'V-1');
++
++    threw = null;
++    try { validateTextPayload('hello', { allowEmpty: true }); } catch (e) { threw = e; }
++    expect('non-empty with allowEmpty OK', threw === null);
++
++    threw = null;
++    try { validateTextPayload('', { allowEmpty: true }); } catch (e) { threw = e; }
++    expect('empty with allowEmpty OK', threw === null);
++
++    threw = null;
++    try { validateTextPayload('abc\u0000'); } catch (e) { threw = e; }
++    expect('null char rejected', threw?.code === 'V-4');
++}
++
++// ============================================================
++
++async function main() {
++    const tests = [
++        testBasicWrite,
++        testOverwrite,
++        testRejectEmpty,
++        testAllowEmpty,
++        testRejectNonString,
++        testRejectNullChar,
++        testExtremeShrinkNotBlocked,
++        testStrictShrinkBlocks,
++        testModerateShrinkNotBlocked,
++        testNoTempFileLeft,
++        testLargeContent,
++        testJapaneseContent,
++        testBinaryWrite,
++        testBinaryRejectEmpty,
++        testClassifyShrink,
++        testValidateHelper,
++    ];
++
++    for (const t of tests) {
++        try {
++            await t();
++        } catch (err) {
++            failed++;
++            console.error(`  ✗ ${t.name} threw unexpected:`, err.message);
++        }
++    }
++
++    console.log('');
++    console.log(`Results: ${passed} passed, ${failed} failed`);
++    process.exit(failed === 0 ? 0 : 1);
++}
++
++main();
+diff --git a/electron/main.cjs b/electron/main.cjs
+index fa38937..726491f 100755
+--- a/electron/main.cjs
++++ b/electron/main.cjs
+@@ -1,6 +1,11 @@
+ const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron');
+ const path = require('path');
+ const fs = require('fs');
++const {
++    atomicWriteTextFile,
++    atomicWriteBinaryFile,
++    ValidationError,
++} = require('./atomicWrite.cjs');
+ 
+ const isDev = !app.isPackaged;
+ 
+@@ -177,16 +182,36 @@ ipcMain.handle('fs:readFileBinary', async (event, filePath) => {
+ });
+ 
+ // Write File Content (Text)
+-// ★ 非同期版を使う。同期 writeFileSync はメインプロセスをブロックし、
+-//    大規模ファイル（42万字＝UTF-8で約1MB）を毎秒保存するとIPCキューが
+-//    詰まりレンダラがフリーズする。
++// ★ atomic write 経由で書き込む。途中クラッシュで半端なファイルが残らない。
++//    空文字列や NULL 文字は事前検証で弾く（原稿消失事故の防止）。
++// ★ 呼び出し側が意図的に空ファイルを作りたい場合は fs:createFile を使う。
++//    fs:writeFile は既存ファイルの更新を想定しており、空を書くのはまず不正。
+ ipcMain.handle('fs:writeFile', async (event, filePath, content) => {
+-    return fs.promises.writeFile(filePath, content, 'utf-8');
++    try {
++        await atomicWriteTextFile(filePath, content);
++        return { ok: true };
++    } catch (err) {
++        if (err instanceof ValidationError) {
++            // 原稿を守るために書き込みを拒否した場合は、呼び出し側が認識できる形で返す
++            console.warn(`[atomicWrite] rejected: ${err.message}`, { filePath, code: err.code });
++            throw new Error(`VALIDATION_FAILED:${err.code}:${err.message}`);
++        }
++        throw err;
++    }
+ });
+ 
+ // Write File Content (Binary)
+ ipcMain.handle('fs:writeFileBinary', async (event, filePath, buffer) => {
+-    return fs.promises.writeFile(filePath, Buffer.from(buffer));
++    try {
++        await atomicWriteBinaryFile(filePath, Buffer.from(buffer));
++        return { ok: true };
++    } catch (err) {
++        if (err instanceof ValidationError) {
++            console.warn(`[atomicWrite] binary rejected: ${err.message}`, { filePath });
++            throw new Error(`VALIDATION_FAILED:${err.code}:${err.message}`);
++        }
++        throw err;
++    }
+ });
+ 
+ // Create Folder
+@@ -199,12 +224,21 @@ ipcMain.handle('fs:createFolder', async (event, parentPath, folderName) => {
+ });
+ 
+ // Create File (Empty or with content)
++// ★ 新規ファイル作成は atomic write を使うが、空文字列で作ることを許可する
++//    （allowEmpty: true）。すでに同名ファイルがある場合の上書き時も同じ経路を通る。
+ ipcMain.handle('fs:createFile', async (event, parentPath, fileName, content = '') => {
+     // Ensure extension
+     if (!fileName.includes('.')) fileName += '.txt'; // Default to txt if unspecified
+ 
+     const fullPath = path.join(parentPath, fileName);
+-    fs.writeFileSync(fullPath, content, 'utf-8');
++    try {
++        await atomicWriteTextFile(fullPath, content, { allowEmpty: true });
++    } catch (err) {
++        if (err instanceof ValidationError) {
++            throw new Error(`VALIDATION_FAILED:${err.code}:${err.message}`);
++        }
++        throw err;
++    }
+     return fullPath;
+ });
+ 
+diff --git a/src/utils/fileSystem.electron.js b/src/utils/fileSystem.electron.js
+index d740c46..218fb8e 100644
+--- a/src/utils/fileSystem.electron.js
++++ b/src/utils/fileSystem.electron.js
+@@ -59,11 +59,12 @@ export const electronFileSystem = {
+     const dirPath = toPath(dirHandle);
+     const separator = pathSep(dirPath);
+     const filePath = `${dirPath}${separator}${fileName}`;
+-    // Ensure file exists by attempting to write empty if not present
++    // Ensure file exists. V-1（空文字列 writeFile 拒否）に引っかからないよう、
++    // 空ファイル作成は createFile 経由で行う（内部で allowEmpty:true を使う）。
+     try {
+       await window.api.fs.readFile(filePath);
+     } catch {
+-      await window.api.fs.writeFile(filePath, '');
++      await window.api.fs.createFile(dirPath, fileName, '');
+     }
+     return { handle: filePath, name: fileName, kind: 'file' };
+   },
+-- 
+2.43.0
+

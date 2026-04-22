@@ -1,0 +1,9 @@
+- `[ ]` ブランチ作成: `feature/journal-log`
+- `[ ]` `electron/journal.cjs` 実装 (インターフェース準拠、エラー握り潰し、自動ローテート、追記専用)
+- `[ ]` `electron/journal.test.cjs` 実装 (9ケース)
+- `[ ]` `electron/atomicWrite.cjs` の変更 (シグネチャ変更、遅延 require、各イベントのログ記録)
+- `[ ]` `electron/main.cjs` の変更 (globalProjectRoot 保持、各 fs ハンドラでの引数追加)
+- `[ ]` テスト実行: `node electron/journal.test.cjs` (9 passed 必須)
+- `[ ]` テスト実行: `node electron/atomicWrite.test.cjs` (39 passed 維持)
+- `[ ]` ビルド確認: `npm run build`
+- `[ ]` コミット & Push
