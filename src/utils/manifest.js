@@ -117,7 +117,7 @@ export async function loadSegmentTexts(dirHandle, manifest) {
         const segDirHandle = segDir ? (segDir.handle || segDir) : dirHandle;
         const segEntries = await fileSystem.readDirectory(segDirHandle);
 
-        const CONCURRENCY = 6; // 制限付き並列処理
+        const BATCH_SIZE = 5; // 制限付き並列処理
 
         const processSegment = async (seg) => {
             try {
@@ -135,13 +135,13 @@ export async function loadSegmentTexts(dirHandle, manifest) {
         };
 
         // バッチ処理で読み込みを実行
-        for (let i = 0; i < manifest.segments.length; i += CONCURRENCY) {
-            const chunk = manifest.segments.slice(i, i + CONCURRENCY);
+        for (let i = 0; i < manifest.segments.length; i += BATCH_SIZE) {
+            const chunk = manifest.segments.slice(i, i + BATCH_SIZE);
             const batchResults = await Promise.all(chunk.map(processSegment));
             results.push(...batchResults);
             
             // IPC 通信の合間にわずかな空きを作る
-            if (i + CONCURRENCY < manifest.segments.length) {
+            if (i + BATCH_SIZE < manifest.segments.length) {
                 await new Promise(resolve => setTimeout(resolve, 0));
             }
         }

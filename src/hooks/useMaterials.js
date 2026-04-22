@@ -68,12 +68,12 @@ export const useMaterials = (projectHandle) => {
             };
             collectFiles(tree);
 
-            // 3. Process files with concurrency limit
+            // 3. Process files with concurrency limit (Fix: I/O Throttling)
             const flatList = [];
             const newTags = new Set();
             const newCache = new Map(fileCache);
             let cacheUpdated = false;
-            const CONCURRENCY = 6;
+            const BATCH_SIZE = 5; // 指示書に基づき 5 件ずつ処理
 
             const processFile = async ({ item, filePath }) => {
                 try {
@@ -87,7 +87,7 @@ export const useMaterials = (projectHandle) => {
                         return { ...cached, path: filePath };
                     }
 
-                    // Partial read for scanning (Fix #7)
+                    // Partial read for scanning (14万字などの巨大ファイル対策)
                     const scanContent = await fileSystem.readFile(item.handle, { length: 4096 });
                     
                     // Parse metadata/tags
@@ -125,20 +125,22 @@ export const useMaterials = (projectHandle) => {
                     return fileData;
                 } catch (e) {
                     console.error(`[useMaterials] Skip file due to error: ${filePath}`, e);
+                    // 個別の失敗を許容（指示書 [修正 B]）
                     return null;
                 }
             };
 
-            // Limit parallel execution
-            for (let i = 0; i < fileEntries.length; i += CONCURRENCY) {
-                const chunk = fileEntries.slice(i, i + CONCURRENCY);
-                const results = await Promise.all(chunk.map(processFile));
+            // バッチ処理（指示書 [修正 A]）
+            for (let i = 0; i < fileEntries.length; i += BATCH_SIZE) {
+                const batch = fileEntries.slice(i, i + BATCH_SIZE);
+                const results = await Promise.all(batch.map(processFile));
+                
                 results.forEach(res => {
                     if (res) flatList.push(res);
                 });
 
                 // IPC の飽和を防ぐため、バッチ間に極小の遅延を挟む
-                if (i + CONCURRENCY < fileEntries.length) {
+                if (i + BATCH_SIZE < fileEntries.length) {
                     await new Promise(resolve => setTimeout(resolve, 0));
                 }
             }
