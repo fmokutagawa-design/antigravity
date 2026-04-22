@@ -516,8 +516,7 @@ function App() {
    * Preview/ReaderView の「作品全体」表示からのジャンプ用。
    */
   const handleOpenSegmentFile = useCallback(async (fileName, localOffset) => {
-    // まず既存の handleOpenFile で検索を試みる
-    // allMaterialFiles に .nexus/segments/ 内のファイルが含まれていれば成功する
+    // まず既存の allMaterialFiles から検索
     const found = allMaterialFiles?.find(f =>
       f.name === fileName ||
       (f.handle && typeof f.handle === 'string' && f.handle.endsWith(fileName))
@@ -563,7 +562,7 @@ function App() {
       }
     }
 
-    // その後カーソル移動
+    // カーソル位置を設定
     setTimeout(() => {
       if (editorRef.current?.jumpToIndex) {
         editorRef.current.jumpToIndex(localOffset);

@@ -82,8 +82,6 @@ export function useWorkText({ activeFileHandle, projectHandle, currentText }) {
       return;
     }
 
-    // 同じ .nexus パスなら再読み込みしない（パフォーマンス）
-    // ただし currentText が変わった場合は該当セグメントだけ差し替える
     setIsNexusFile(true);
     setIsLoading(true);
 
