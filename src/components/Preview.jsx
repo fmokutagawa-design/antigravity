@@ -6,11 +6,13 @@ import '../styles/Preview.css';
 const Preview = ({ text, settings, mode = 'manuscript', onOpenLink, projectHandle, workText, isNexusFile, workTitle, resolveOffset, onOpenSegmentFile }) => {
     // mode: 'manuscript' | 'plain'
     const [showFullWork, setShowFullWork] = useState(false);
-    // Use global setting, default to true if undefined
     const showGrid = settings.showGrid !== false;
   
-    // 表示するテキストを決定（コンポーネントレベルで1回だけ）
-    const displayText = (showFullWork && isNexusFile && workText) ? workText : text;
+    // 表示するテキストを決定（コンポーネントレベルで1回だけ、useMemoで最適化）
+    const displayText = useMemo(() => {
+        if (showFullWork && isNexusFile && workText) return workText;
+        return text;
+    }, [showFullWork, isNexusFile, workText, text]);
 
     const [imageUrls, setImageUrls] = useState({});
     const knownImages = useRef(new Set());

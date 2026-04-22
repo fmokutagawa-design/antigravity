@@ -116,7 +116,7 @@ export const useMaterials = (projectHandle) => {
                         }
                     } else if (item.kind === 'directory') {
                         // .nexus フォルダはシステム管理用のため除外
-                        if (item.name.endsWith('.nexus')) continue;
+                        if (item.name === '.nexus' || item.name.endsWith('.nexus')) continue;
                         if (item.children) {
                             await traverse(item.children, pathPrefix ? `${pathPrefix}/${item.name}` : item.name);
                         }
