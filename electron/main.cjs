@@ -306,8 +306,10 @@ ipcMain.handle('fs:writeFileBinary', async (event, filePath, buffer, options = {
 // Create Folder
 ipcMain.handle('fs:createFolder', async (event, parentPath, folderName) => {
     const fullPath = path.join(parentPath, folderName);
-    if (!fs.existsSync(fullPath)) {
-        fs.mkdirSync(fullPath);
+    try {
+        await fs.promises.mkdir(fullPath, { recursive: true });
+    } catch (e) {
+        if (e.code !== 'EEXIST') throw e;
     }
     return fullPath;
 });
@@ -341,18 +343,18 @@ ipcMain.handle('fs:rename', async (event, oldPath, newNameOrPath) => {
         const directory = path.dirname(oldPath);
         newPath = path.join(directory, newNameOrPath);
     }
-    fs.renameSync(oldPath, newPath);
+    await fs.promises.rename(oldPath, newPath);
     return newPath;
 });
 
 // Delete (to trash ideally, but simple delete for now)
 ipcMain.handle('fs:delete', async (event, targetPath) => {
     // Check if dir or file
-    const stats = fs.statSync(targetPath);
+    const stats = await fs.promises.stat(targetPath);
     if (stats.isDirectory()) {
-        fs.rmSync(targetPath, { recursive: true, force: true });
+        await fs.promises.rm(targetPath, { recursive: true, force: true });
     } else {
-        fs.unlinkSync(targetPath);
+        await fs.promises.unlink(targetPath);
     }
     return true;
 });
@@ -370,18 +372,18 @@ let globalProjectRoot = null;
 
 // Get Application Settings
 ipcMain.handle('app:getSettings', async () => {
-    if (fs.existsSync(SETTINGS_FILE)) {
-        try {
-            const settings = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'));
+    try {
+        if (fs.existsSync(SETTINGS_FILE)) {
+            const settings = JSON.parse(await fs.promises.readFile(SETTINGS_FILE, 'utf-8'));
             if (settings && settings.projectPath) {
                 globalProjectRoot = typeof settings.projectPath === 'string'
                     ? settings.projectPath
                     : (settings.projectPath.handle || settings.projectPath.path);
             }
             return settings;
-        } catch (e) {
-            console.error("Failed to parse settings file", e);
         }
+    } catch (e) {
+        console.error("Failed to read settings file", e);
     }
     return null;
 });
@@ -462,14 +464,14 @@ ipcMain.handle('system:getFonts', async () => {
     // 2. Try to load from persistent cache file
     if (fs.existsSync(FONT_CACHE_FILE)) {
         try {
-            const cached = JSON.parse(fs.readFileSync(FONT_CACHE_FILE, 'utf-8'));
+            const cached = JSON.parse(await fs.promises.readFile(FONT_CACHE_FILE, 'utf-8'));
             if (cached && cached.length > 0) {
                 memoryFontCache = cached;
                 // Kick off background scan to keep cache fresh without blocking
                 console.log("Returning cached fonts, updating in background...");
                 scanFontsInternal().then(freshData => {
                     memoryFontCache = freshData;
-                    fs.writeFileSync(FONT_CACHE_FILE, JSON.stringify(freshData), 'utf-8');
+                    fs.promises.writeFile(FONT_CACHE_FILE, JSON.stringify(freshData), 'utf-8').catch(e => console.error('Font cache update failed:', e));
                 }).catch(e => console.error("Background font scan failed", e));
                 return cached;
             }
@@ -479,11 +481,10 @@ ipcMain.handle('system:getFonts', async () => {
     }
 
     // 3. No cache available, must block for initial scan
-    console.log("No font cache, performing initial scan...");
     try {
         const data = await scanFontsInternal();
         memoryFontCache = data;
-        fs.writeFileSync(FONT_CACHE_FILE, JSON.stringify(data), 'utf-8');
+        await fs.promises.writeFile(FONT_CACHE_FILE, JSON.stringify(data), 'utf-8');
         return data;
     } catch (e) {
         console.error("Initial font scan failed", e);
