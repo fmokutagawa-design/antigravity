@@ -230,13 +230,38 @@ ipcMain.handle('fs:readDirectory', async (event, dirPath) => {
 });
 
 // Read File Content (Text)
+// ★ 非同期・正規化対応版（ETIMEDOUT 対策）
 ipcMain.handle('fs:readFile', async (event, filePath) => {
-    return fs.readFileSync(filePath, 'utf-8');
+    try {
+        // Unicode正規化（NFC）でパスを統一
+        const normalizedPath = path.normalize(filePath).normalize('NFC');
+        return await fs.promises.readFile(normalizedPath, 'utf-8');
+    } catch (err) {
+        // NFCで失敗したらNFDでリトライ（macOSファイルシステム対策）
+        try {
+            const nfdPath = filePath.normalize('NFD');
+            return await fs.promises.readFile(nfdPath, 'utf-8');
+        } catch (err2) {
+            console.error('[fs:readFile] Critical failure:', filePath, err2.message);
+            throw err2;
+        }
+    }
 });
 
 // Read File Content (Binary)
 ipcMain.handle('fs:readFileBinary', async (event, filePath) => {
-    return fs.readFileSync(filePath); // Returns Buffer
+    try {
+        const normalizedPath = path.normalize(filePath).normalize('NFC');
+        return await fs.promises.readFile(normalizedPath);
+    } catch (err) {
+        try {
+            const nfdPath = filePath.normalize('NFD');
+            return await fs.promises.readFile(nfdPath);
+        } catch (err2) {
+            console.error('[fs:readFileBinary] Critical failure:', filePath, err2.message);
+            throw err2;
+        }
+    }
 });
 
 // Write File Content (Text)
