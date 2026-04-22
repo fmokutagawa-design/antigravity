@@ -73,7 +73,7 @@ export const useMaterials = (projectHandle) => {
             const newTags = new Set();
             const newCache = new Map(fileCache);
             let cacheUpdated = false;
-            const CONCURRENCY = 8;
+            const CONCURRENCY = 6;
 
             const processFile = async ({ item, filePath }) => {
                 try {
@@ -136,6 +136,11 @@ export const useMaterials = (projectHandle) => {
                 results.forEach(res => {
                     if (res) flatList.push(res);
                 });
+
+                // IPC の飽和を防ぐため、バッチ間に極小の遅延を挟む
+                if (i + CONCURRENCY < fileEntries.length) {
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                }
             }
 
             setAllMaterialFiles(flatList);

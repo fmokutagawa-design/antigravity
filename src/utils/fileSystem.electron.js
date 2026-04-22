@@ -70,7 +70,24 @@ export const electronFileSystem = {
   },
 
   async readFile(fileHandle, options = {}) {
-    return await window.api.fs.readFile(toPath(fileHandle), options);
+    const maxRetries = 3;
+    let lastError;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await window.api.fs.readFile(toPath(fileHandle), options);
+      } catch (error) {
+        lastError = error;
+        const isTimeout = error.message?.includes('ETIMEDOUT') || error.toString().includes('ETIMEDOUT');
+        if (isTimeout && attempt < maxRetries) {
+          const delay = Math.pow(2, attempt) * 100; // 100ms, 200ms, 400ms
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw lastError;
   },
 
   async writeFile(fileHandle, content, options = {}) {

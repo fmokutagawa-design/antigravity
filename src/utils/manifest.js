@@ -109,27 +109,48 @@ export async function readManifest(dirHandle) {
  */
 export async function loadSegmentTexts(dirHandle, manifest) {
     const results = [];
-    for (const seg of manifest.segments) {
-        try {
-            // segments/ サブフォルダ内のファイルを読む
-            let segDirHandle;
-            const segEntries = await fileSystem.readDirectory(dirHandle);
-            const segDir = segEntries.find(e => e.name === 'segments' && e.kind === 'directory');
-            segDirHandle = segDir ? (segDir.handle || segDir) : dirHandle;
+    
+    try {
+        // segments/ サブフォルダのエントリを事前に一度だけ取得する
+        const rootEntries = await fileSystem.readDirectory(dirHandle);
+        const segDir = rootEntries.find(e => e.name === 'segments' && e.kind === 'directory');
+        const segDirHandle = segDir ? (segDir.handle || segDir) : dirHandle;
+        const segEntries = await fileSystem.readDirectory(segDirHandle);
 
-            const entries = await fileSystem.readDirectory(segDirHandle);
-            const entry = entries.find(e => e.name === seg.file);
-            if (!entry) {
-                console.warn(`[manifest] segment file not found: ${seg.file}`);
-                results.push({ ...seg, text: '' });
-                continue;
+        const CONCURRENCY = 6; // 制限付き並列処理
+
+        const processSegment = async (seg) => {
+            try {
+                const entry = segEntries.find(e => e.name === seg.file);
+                if (!entry) {
+                    console.warn(`[manifest] segment file not found: ${seg.file}`);
+                    return { ...seg, text: '' };
+                }
+                const text = await fileSystem.readFile(entry.handle || entry);
+                return { ...seg, text };
+            } catch (e) {
+                console.warn(`[manifest] failed to read segment ${seg.file}:`, e);
+                return { ...seg, text: '' };
             }
-            const text = await fileSystem.readFile(entry.handle || entry);
-            results.push({ ...seg, text });
-        } catch (e) {
-            console.warn(`[manifest] failed to read segment ${seg.file}:`, e);
-            results.push({ ...seg, text: '' });
+        };
+
+        // バッチ処理で読み込みを実行
+        for (let i = 0; i < manifest.segments.length; i += CONCURRENCY) {
+            const chunk = manifest.segments.slice(i, i + CONCURRENCY);
+            const batchResults = await Promise.all(chunk.map(processSegment));
+            results.push(...batchResults);
+            
+            // IPC 通信の合間にわずかな空きを作る
+            if (i + CONCURRENCY < manifest.segments.length) {
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
         }
+
+    } catch (e) {
+        console.error('[manifest] loadSegmentTexts critical failure:', e);
+        // フォールバック: 空のテキストで埋める
+        return manifest.segments.map(seg => ({ ...seg, text: '' }));
     }
+
     return results;
 }
