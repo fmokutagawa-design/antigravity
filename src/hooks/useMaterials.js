@@ -73,7 +73,7 @@ export const useMaterials = (projectHandle) => {
             const newTags = new Set();
             const newCache = new Map(fileCache);
             let cacheUpdated = false;
-            const BATCH_SIZE = 5; // 指示書に基づき 5 件ずつ処理
+            const BATCH_SIZE = 2; // 指示書に基づき 2 件ずつ処理 (IPC負荷軽減の極大化)
 
             const processFile = async ({ item, filePath }) => {
                 try {
