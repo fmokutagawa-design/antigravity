@@ -516,15 +516,60 @@ function App() {
    * Preview/ReaderView の「作品全体」表示からのジャンプ用。
    */
   const handleOpenSegmentFile = useCallback(async (fileName, localOffset) => {
-    // 既存のファイルオープン関数を呼ぶ
-    await handleOpenFile(null, fileName);
+    // まず既存の handleOpenFile で検索を試みる
+    // allMaterialFiles に .nexus/segments/ 内のファイルが含まれていれば成功する
+    const found = allMaterialFiles?.find(f =>
+      f.name === fileName ||
+      (f.handle && typeof f.handle === 'string' && f.handle.endsWith(fileName))
+    );
+
+    if (found) {
+      await handleOpenFile(found.handle, fileName);
+    } else {
+      // フォールバック: .nexus/segments/ から直接読み込む
+      try {
+        const entries = await fileSystem.readDirectory(projectHandle);
+        let loaded = false;
+
+        for (const entry of (entries || [])) {
+          if (entry.kind === 'directory' && entry.name.endsWith('.nexus')) {
+            const nexusDirHandle = entry.handle || entry;
+            const nexusEntries = await fileSystem.readDirectory(nexusDirHandle);
+            const segDir = nexusEntries.find(e => e.name === 'segments' && e.kind === 'directory');
+
+            if (segDir) {
+              const segDirHandle = segDir.handle || segDir;
+              const segEntries = await fileSystem.readDirectory(segDirHandle);
+              const targetFile = segEntries.find(e => e.name === fileName);
+
+              if (targetFile) {
+                const fileHandle = targetFile.handle || targetFile;
+                await handleOpenFile(fileHandle, fileName);
+                loaded = true;
+                break;
+              }
+            }
+          }
+        }
+
+        if (!loaded) {
+          showToast(`ファイル "${fileName}" が見つかりません`);
+          return;
+        }
+      } catch (e) {
+        console.error('[openSegmentFile] fallback failed:', e);
+        showToast(`ファイルを開けませんでした: ${e.message}`);
+        return;
+      }
+    }
+
     // その後カーソル移動
     setTimeout(() => {
       if (editorRef.current?.jumpToIndex) {
         editorRef.current.jumpToIndex(localOffset);
       }
     }, 150);
-  }, [handleOpenFile]);
+  }, [handleOpenFile, allMaterialFiles, projectHandle, showToast]);
 
   // Handle auto-opening file from URL parameter
   useEffect(() => {

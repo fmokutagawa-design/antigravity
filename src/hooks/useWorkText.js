@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { fileSystem, isNative } from '../utils/fileSystem';
 import { readManifest, loadSegmentTexts } from '../utils/manifest';
 
@@ -26,12 +26,18 @@ import { readManifest, loadSegmentTexts } from '../utils/manifest';
  */
 export function useWorkText({ activeFileHandle, projectHandle, currentText }) {
   const [isNexusFile, setIsNexusFile] = useState(false);
-  const [workText, setWorkText] = useState('');
-  const [offsetMap, setOffsetMap] = useState([]);
   const [manifest, setManifest] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [workTitle, setWorkTitle] = useState('');
   const lastNexusPath = useRef('');
+  const currentTextRef = useRef(currentText);
+  const [rawSegments, setRawSegments] = useState([]); // ディスクから読んだ生データ
+  const [currentFileName, setCurrentFileName] = useState('');
+
+  // currentText が変わるたびに ref を更新（レンダリングは発生しない）
+  useEffect(() => {
+    currentTextRef.current = currentText;
+  }, [currentText]);
 
   /**
    * activeFileHandle のパスから .nexus フォルダを検出する
@@ -68,8 +74,8 @@ export function useWorkText({ activeFileHandle, projectHandle, currentText }) {
 
     if (!isNexus) {
       setIsNexusFile(false);
-      setWorkText('');
-      setOffsetMap([]);
+      setRawSegments([]);
+      setCurrentFileName('');
       setManifest(null);
       setWorkTitle('');
       lastNexusPath.current = '';
@@ -109,58 +115,69 @@ export function useWorkText({ activeFileHandle, projectHandle, currentText }) {
       setManifest(mf);
       setWorkTitle(mf.title || '');
 
-      // 全セグメントのテキストを読み込み
+      // 全セグメントのテキストを読み込み（ディスクから）
       const segments = await loadSegmentTexts(nexusDirHandle, mf);
 
-      // 現在編集中のファイルは、ディスク上の内容ではなく currentText を使う
-      // （未保存の変更を反映するため）
-      const segmentsWithCurrent = segments.map(seg => {
-        if (seg.file === currentFileName) {
-          return { ...seg, text: currentText };
-        }
-        return seg;
-      });
-
-      // 連結テキストと offset map を生成
-      let concatenated = '';
-      const offsets = [];
-      const separator = '\n'; // セグメント間の区切り
-
-      for (let i = 0; i < segmentsWithCurrent.length; i++) {
-        const seg = segmentsWithCurrent[i];
-        const globalStart = concatenated.length;
-
-        concatenated += seg.text;
-
-        offsets.push({
-          segmentId: seg.id,
-          file: seg.file,
-          displayName: seg.displayName,
-          globalStart,
-          globalEnd: concatenated.length,
-          length: seg.text.length,
-        });
-
-        // 最後のセグメント以外は区切りを入れる
-        if (i < segmentsWithCurrent.length - 1) {
-          concatenated += separator;
-        }
-      }
-
-      setWorkText(concatenated);
-      setOffsetMap(offsets);
+      // 生データを保存（currentText との合成は useMemo で行う）
+      setRawSegments(segments);
+      setCurrentFileName(currentFileName);
       lastNexusPath.current = nexusPath;
     } catch (e) {
       console.error('[useWorkText] failed to load work:', e);
     } finally {
       setIsLoading(false);
     }
-  }, [detectNexusFolder, projectHandle, currentText]);
+  }, [detectNexusFolder, projectHandle]);
 
   // activeFileHandle が変わったら再読み込み
   useEffect(() => {
     loadWork();
   }, [loadWork]);
+
+  /**
+   * rawSegments + currentText から連結テキストと offset map を生成する。
+   * currentText が変わるたびにメモリ上で差し替えるだけなので軽い。
+   */
+  const { computedWorkText, computedOffsetMap } = useMemo(() => {
+    if (!rawSegments.length) {
+      return { computedWorkText: '', computedOffsetMap: [] };
+    }
+
+    // 現在編集中のファイルは currentText で差し替え
+    const segmentsWithCurrent = rawSegments.map(seg => {
+      if (seg.file === currentFileName) {
+        return { ...seg, text: currentText };
+      }
+      return seg;
+    });
+
+    // 連結テキストと offset map を生成
+    let concatenated = '';
+    const offsets = [];
+    const separator = '\n';
+
+    for (let i = 0; i < segmentsWithCurrent.length; i++) {
+      const seg = segmentsWithCurrent[i];
+      const globalStart = concatenated.length;
+
+      concatenated += seg.text;
+
+      offsets.push({
+        segmentId: seg.id,
+        file: seg.file,
+        displayName: seg.displayName,
+        globalStart,
+        globalEnd: concatenated.length,
+        length: seg.text.length,
+      });
+
+      if (i < segmentsWithCurrent.length - 1) {
+        concatenated += separator;
+      }
+    }
+
+    return { computedWorkText: concatenated, computedOffsetMap: offsets };
+  }, [rawSegments, currentFileName, currentText]);
 
   /**
    * 連結テキスト内の位置から、元のセグメントファイルとローカル位置を逆引きする。
@@ -170,7 +187,7 @@ export function useWorkText({ activeFileHandle, projectHandle, currentText }) {
    * @returns {{ file: string, segmentId: string, localOffset: number } | null}
    */
   const resolveOffset = useCallback((globalOffset) => {
-    for (const entry of offsetMap) {
+    for (const entry of computedOffsetMap) {
       if (globalOffset >= entry.globalStart && globalOffset < entry.globalEnd) {
         return {
           file: entry.file,
@@ -181,8 +198,8 @@ export function useWorkText({ activeFileHandle, projectHandle, currentText }) {
       }
     }
     // 末尾の場合は最後のセグメント
-    if (offsetMap.length > 0) {
-      const last = offsetMap[offsetMap.length - 1];
+    if (computedOffsetMap.length > 0) {
+      const last = computedOffsetMap[computedOffsetMap.length - 1];
       return {
         file: last.file,
         segmentId: last.segmentId,
@@ -191,13 +208,13 @@ export function useWorkText({ activeFileHandle, projectHandle, currentText }) {
       };
     }
     return null;
-  }, [offsetMap]);
+  }, [computedOffsetMap]);
 
   return {
     isNexusFile,    // 現在のファイルが .nexus 内かどうか
-    workText,       // 連結テキスト（全章）
+    workText: computedWorkText,       // 連結テキスト（全章）
     workTitle,      // 作品タイトル
-    offsetMap,      // offset map 配列
+    offsetMap: computedOffsetMap,      // offset map 配列
     manifest,       // manifest オブジェクト
     isLoading,      // 読み込み中フラグ
     resolveOffset,  // globalOffset → { file, localOffset } 変換関数
