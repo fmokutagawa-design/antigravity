@@ -117,33 +117,24 @@ export async function loadSegmentTexts(dirHandle, manifest) {
         const segDirHandle = segDir ? (segDir.handle || segDir) : dirHandle;
         const segEntries = await fileSystem.readDirectory(segDirHandle);
 
-        const BATCH_SIZE = 5; // 制限付き並列処理
-
-        const processSegment = async (seg) => {
+        // セグメントを一つずつ直列に読み込む（指示書に基づき並列化を廃止）
+        for (const seg of manifest.segments) {
             try {
                 const entry = segEntries.find(e => e.name === seg.file);
                 if (!entry) {
                     console.warn(`[manifest] segment file not found: ${seg.file}`);
-                    return { ...seg, text: '' };
+                    results.push({ ...seg, text: '' });
+                } else {
+                    const text = await fileSystem.readFile(entry.handle || entry);
+                    results.push({ ...seg, text });
                 }
-                const text = await fileSystem.readFile(entry.handle || entry);
-                return { ...seg, text };
             } catch (e) {
                 console.warn(`[manifest] failed to read segment ${seg.file}:`, e);
-                return { ...seg, text: '' };
+                results.push({ ...seg, text: '' });
             }
-        };
-
-        // バッチ処理で読み込みを実行
-        for (let i = 0; i < manifest.segments.length; i += BATCH_SIZE) {
-            const chunk = manifest.segments.slice(i, i + BATCH_SIZE);
-            const batchResults = await Promise.all(chunk.map(processSegment));
-            results.push(...batchResults);
             
-            // IPC 通信の合間にわずかな空きを作る
-            if (i + BATCH_SIZE < manifest.segments.length) {
-                await new Promise(resolve => setTimeout(resolve, 0));
-            }
+            // IPC 通信の合間にイベントループを解放する
+            await new Promise(resolve => setTimeout(resolve, 0));
         }
 
     } catch (e) {
