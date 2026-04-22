@@ -141,10 +141,10 @@ export function useWorkText({ activeFileHandle, projectHandle, currentText }) {
       return { computedWorkText: '', computedOffsetMap: [] };
     }
 
-    // 現在編集中のファイルは currentText で差し替え
+    // 現在編集中のファイルは Ref から最新（またはデバウンス済み）を取得して差し替え
     const segmentsWithCurrent = rawSegments.map(seg => {
       if (seg.file === currentFileName) {
-        return { ...seg, text: currentText };
+        return { ...seg, text: currentTextRef.current };
       }
       return seg;
     });
@@ -175,7 +175,7 @@ export function useWorkText({ activeFileHandle, projectHandle, currentText }) {
     }
 
     return { computedWorkText: concatenated, computedOffsetMap: offsets };
-  }, [rawSegments, currentFileName, currentText]);
+  }, [rawSegments, currentFileName]); // currentText を依存から外すことで、入力ごとの再計算を抑制
 
   /**
    * 連結テキスト内の位置から、元のセグメントファイルとローカル位置を逆引きする。
