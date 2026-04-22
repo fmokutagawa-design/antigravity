@@ -10,6 +10,7 @@ const ManuscriptPanel = ({
   activeFile,
   onChapterSelect,
   onSplitDocument,
+  onImportChapters,
 }) => {
   const txtFiles = allFiles.filter(f => {
     const name = typeof f === 'string' ? f : (f.name || '');
@@ -22,24 +23,43 @@ const ManuscriptPanel = ({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '8px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', gap: '4px' }}>
         <span style={{ fontWeight: 'bold', fontSize: '13px' }}>原稿管理</span>
-        {onSplitDocument && (
-          <button
-            onClick={onSplitDocument}
-            style={{
-              fontSize: '11px',
-              padding: '2px 8px',
-              cursor: 'pointer',
-              background: 'transparent',
-              border: '1px solid #888',
-              borderRadius: '4px',
-            }}
-            title="章ごとにファイル分割"
-          >
-            章分割
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: '4px' }}>
+          {onImportChapters && (
+            <button
+              onClick={onImportChapters}
+              style={{
+                fontSize: '11px',
+                padding: '2px 8px',
+                cursor: 'pointer',
+                background: 'transparent',
+                border: '1px solid #888',
+                borderRadius: '4px',
+                color: 'var(--accent-color, #89b4fa)'
+              }}
+              title="バラバラのファイルを .nexus にまとめる"
+            >
+              作品化
+            </button>
+          )}
+          {onSplitDocument && (
+            <button
+              onClick={onSplitDocument}
+              style={{
+                fontSize: '11px',
+                padding: '2px 8px',
+                cursor: 'pointer',
+                background: 'transparent',
+                border: '1px solid #888',
+                borderRadius: '4px',
+              }}
+              title="章ごとにファイル分割"
+            >
+              分割
+            </button>
+          )}
+        </div>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto' }}>

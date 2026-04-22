@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { fileSystem } from '../utils/fileSystem';
 import { createEmptyManifest, writeManifest } from '../utils/manifest';
 import './ImportChaptersModal.css';
@@ -6,7 +6,7 @@ import './ImportChaptersModal.css';
 /**
  * ImportChaptersModal
  * 
- * 既存の分割ファイルを選択し、.nexus フォルダにまとめるモーダル。
+ * 既存の分割ファイルを選択し、.nexus フォルダにまとめる（作品化する）モーダル。
  */
 export default function ImportChaptersModal({
   isOpen,
@@ -20,7 +20,25 @@ export default function ImportChaptersModal({
   const [workTitle, setWorkTitle] = useState('');
   const [isExecuting, setIsExecuting] = useState(false);
 
-  // allFiles から .txt ファイルのみ抽出
+  // モーダルを開くときに状態をリセット
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedFiles([]);
+      setWorkTitle('');
+    }
+  }, [isOpen]);
+
+  // ファイルが初めて選択されたとき、タイトルが空ならファイル名を提案する
+  useEffect(() => {
+    if (selectedFiles.length > 0 && !workTitle) {
+      const firstName = selectedFiles[0].name.replace(/\.txt$/, '');
+      // 数字や話数（第1話、#01など）を除去して作品名っぽくする
+      const suggested = firstName.replace(/[\s\u3000]*(第?\d+話?|#?\d+|第.+?話)[\s\u3000]*$/, '').trim();
+      setWorkTitle(suggested || firstName);
+    }
+  }, [selectedFiles, workTitle]);
+
+  // allFiles から .txt ファイルのみ抽出（既に .nexus 内にあるものは除外するのが望ましいが、簡易的に .txt 全て）
   const txtFiles = (allFiles || []).filter(f => 
     f.name && f.name.endsWith('.txt') && f.kind === 'file'
   );
@@ -43,9 +61,13 @@ export default function ImportChaptersModal({
     });
   }, []);
 
+  const removeFile = useCallback((index) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
   const executeImport = useCallback(async () => {
     if (selectedFiles.length === 0 || !workTitle.trim()) {
-      showToast('作品タイトルとファイルを選択してください');
+      showToast('タイトルとファイルを選択してください');
       return;
     }
 
@@ -56,37 +78,37 @@ export default function ImportChaptersModal({
       // 1. .nexus フォルダ作成
       const nexusDirHandle = await fileSystem.createFolder(projectHandle, nexusFolderName);
 
-      // 2. segments/ サブフォルダ作成
-      const segmentsDirHandle = await fileSystem.createFolder(nexusDirHandle, 'segments');
-
-      // 3. archive/ サブフォルダ作成
-      await fileSystem.createFolder(nexusDirHandle, 'archive');
-
-      // 4. ファイルを segments/ にコピー
+      // 2. ファイルを .nexus フォルダ直下に移動（segments 階層を廃止）
       const segments = [];
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
-        const text = await fileSystem.readFile(file.handle || file);
-        await fileSystem.createFile(segmentsDirHandle, file.name, text);
-
-        segments.push({
-          id: `seg-${Date.now()}-${i}`,
-          file: file.name,
-          displayName: file.name.replace(/\.txt$/, ''),
-        });
+        
+        // 元ファイルを .nexus フォルダに移動（コピーではなく移動）
+        try {
+          const movedFile = await fileSystem.moveFile(file.handle || file, nexusDirHandle);
+          
+          segments.push({
+            id: `seg-${Date.now()}-${i}`,
+            file: movedFile.name,
+            displayName: movedFile.name.replace(/\.txt$/, ''),
+          });
+        } catch (moveError) {
+          console.error(`[import] Could not move ${file.name}:`, moveError);
+          throw new Error(`ファイル "${file.name}" の移動に失敗しました`);
+        }
       }
 
-      // 5. manifest.json 作成
+      // 3. manifest.json 作成（同じ階層に配置）
       const manifest = createEmptyManifest(workTitle.trim());
       manifest.segments = segments;
       await writeManifest(nexusDirHandle, manifest);
 
-      showToast(`${selectedFiles.length} ファイルを "${nexusFolderName}" にまとめました`);
+      showToast(`「${workTitle.trim()}」として作品化しました。`);
       if (refreshMaterials) await refreshMaterials();
       onClose();
     } catch (e) {
       console.error('[import] failed:', e);
-      showToast(`まとめに失敗しました: ${e.message}`);
+      showToast(`作品化に失敗しました: ${e.message}`);
     } finally {
       setIsExecuting(false);
     }
@@ -97,7 +119,7 @@ export default function ImportChaptersModal({
   return (
     <div className="import-modal-overlay" onClick={isExecuting ? undefined : onClose}>
       <div className="import-modal-content" onClick={e => e.stopPropagation()}>
-        <h2>ファイルをまとめる</h2>
+        <h2>既存ファイルを作品化する</h2>
         <button className="import-modal-close" onClick={onClose} disabled={isExecuting}>✕</button>
 
         <div className="import-modal-section">
@@ -142,14 +164,15 @@ export default function ImportChaptersModal({
 
         {selectedFiles.length > 0 && (
           <div className="import-modal-section">
-            <h3>選択済み（この順序で manifest に登録）</h3>
+            <h3>作品構成（この順序で登録）</h3>
             <ol className="import-modal-order-list">
               {selectedFiles.map((file, i) => (
                 <li key={file.handle || file.name}>
                   <span className="order-item-name">{file.name}</span>
                   <div className="order-item-actions">
-                    <button onClick={() => moveUp(i)} disabled={i === 0 || isExecuting}>↑</button>
-                    <button onClick={() => moveDown(i)} disabled={i === selectedFiles.length - 1 || isExecuting}>↓</button>
+                    <button onClick={() => moveUp(i)} disabled={i === 0 || isExecuting} title="上に移動">↑</button>
+                    <button onClick={() => moveDown(i)} disabled={i === selectedFiles.length - 1 || isExecuting} title="下に移動">↓</button>
+                    <button onClick={() => removeFile(i)} disabled={isExecuting} className="btn-remove" title="選択を解除">✕</button>
                   </div>
                 </li>
               ))}
@@ -163,7 +186,7 @@ export default function ImportChaptersModal({
             onClick={executeImport}
             disabled={isExecuting || selectedFiles.length === 0 || !workTitle.trim()}
           >
-            {isExecuting ? 'まとめ中…' : `${selectedFiles.length} ファイルをまとめる`}
+            {isExecuting ? '実行中…' : `${selectedFiles.length} ファイルを作品化する`}
           </button>
         </div>
       </div>

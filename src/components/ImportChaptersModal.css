@@ -128,6 +128,15 @@
   cursor: not-allowed;
 }
 
+.order-item-actions .btn-remove {
+  color: #f38ba8; /* Reddish for removal */
+}
+
+.order-item-actions .btn-remove:hover:not(:disabled) {
+  background: rgba(243, 139, 168, 0.1);
+  border-color: #f38ba8;
+}
+
 .import-modal-actions {
   display: flex;
   justify-content: flex-end;

@@ -562,12 +562,15 @@ function App() {
       }
     }
 
-    // カーソル位置を設定
-    setTimeout(() => {
+    // カーソル位置をリトライ付きで設定（エディタのレンダリング完了を待つ）
+    const tryJump = (attempts = 0) => {
       if (editorRef.current?.jumpToIndex) {
         editorRef.current.jumpToIndex(localOffset);
+      } else if (attempts < 10) {
+        setTimeout(() => tryJump(attempts + 1), 150);
       }
-    }, 150);
+    };
+    setTimeout(() => tryJump(0), 150);
   }, [handleOpenFile, allMaterialFiles, projectHandle, showToast]);
 
   // Handle auto-opening file from URL parameter
@@ -1074,7 +1077,7 @@ function App() {
   const workTextData = useWorkText({
     activeFileHandle,
     projectHandle,
-    currentText: text,
+    currentText: debouncedText,
   });
 
   useAutoSave({
@@ -2149,25 +2152,9 @@ function App() {
                           showToast('分割するファイルが開かれていません');
                         }
                       }}
+                      onImportChapters={() => setIsImportModalOpen(true)}
                     />
-                    <div style={{ padding: '0 16px 16px' }}>
-                      <button 
-                        onClick={() => setIsImportModalOpen(true)}
-                        className="btn-rescue-folders"
-                        style={{
-                          width: '100%',
-                          padding: '8px',
-                          background: 'var(--bg-surface, #313244)',
-                          color: 'var(--text-color, #cdd6f4)',
-                          border: '1px solid var(--border-color, #45475a)',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontSize: '0.85rem'
-                        }}
-                      >
-                        既存ファイルを .nexus にまとめる
-                      </button>
-                    </div>
+
                   </>
 
                   ) : sidebarTab === 'prizes' ? (
@@ -2682,7 +2669,14 @@ function App() {
           cursorOffset={editorRef.current?.textareaRef?.current?.selectionStart ?? 0}
           onJumpToEditor={(offset) => {
             setShowReader(false);
-            setTimeout(() => editorRef.current?.jumpToIndex(offset), 100);
+            const tryJump = (attempts = 0) => {
+              if (editorRef.current?.jumpToIndex) {
+                editorRef.current.jumpToIndex(offset);
+              } else if (attempts < 5) {
+                setTimeout(() => tryJump(attempts + 1), 100);
+              }
+            };
+            setTimeout(() => tryJump(0), 50);
           }}
           workText={workTextData.workText}
           isNexusFile={workTextData.isNexusFile}

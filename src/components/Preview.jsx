@@ -8,15 +8,15 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink, projectHandl
     const [showFullWork, setShowFullWork] = useState(false);
     // Use global setting, default to true if undefined
     const showGrid = settings.showGrid !== false;
+  
+    // 表示するテキストを決定（コンポーネントレベルで1回だけ）
+    const displayText = (showFullWork && isNexusFile && workText) ? workText : text;
 
     const [imageUrls, setImageUrls] = useState({});
     const knownImages = useRef(new Set());
 
     useEffect(() => {
         if (!projectHandle) return;
-
-        // 表示するテキストを決定
-        const displayText = (showFullWork && isNexusFile && workText) ? workText : text;
 
         // テキスト内の挿絵記法を全て検出
         const matches = [...displayText.matchAll(/［＃挿絵（(.+?)）入る］/g)];
@@ -160,9 +160,6 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink, projectHandl
         // Font size: 小さい方の辺の75%
         const fontSizePx = Math.min(cellWidthPx, cellHeightPx) * 0.75;
 
-        // 表示するテキストを決定
-        const displayText = (showFullWork && isNexusFile && workText) ? workText : text;
-
         // --- Typesetting Logic ---
         // 1. Preprocess
         const processedText = preprocessText(displayText);
@@ -212,7 +209,7 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink, projectHandl
             cellWidthPx,
             cellHeightPx
         };
-    }, [text, workText, showFullWork, isNexusFile, settings.charsPerLine, settings.linesPerPage, settings.pageSize, settings.orientation]);
+    }, [displayText, settings.charsPerLine, settings.linesPerPage, settings.pageSize, settings.orientation]);
 
     /**
      * 作品全体表示中のクリック → 該当章ファイルを開く
@@ -242,7 +239,6 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink, projectHandl
     const handlePlainLineClick = useCallback((lineIndex) => {
         if (!showFullWork || !resolveOffset || !onOpenSegmentFile) return;
 
-        const displayText = (showFullWork && isNexusFile && workText) ? workText : text;
         const lines = displayText.split('\n');
         let offset = 0;
         for (let i = 0; i < lineIndex && i < lines.length; i++) {
@@ -453,7 +449,6 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink, projectHandl
     };
 
     const renderPlain = () => {
-        const displayText = (showFullWork && isNexusFile && workText) ? workText : text;
         return (
             <div className="plain-content">
                 {displayText.split('\n').map((line, i) => {

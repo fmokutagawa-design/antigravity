@@ -64,6 +64,27 @@ async function performSplit({ plan, activeFileHandle, projectHandle, sourceText,
     // Step 2.5: .nexus フォルダ作成（オプション）
     targetDirHandle = parentDirHandle; // デフォルトはフラット出力
 
+    // 既存 .nexus フォルダの上書き確認
+    if (useNexusFolder) {
+        const nexusFolderName = `${plan.baseName}.nexus`;
+        try {
+            const existingEntries = await fileSystem.readDirectory(parentDirHandle);
+            const existing = (existingEntries || []).find(
+                e => e.name === nexusFolderName && e.kind === 'directory'
+            );
+            if (existing) {
+                const ok = typeof window !== 'undefined' && window.confirm(
+                    `"${nexusFolderName}" フォルダが既に存在します。上書きしますか？\n（既存の manifest.json は上書きされます）`
+                );
+                if (!ok) {
+                    return { createdCount: 0, backupPath: '' };
+                }
+            }
+        } catch (e) {
+            // readDirectory 失敗は無視（フォルダが存在しないケース）
+        }
+    }
+
     if (useNexusFolder) {
         const nexusFolderName = `${plan.baseName}.nexus`;
 
@@ -81,20 +102,6 @@ async function performSplit({ plan, activeFileHandle, projectHandle, sourceText,
             }
         }
 
-        // segments/ サブフォルダ作成
-        let segmentsDirHandle;
-        try {
-            segmentsDirHandle = await fileSystem.createFolder(nexusDirHandle, 'segments');
-        } catch (e) {
-            if (isNative) {
-                const nPath = nexusDirHandle.handle || nexusDirHandle.path || nexusDirHandle;
-                const sep = nPath.includes('\\') ? '\\' : '/';
-                segmentsDirHandle = { handle: `${nPath}${sep}segments`, name: 'segments', kind: 'directory' };
-            } else {
-                throw new Error(`segments フォルダの作成に失敗: ${e.message}`);
-            }
-        }
-
         // archive/ サブフォルダ作成（元ファイルの移動先）
         let archiveDirHandle;
         try {
@@ -109,14 +116,15 @@ async function performSplit({ plan, activeFileHandle, projectHandle, sourceText,
             }
         }
 
-        // バックアップを archive/ に移動（コピー＋元削除）
+        // バックアップを archive/ に保存
         try {
             await fileSystem.createFile(archiveDirHandle, backupFileName, sourceText);
         } catch (e) {
             console.warn('[split] archive copy failed, backup remains in .backup/', e);
         }
 
-        targetDirHandle = segmentsDirHandle;
+        // 分割ファイルは .nexus フォルダの直下に置く（階層を深くしない）
+        targetDirHandle = nexusDirHandle;
     }
 
     // Step 3: 既存ファイル一覧を取得して衝突チェック

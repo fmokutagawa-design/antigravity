@@ -30,9 +30,13 @@ export function useFileOperations({
   settings,
 }) {
   const handleSaveFileRef = useRef(null);
+  const isSavingRef = useRef(false);
 
   const handleSaveFile = useCallback(async () => {
-    if (activeFileHandle && projectHandle) {
+    if (isSavingRef.current) return;
+    isSavingRef.current = true;
+    try {
+      if (activeFileHandle && projectHandle) {
       try {
         const { metadata } = parseNote(text);
 
@@ -61,6 +65,8 @@ export function useFileOperations({
         console.error('Failed to save file:', error);
         showToast('ファイルの保存に失敗しました。');
       }
+    } finally {
+      isSavingRef.current = false;
     }
   }, [text, activeFileHandle, projectHandle, autoOrganizeFile, setActiveFileHandle, refreshMaterials, setLastSaved, lastSavedTextRef, showToast, settings?.enableJournaling]);
 
