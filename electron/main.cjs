@@ -193,38 +193,42 @@ ipcMain.handle('dialog:save', async (event, defaultPath) => {
     }
 });
 
-function readDirRecursive(dirPath) {
-    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+// Read Directory Structure (Asynchronous)
+// ★ 再帰走査を非同期化し、メインプロセスのブロック（ETIMEDOUTの原因）を解消
+async function readDirRecursive(dirPath) {
+    const entries = await fs.promises.readdir(dirPath, { withFileTypes: true });
     // Filter out hidden files
     const validEntries = entries.filter(e => !e.name.startsWith('.'));
 
-    return validEntries.map(entry => {
+    const results = [];
+    for (const entry of validEntries) {
         const fullPath = path.join(dirPath, entry.name);
         if (entry.isDirectory()) {
-            return {
+            results.push({
                 name: entry.name,
                 kind: 'directory',
                 path: fullPath,
                 handle: fullPath, // Use path as handle
-                children: readDirRecursive(fullPath)
-            };
+                children: await readDirRecursive(fullPath)
+            });
         } else {
-            return {
+            results.push({
                 name: entry.name,
                 kind: 'file',
                 path: fullPath,
                 handle: fullPath
-            };
+            });
         }
-    });
+    }
+    return results;
 }
 
 // Read Directory Structure
 ipcMain.handle('fs:readDirectory', async (event, dirPath) => {
     try {
-        return readDirRecursive(dirPath);
+        return await readDirRecursive(dirPath);
     } catch (e) {
-        console.error(e);
+        console.error('[fs:readDirectory] failed:', e);
         throw e;
     }
 });
