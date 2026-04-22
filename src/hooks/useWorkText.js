@@ -1,0 +1,206 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { fileSystem, isNative } from '../utils/fileSystem';
+import { readManifest, loadSegmentTexts } from '../utils/manifest';
+
+/**
+ * @typedef {Object} OffsetEntry
+ * @property {string} segmentId - セグメントID
+ * @property {string} file - ファイル名
+ * @property {string} displayName - 表示名
+ * @property {number} globalStart - 連結テキスト内の開始位置
+ * @property {number} globalEnd - 連結テキスト内の終了位置
+ * @property {number} length - セグメントの文字数
+ */
+
+/**
+ * useWorkText
+ *
+ * .nexus フォルダ内のファイルを開いている場合に、
+ * manifest 順で全章を連結したテキストと offset map を提供する。
+ *
+ * @param {Object} params
+ * @param {*} params.activeFileHandle - 現在開いているファイルのハンドル
+ * @param {*} params.projectHandle - プロジェクトルートのハンドル
+ * @param {string} params.currentText - 現在エディタに表示されているテキスト
+ * @returns {Object}
+ */
+export function useWorkText({ activeFileHandle, projectHandle, currentText }) {
+  const [isNexusFile, setIsNexusFile] = useState(false);
+  const [workText, setWorkText] = useState('');
+  const [offsetMap, setOffsetMap] = useState([]);
+  const [manifest, setManifest] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [workTitle, setWorkTitle] = useState('');
+  const lastNexusPath = useRef('');
+
+  /**
+   * activeFileHandle のパスから .nexus フォルダを検出する
+   */
+  const detectNexusFolder = useCallback(() => {
+    if (!activeFileHandle) return { isNexus: false, nexusPath: '', currentFileName: '' };
+
+    let filePath = '';
+    if (typeof activeFileHandle === 'string') {
+      filePath = activeFileHandle;
+    } else if (activeFileHandle.handle) {
+      filePath = typeof activeFileHandle.handle === 'string' ? activeFileHandle.handle : '';
+    } else if (activeFileHandle.path) {
+      filePath = activeFileHandle.path;
+    }
+
+    if (!filePath) return { isNexus: false, nexusPath: '', currentFileName: '' };
+
+    // パスに .nexus/ が含まれているか確認
+    const nexusMatch = filePath.match(/^(.+\.nexus)[/\\]/);
+    if (!nexusMatch) return { isNexus: false, nexusPath: '', currentFileName: '' };
+
+    const nexusPath = nexusMatch[1];
+    const currentFileName = filePath.split(/[/\\]/).pop();
+
+    return { isNexus: true, nexusPath, currentFileName };
+  }, [activeFileHandle]);
+
+  /**
+   * manifest を読み込み、全セグメントを連結する
+   */
+  const loadWork = useCallback(async () => {
+    const { isNexus, nexusPath, currentFileName } = detectNexusFolder();
+
+    if (!isNexus) {
+      setIsNexusFile(false);
+      setWorkText('');
+      setOffsetMap([]);
+      setManifest(null);
+      setWorkTitle('');
+      lastNexusPath.current = '';
+      return;
+    }
+
+    // 同じ .nexus パスなら再読み込みしない（パフォーマンス）
+    // ただし currentText が変わった場合は該当セグメントだけ差し替える
+    setIsNexusFile(true);
+    setIsLoading(true);
+
+    try {
+      let nexusDirHandle;
+      if (isNative) {
+        nexusDirHandle = { handle: nexusPath, name: nexusPath.split(/[/\\]/).pop(), kind: 'directory' };
+      } else {
+        // Web API: projectHandle から .nexus フォルダを辿る
+        const nexusFolderName = nexusPath.split(/[/\\]/).pop();
+        const entries = await fileSystem.readDirectory(projectHandle);
+        const nexusEntry = entries.find(e => e.name === nexusFolderName && e.kind === 'directory');
+        if (!nexusEntry) {
+          console.warn('[useWorkText] .nexus folder not found in project');
+          setIsLoading(false);
+          return;
+        }
+        nexusDirHandle = nexusEntry.handle || nexusEntry;
+      }
+
+      // manifest 読み込み
+      const mf = await readManifest(nexusDirHandle);
+      if (!mf) {
+        console.warn('[useWorkText] manifest.json not found or invalid');
+        setIsLoading(false);
+        return;
+      }
+
+      setManifest(mf);
+      setWorkTitle(mf.title || '');
+
+      // 全セグメントのテキストを読み込み
+      const segments = await loadSegmentTexts(nexusDirHandle, mf);
+
+      // 現在編集中のファイルは、ディスク上の内容ではなく currentText を使う
+      // （未保存の変更を反映するため）
+      const segmentsWithCurrent = segments.map(seg => {
+        if (seg.file === currentFileName) {
+          return { ...seg, text: currentText };
+        }
+        return seg;
+      });
+
+      // 連結テキストと offset map を生成
+      let concatenated = '';
+      const offsets = [];
+      const separator = '\n'; // セグメント間の区切り
+
+      for (let i = 0; i < segmentsWithCurrent.length; i++) {
+        const seg = segmentsWithCurrent[i];
+        const globalStart = concatenated.length;
+
+        concatenated += seg.text;
+
+        offsets.push({
+          segmentId: seg.id,
+          file: seg.file,
+          displayName: seg.displayName,
+          globalStart,
+          globalEnd: concatenated.length,
+          length: seg.text.length,
+        });
+
+        // 最後のセグメント以外は区切りを入れる
+        if (i < segmentsWithCurrent.length - 1) {
+          concatenated += separator;
+        }
+      }
+
+      setWorkText(concatenated);
+      setOffsetMap(offsets);
+      lastNexusPath.current = nexusPath;
+    } catch (e) {
+      console.error('[useWorkText] failed to load work:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [detectNexusFolder, projectHandle, currentText]);
+
+  // activeFileHandle が変わったら再読み込み
+  useEffect(() => {
+    loadWork();
+  }, [loadWork]);
+
+  /**
+   * 連結テキスト内の位置から、元のセグメントファイルとローカル位置を逆引きする。
+   * 指示書 I（ジャンプ機能）で使用する。
+   *
+   * @param {number} globalOffset - 連結テキスト内の文字位置
+   * @returns {{ file: string, segmentId: string, localOffset: number } | null}
+   */
+  const resolveOffset = useCallback((globalOffset) => {
+    for (const entry of offsetMap) {
+      if (globalOffset >= entry.globalStart && globalOffset < entry.globalEnd) {
+        return {
+          file: entry.file,
+          segmentId: entry.segmentId,
+          displayName: entry.displayName,
+          localOffset: globalOffset - entry.globalStart,
+        };
+      }
+    }
+    // 末尾の場合は最後のセグメント
+    if (offsetMap.length > 0) {
+      const last = offsetMap[offsetMap.length - 1];
+      return {
+        file: last.file,
+        segmentId: last.segmentId,
+        displayName: last.displayName,
+        localOffset: last.length,
+      };
+    }
+    return null;
+  }, [offsetMap]);
+
+  return {
+    isNexusFile,    // 現在のファイルが .nexus 内かどうか
+    workText,       // 連結テキスト（全章）
+    workTitle,      // 作品タイトル
+    offsetMap,      // offset map 配列
+    manifest,       // manifest オブジェクト
+    isLoading,      // 読み込み中フラグ
+    resolveOffset,  // globalOffset → { file, localOffset } 変換関数
+    reloadWork: loadWork, // 手動再読み込み
+  };
+}

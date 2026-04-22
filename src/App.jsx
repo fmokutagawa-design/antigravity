@@ -71,7 +71,9 @@ import { useFileOperations } from './hooks/useFileOperations';
 import { useAutoSave } from './hooks/useAutoSave';
 import { useProjectActions } from './hooks/useProjectActions';
 import { useSplitByChapters } from './hooks/useSplitByChapters';
+import { useWorkText } from './hooks/useWorkText';
 import SplitByChaptersModal from './components/SplitByChaptersModal';
+import ImportChaptersModal from './components/ImportChaptersModal';
 
 function App() {
   const [text, setText] = useState('');
@@ -426,6 +428,7 @@ function App() {
   const editorRef = React.useRef(null);
   const fileInputRef = useRef(null);
   const [projectContextMenu, setProjectContextMenu] = useState(null); // { x, y }
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const {
     materialsTree,
@@ -507,6 +510,21 @@ function App() {
       showToast('ファイルを開けませんでした。');
     }
   }, [allMaterialFiles, projectHandle, showToast]); // Removed usageStats to fix infinite loop
+
+  /**
+   * .nexus 内のセグメントファイルを開き、指定位置にカーソルを移動する。
+   * Preview/ReaderView の「作品全体」表示からのジャンプ用。
+   */
+  const handleOpenSegmentFile = useCallback(async (fileName, localOffset) => {
+    // 既存のファイルオープン関数を呼ぶ
+    await handleOpenFile(null, fileName);
+    // その後カーソル移動
+    setTimeout(() => {
+      if (editorRef.current?.jumpToIndex) {
+        editorRef.current.jumpToIndex(localOffset);
+      }
+    }, 150);
+  }, [handleOpenFile]);
 
   // Handle auto-opening file from URL parameter
   useEffect(() => {
@@ -1007,6 +1025,12 @@ function App() {
     projectHandle,
     refreshMaterials,
     showToast,
+  });
+
+  const workTextData = useWorkText({
+    activeFileHandle,
+    projectHandle,
+    currentText: text,
   });
 
   useAutoSave({
@@ -2065,6 +2089,7 @@ function App() {
                     />
 
                   ) : sidebarTab === 'manuscript' ? (
+                    <>
                     <ManuscriptPanel
                       allFiles={allMaterialFiles}
                       activeFile={activeFileHandle}
@@ -2081,6 +2106,25 @@ function App() {
                         }
                       }}
                     />
+                    <div style={{ padding: '0 16px 16px' }}>
+                      <button 
+                        onClick={() => setIsImportModalOpen(true)}
+                        className="btn-rescue-folders"
+                        style={{
+                          width: '100%',
+                          padding: '8px',
+                          background: 'var(--bg-surface, #313244)',
+                          color: 'var(--text-color, #cdd6f4)',
+                          border: '1px solid var(--border-color, #45475a)',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '0.85rem'
+                        }}
+                      >
+                        既存ファイルを .nexus にまとめる
+                      </button>
+                    </div>
+                  </>
 
                   ) : sidebarTab === 'prizes' ? (
                     <PrizePanel
@@ -2234,6 +2278,12 @@ function App() {
                   settings={effectiveSettings}
                   mode={effectiveSettings.mode}
                   onOpenLink={handleOpenLink}
+                  projectHandle={projectHandle}
+                  workText={workTextData.workText}
+                  isNexusFile={workTextData.isNexusFile}
+                  workTitle={workTextData.workTitle}
+                  resolveOffset={workTextData.resolveOffset}
+                  onOpenSegmentFile={handleOpenSegmentFile}
                 />
               ) : activeTab === 'reference' ? (
                 /* Full-screen Reference Panel */
@@ -2590,6 +2640,11 @@ function App() {
             setShowReader(false);
             setTimeout(() => editorRef.current?.jumpToIndex(offset), 100);
           }}
+          workText={workTextData.workText}
+          isNexusFile={workTextData.isNexusFile}
+          workTitle={workTextData.workTitle}
+          resolveOffset={workTextData.resolveOffset}
+          onOpenSegmentFile={handleOpenSegmentFile}
         />
       )}
 
@@ -2602,6 +2657,17 @@ function App() {
         onRemoveSegment={splitChapters.handleRemoveSegment}
         onRenameSegment={splitChapters.handleRenameSegment}
         onExecute={splitChapters.executeSplit}
+        useNexusFolder={splitChapters.useNexusFolder}
+        onToggleNexusFolder={splitChapters.setUseNexusFolder}
+      />
+
+      <ImportChaptersModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        projectHandle={projectHandle}
+        allFiles={allMaterialFiles}
+        refreshMaterials={refreshMaterials}
+        showToast={showToast}
       />
     </div >
   );

@@ -14,10 +14,11 @@ const FONT_OPTIONS = [
 
 const SIZE_OPTIONS = [14, 16, 18, 20, 22, 24, 28, 32];
 
-const ReaderView = ({ text, settings, onClose, cursorOffset = 0, onJumpToEditor }) => {
+const ReaderView = ({ text, settings, onClose, cursorOffset = 0, onJumpToEditor, workText, isNexusFile, workTitle, resolveOffset, onOpenSegmentFile }) => {
     const containerRef = useRef(null);
     const [showTOC, setShowTOC] = useState(false);
     const [showToolbar, setShowToolbar] = useState(true);
+    const [showFullWork, setShowFullWork] = useState(false);
 
     // リーダー独自の表示設定（親の settings を初期値に使う）
     const [readerFont, setReaderFont] = useState(settings.fontFamily || 'var(--font-mincho)');
@@ -30,7 +31,8 @@ const ReaderView = ({ text, settings, onClose, cursorOffset = 0, onJumpToEditor 
     const [searchResultIndex, setSearchResultIndex] = useState(0);
 
     // ブロック解析
-    const blocks = useMemo(() => parseBlocks(text), [text]);
+    const displayText = (showFullWork && isNexusFile && workText) ? workText : text;
+    const blocks = useMemo(() => parseBlocks(displayText), [displayText]);
 
     // 目次
     const toc = useMemo(() => {
@@ -212,6 +214,21 @@ const ReaderView = ({ text, settings, onClose, cursorOffset = 0, onJumpToEditor 
                 </div>
 
                 <div className="reader-toolbar-right">
+                    {isNexusFile && (
+                        <button
+                            onClick={() => setShowFullWork(v => !v)}
+                            className="reader-btn"
+                            style={{
+                                background: showFullWork ? 'var(--accent-color, #4a9eff)' : 'transparent',
+                                color: showFullWork ? '#fff' : 'inherit',
+                                borderRadius: '16px',
+                                padding: '4px 12px',
+                            }}
+                            title={showFullWork ? '現在の章のみ表示' : '作品全体を表示'}
+                        >
+                            {showFullWork ? `📖 全体${workTitle ? ` (${workTitle})` : ''}` : '📖 全体'}
+                        </button>
+                    )}
                     <button className="reader-btn reader-btn-close" onClick={onClose}>
                         ✕ 閉じる
                     </button>
@@ -276,9 +293,21 @@ const ReaderView = ({ text, settings, onClose, cursorOffset = 0, onJumpToEditor 
                                 className={`reader-paragraph ${block.isHeader ? 'reader-heading' : ''} ${isSearchHit ? 'reader-search-hit' : ''}`}
                                 style={{
                                     ...style,
-                                    cursor: onJumpToEditor ? 'pointer' : undefined,
+                                    cursor: (onJumpToEditor || (showFullWork && onOpenSegmentFile)) ? 'pointer' : undefined,
                                 }}
-                                onClick={onJumpToEditor ? () => onJumpToEditor(block.textOffset ?? 0) : undefined}
+                                onClick={() => {
+                                    if (showFullWork && resolveOffset && onOpenSegmentFile) {
+                                        // 作品全体表示中: 該当章ファイルを開く
+                                        const resolved = resolveOffset(block.textOffset ?? 0);
+                                        if (resolved) {
+                                            onOpenSegmentFile(resolved.file, resolved.localOffset);
+                                            onClose(); // リーダーを閉じる
+                                        }
+                                    } else if (onJumpToEditor) {
+                                        // 通常表示: 従来の Editor ジャンプ
+                                        onJumpToEditor(block.textOffset ?? 0);
+                                    }
+                                }}
                             >
                                 {renderInline(content)}
                             </Tag>

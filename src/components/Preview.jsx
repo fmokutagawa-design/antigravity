@@ -3,8 +3,9 @@ import { parseRuby } from '../utils/textUtils';
 import { preprocessText, composeLines, parseAozoraStructure } from '../utils/typesetting';
 import '../styles/Preview.css';
 
-const Preview = ({ text, settings, mode = 'manuscript', onOpenLink, projectHandle }) => {
+const Preview = ({ text, settings, mode = 'manuscript', onOpenLink, projectHandle, workText, isNexusFile, workTitle, resolveOffset, onOpenSegmentFile }) => {
     // mode: 'manuscript' | 'plain'
+    const [showFullWork, setShowFullWork] = useState(false);
     // Use global setting, default to true if undefined
     const showGrid = settings.showGrid !== false;
 
@@ -14,8 +15,11 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink, projectHandl
     useEffect(() => {
         if (!projectHandle) return;
 
+        // 表示するテキストを決定
+        const displayText = (showFullWork && isNexusFile && workText) ? workText : text;
+
         // テキスト内の挿絵記法を全て検出
-        const matches = [...text.matchAll(/［＃挿絵（(.+?)）入る］/g)];
+        const matches = [...displayText.matchAll(/［＃挿絵（(.+?)）入る］/g)];
         if (matches.length === 0) return;
 
         const loadImages = async () => {
@@ -48,7 +52,7 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink, projectHandl
         };
 
         loadImages();
-    }, [text, projectHandle]);
+    }, [text, workText, showFullWork, isNexusFile, projectHandle]);
 
     // クリーンアップ: コンポーネントのアンマウント時に revokeObjectURL を実行
     useEffect(() => {
@@ -156,9 +160,12 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink, projectHandl
         // Font size: 小さい方の辺の75%
         const fontSizePx = Math.min(cellWidthPx, cellHeightPx) * 0.75;
 
+        // 表示するテキストを決定
+        const displayText = (showFullWork && isNexusFile && workText) ? workText : text;
+
         // --- Typesetting Logic ---
         // 1. Preprocess
-        const processedText = preprocessText(text);
+        const processedText = preprocessText(displayText);
 
         // 2. Parse Logical Structure
         const logicalBlocks = parseAozoraStructure(processedText);
@@ -205,7 +212,48 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink, projectHandl
             cellWidthPx,
             cellHeightPx
         };
-    }, [text, settings.charsPerLine, settings.linesPerPage, settings.pageSize, settings.orientation]);
+    }, [text, workText, showFullWork, isNexusFile, settings.charsPerLine, settings.linesPerPage, settings.pageSize, settings.orientation]);
+
+    /**
+     * 作品全体表示中のクリック → 該当章ファイルを開く
+     */
+    const handleWorkClick = useCallback((e) => {
+        if (!showFullWork || !resolveOffset || !onOpenSegmentFile) return;
+
+        // クリック位置からテキスト内の文字位置を推定する
+        const pageEl = e.target.closest('.manuscript-page');
+        if (!pageEl) return;
+
+        const pageIndex = Array.from(document.querySelectorAll('.manuscript-page')).indexOf(pageEl);
+        if (pageIndex < 0) return;
+
+        const charsPerPage = (Number(settings.charsPerLine) || 20) * (Number(settings.linesPerPage) || 20);
+        const estimatedOffset = pageIndex * charsPerPage;
+
+        const resolved = resolveOffset(estimatedOffset);
+        if (resolved) {
+            onOpenSegmentFile(resolved.file, resolved.localOffset);
+        }
+    }, [showFullWork, resolveOffset, onOpenSegmentFile, settings.charsPerLine, settings.linesPerPage]);
+
+    /**
+     * Plain モードでの行クリック
+     */
+    const handlePlainLineClick = useCallback((lineIndex) => {
+        if (!showFullWork || !resolveOffset || !onOpenSegmentFile) return;
+
+        const displayText = (showFullWork && isNexusFile && workText) ? workText : text;
+        const lines = displayText.split('\n');
+        let offset = 0;
+        for (let i = 0; i < lineIndex && i < lines.length; i++) {
+            offset += lines[i].length + 1; // +1 for \n
+        }
+
+        const resolved = resolveOffset(offset);
+        if (resolved) {
+            onOpenSegmentFile(resolved.file, resolved.localOffset);
+        }
+    }, [showFullWork, resolveOffset, onOpenSegmentFile, workText, isNexusFile, text]);
 
     // Render logic continues below...
     const renderManuscript = () => {
@@ -243,7 +291,11 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink, projectHandl
         };
 
         return (
-            <div className={`manuscript-wrapper ${showGrid ? '' : 'no-grid'}`} style={styles}>
+            <div
+                className={`manuscript-wrapper ${showGrid ? '' : 'no-grid'}`}
+                style={{ ...styles, cursor: showFullWork ? 'pointer' : undefined }}
+                onClick={showFullWork ? handleWorkClick : undefined}
+            >
                 {pages.map((page, pIndex) => (
                     <div key={pIndex}
                         className={`manuscript-page ${pageSizeClass} ${orientationClass}`}
@@ -401,9 +453,10 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink, projectHandl
     };
 
     const renderPlain = () => {
+        const displayText = (showFullWork && isNexusFile && workText) ? workText : text;
         return (
             <div className="plain-content">
-                {text.split('\n').map((line, i) => {
+                {displayText.split('\n').map((line, i) => {
                     // 挿絵記法の検出
                     const illustMatch = line.match(/［＃挿絵（(.+?)）入る］/);
                     if (illustMatch) {
@@ -432,7 +485,15 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink, projectHandl
 
                     const segments = parseContent(line);
                     return (
-                        <p key={i} style={{ fontFamily: settings.fontFamily, lineHeight: '1.8' }}>
+                        <p
+                            key={i}
+                            style={{
+                                fontFamily: settings.fontFamily,
+                                lineHeight: '1.8',
+                                cursor: showFullWork ? 'pointer' : undefined
+                            }}
+                            onClick={() => showFullWork && handlePlainLineClick(i)}
+                        >
                             {segments.map((segment, j) => {
                                 if (segment.type === 'link') {
                                     return (
@@ -512,6 +573,26 @@ const Preview = ({ text, settings, mode = 'manuscript', onOpenLink, projectHandl
                 fontFamily: '"Noto Sans JP", sans-serif',
                 border: '1px solid #ddd'
             }}>
+                {isNexusFile && (
+                    <button
+                        onClick={() => setShowFullWork(v => !v)}
+                        style={{
+                            padding: '4px 12px',
+                            fontSize: '0.85rem',
+                            background: showFullWork ? '#4a9eff' : '#f0f0f0',
+                            color: showFullWork ? '#fff' : '#333',
+                            border: '1px solid #ccc',
+                            borderRadius: '16px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                        }}
+                        title={showFullWork ? '現在の章のみ表示' : '作品全体を表示'}
+                    >
+                        {showFullWork ? `📖 全体表示中${workTitle ? ` (${workTitle})` : ''}` : '📖 作品全体'}
+                    </button>
+                )}
                 <button
                     onClick={() => {
                         const firstPage = document.querySelector('.manuscript-page');

@@ -2,6 +2,7 @@ import { useRef, useCallback } from 'react';
 import { saveTextFile, loadTextFile } from '../utils/fileUtils';
 import { fileSystem, isNative } from '../utils/fileSystem';
 import { parseNote } from '../utils/metadataParser';
+import { readManifest, loadSegmentTexts } from '../utils/manifest';
 
 /**
  * useFileOperations
@@ -213,6 +214,74 @@ export function useFileOperations({
       return;
     }
     try {
+      // === manifest 検出: .nexus フォルダがあれば manifest 順で結合 ===
+      let manifestMerged = null;
+      try {
+        if (projectHandle) {
+          const entries = await fileSystem.readDirectory(projectHandle);
+          const nexusFolders = (entries || []).filter(
+            e => e.kind === 'directory' && e.name.endsWith('.nexus')
+          );
+
+          if (nexusFolders.length > 0) {
+            // .nexus フォルダが見つかった場合、各フォルダの manifest を読む
+            const allParts = [];
+            let totalFiles = 0;
+
+            for (const folder of nexusFolders) {
+              const dirHandle = folder.handle || folder;
+              const mf = await readManifest(dirHandle);
+              if (!mf) continue;
+
+              const segments = await loadSegmentTexts(dirHandle, mf);
+              for (const seg of segments) {
+                if (seg.text && seg.text.trim()) {
+                  allParts.push(seg.text);
+                  totalFiles++;
+                }
+              }
+            }
+
+            if (allParts.length > 0) {
+              manifestMerged = {
+                text: allParts.join('\n\n［＃改ページ］\n\n'),
+                count: totalFiles,
+              };
+            }
+          }
+        }
+      } catch (manifestErr) {
+        console.warn('[batchExport] manifest detection failed, falling back to filename sort:', manifestErr);
+        // manifestMerged は null のまま → 従来ロジックへ
+      }
+
+      // manifest から結合できた場合はそれを使う
+      if (manifestMerged) {
+        const merged = manifestMerged.text;
+        const count = manifestMerged.count;
+
+        if (isNative) {
+          const defaultPath = (projectHandle?.handle || projectHandle || '') + '/exported.txt';
+          const savePath = await fileSystem.saveFile(defaultPath);
+          if (savePath) {
+            await fileSystem.writeFile({ handle: savePath, name: 'exported.txt' }, merged, {
+              disableJournal: settings?.enableJournaling === false
+            });
+            showToast(`${count}ファイルを manifest 順で結合して書き出しました。`);
+          }
+        } else {
+          const blob = new Blob([merged], { type: 'text/plain;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'exported.txt';
+          a.click();
+          URL.revokeObjectURL(url);
+          showToast(`${count}ファイルを manifest 順で結合して書き出しました。`);
+        }
+        return; // manifest 結合成功 → 従来ロジックをスキップ
+      }
+
       // 原稿ファイルを収集
       const manuscriptFiles = allMaterialFiles.filter(f => {
         const type = f.metadata?.種別 || '';

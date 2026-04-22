@@ -12,6 +12,8 @@ export default function SplitByChaptersModal({
     plan,
     sourceText,
     isExecuting,
+    useNexusFolder,
+    onToggleNexusFolder,
     onClose,
     onRemoveSegment,
     onRenameSegment,
@@ -45,6 +47,15 @@ export default function SplitByChaptersModal({
                                 元ファイル: <strong>{plan.sourceFileName}</strong> ({plan.stats.totalChars.toLocaleString()} 字)
                                 → <strong>{plan.segments.length}</strong> ファイルに分割予定
                             </div>
+
+                            <label className="split-modal-option" style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '12px 0' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={useNexusFolder}
+                                    onChange={(e) => onToggleNexusFolder(e.target.checked)}
+                                />
+                                <span>フォルダにまとめる（.nexus）</span>
+                            </label>
 
                             <div className="split-segments">
                                 {plan.segments.map((seg, i) => (

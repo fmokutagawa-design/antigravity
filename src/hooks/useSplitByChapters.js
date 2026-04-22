@@ -7,13 +7,16 @@ import {
     updateDisplayName,
     resolveFileNameCollision,
 } from '../utils/splitByChapters';
+import { createManifestFromSplitPlan, writeManifest } from '../utils/manifest';
 
 /**
  * 分割を実行する。
  */
-async function performSplit({ plan, activeFileHandle, projectHandle, sourceText }) {
+async function performSplit({ plan, activeFileHandle, projectHandle, sourceText, useNexusFolder = true }) {
     // Step 1: ディレクトリ特定
     let parentDirHandle;
+    let nexusDirHandle = null;
+    let targetDirHandle;
     if (isNative) {
         const filePath = typeof activeFileHandle === 'string'
             ? activeFileHandle
@@ -58,20 +61,78 @@ async function performSplit({ plan, activeFileHandle, projectHandle, sourceText 
     const backupFileName = `${plan.baseName}_original_${ts}${plan.extension}`;
     await fileSystem.createFile(backupDirHandle, backupFileName, sourceText);
 
+    // Step 2.5: .nexus フォルダ作成（オプション）
+    targetDirHandle = parentDirHandle; // デフォルトはフラット出力
+
+    if (useNexusFolder) {
+        const nexusFolderName = `${plan.baseName}.nexus`;
+
+        // .nexus フォルダ作成
+        try {
+            nexusDirHandle = await fileSystem.createFolder(parentDirHandle, nexusFolderName);
+        } catch (e) {
+            if (isNative) {
+                const pPath = parentDirHandle.handle || parentDirHandle.path || parentDirHandle;
+                const sep = pPath.includes('\\') ? '\\' : '/';
+                const cleanP = pPath.endsWith(sep) ? pPath.slice(0, -1) : pPath;
+                nexusDirHandle = { handle: `${cleanP}${sep}${nexusFolderName}`, name: nexusFolderName, kind: 'directory' };
+            } else {
+                throw new Error(`フォルダ "${nexusFolderName}" の作成に失敗: ${e.message}`);
+            }
+        }
+
+        // segments/ サブフォルダ作成
+        let segmentsDirHandle;
+        try {
+            segmentsDirHandle = await fileSystem.createFolder(nexusDirHandle, 'segments');
+        } catch (e) {
+            if (isNative) {
+                const nPath = nexusDirHandle.handle || nexusDirHandle.path || nexusDirHandle;
+                const sep = nPath.includes('\\') ? '\\' : '/';
+                segmentsDirHandle = { handle: `${nPath}${sep}segments`, name: 'segments', kind: 'directory' };
+            } else {
+                throw new Error(`segments フォルダの作成に失敗: ${e.message}`);
+            }
+        }
+
+        // archive/ サブフォルダ作成（元ファイルの移動先）
+        let archiveDirHandle;
+        try {
+            archiveDirHandle = await fileSystem.createFolder(nexusDirHandle, 'archive');
+        } catch (e) {
+            if (isNative) {
+                const nPath = nexusDirHandle.handle || nexusDirHandle.path || nexusDirHandle;
+                const sep = nPath.includes('\\') ? '\\' : '/';
+                archiveDirHandle = { handle: `${nPath}${sep}archive`, name: 'archive', kind: 'directory' };
+            } else {
+                throw new Error(`archive フォルダの作成に失敗: ${e.message}`);
+            }
+        }
+
+        // バックアップを archive/ に移動（コピー＋元削除）
+        try {
+            await fileSystem.createFile(archiveDirHandle, backupFileName, sourceText);
+        } catch (e) {
+            console.warn('[split] archive copy failed, backup remains in .backup/', e);
+        }
+
+        targetDirHandle = segmentsDirHandle;
+    }
+
     // Step 3: 既存ファイル一覧を取得して衝突チェック
-    const existingEntries = await fileSystem.readDirectory(parentDirHandle);
+    const existingEntries = await fileSystem.readDirectory(targetDirHandle);
     const existingNames = (existingEntries || [])
         .filter(e => e.kind === 'file')
         .map(e => e.name);
 
-    // Step 4: 新ファイル群を atomic write で作成
+    // Step 4: 新ファイル群を作成
     const createdHandles = [];
     try {
         for (const segment of plan.segments) {
             const targetName = resolveFileNameCollision(segment.proposedFileName, existingNames);
-            const targetHandle = await fileSystem.createFile(parentDirHandle, targetName, segment.content);
+            const targetHandle = await fileSystem.createFile(targetDirHandle, targetName, segment.content);
             createdHandles.push(targetHandle);
-            existingNames.push(targetName);  // 次の衝突チェックに反映
+            existingNames.push(targetName);
         }
     } catch (err) {
         // Step 5: ロールバック
@@ -81,13 +142,19 @@ async function performSplit({ plan, activeFileHandle, projectHandle, sourceText 
                 if (isNative) {
                     await fileSystem.deleteEntry(h);
                 } else {
-                    await fileSystem.deleteEntryWithParent(h, parentDirHandle);
+                    await fileSystem.deleteEntryWithParent(h, targetDirHandle);
                 }
             } catch (e) {
                 console.warn('[split] rollback delete failed for', h, e);
             }
         }
         throw err;
+    }
+
+    // Step 4.5: manifest.json 書き出し
+    if (useNexusFolder && nexusDirHandle) {
+        const manifest = createManifestFromSplitPlan(plan);
+        await writeManifest(nexusDirHandle, manifest);
     }
 
     return { createdCount: createdHandles.length, backupPath: backupFileName };
@@ -112,6 +179,7 @@ export function useSplitByChapters({
     const [plan, setPlan] = useState(null);
     const [sourceText, setSourceText] = useState('');
     const [isExecuting, setIsExecuting] = useState(false);
+    const [useNexusFolder, setUseNexusFolder] = useState(true);
 
     const openModal = useCallback(() => {
         if (!activeFileHandle || !text) {
@@ -150,7 +218,7 @@ export function useSplitByChapters({
         setIsExecuting(true);
 
         try {
-            await performSplit({ plan, activeFileHandle, projectHandle, sourceText });
+            await performSplit({ plan, activeFileHandle, projectHandle, sourceText, useNexusFolder });
             showToast(`${plan.segments.length} ファイルに分割しました`);
             if (refreshMaterials) {
                 await refreshMaterials();
@@ -168,6 +236,8 @@ export function useSplitByChapters({
         isOpen,
         plan,
         isExecuting,
+        useNexusFolder,
+        setUseNexusFolder,
         openModal,
         closeModal,
         handleRemoveSegment,
