@@ -565,11 +565,11 @@ const AIAssistant = ({
                         {[
                             { id: 'generator', label: '⚡ 生成' },
                             { id: 'chat', label: '💬 チャット' },
+                            { id: 'knowledge', label: '🧠 知識管理' },
                             { id: 'correction', label: '📝 校正' },
                             { id: 'candidates', label: '📦 候補' },
                             { id: 'memos', label: '📌 メモ' },
-                            { id: 'notes', label: '📓 ノート' },
-                            { id: 'knowledge', label: '🧠 知識管理' }
+                            { id: 'notes', label: '📓 ノート' }
                         ].map(tab => (
                             <button
                                 key={tab.id}
