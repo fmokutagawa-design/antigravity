@@ -4,6 +4,7 @@ import { ollamaService } from '../utils/ollamaService';
 import ContextPicker from './ContextPicker';
 import PromptPreviewModal from './PromptPreviewModal';
 import AIChatView from './AIChatView';
+import AIKnowledgeManager from './AIKnowledgeManager';
 
 
 const SYSTEM_PROMPTS = {
@@ -515,7 +516,7 @@ const AIAssistant = ({
 
         } catch (error) {
             console.error("Chat error:", error);
-            setChatMessages(prev => [...prev, { role: 'assistant', content: "エラーが発生しました: " + error.message }]);
+            setMessages(prev => [...prev, { role: 'assistant', content: "エラーが発生しました: " + error.message }]);
         } finally {
             setIsGenerating(false);
         }
@@ -567,7 +568,8 @@ const AIAssistant = ({
                             { id: 'correction', label: '📝 校正' },
                             { id: 'candidates', label: '📦 候補' },
                             { id: 'memos', label: '📌 メモ' },
-                            { id: 'notes', label: '📓 ノート' }
+                            { id: 'notes', label: '📓 ノート' },
+                            { id: 'knowledge', label: '🧠 知識管理' }
                         ].map(tab => (
                             <button
                                 key={tab.id}
@@ -631,6 +633,7 @@ const AIAssistant = ({
                 {activeMode === 'candidates' && renderCandidateBoxPanel && renderCandidateBoxPanel()}
                 {activeMode === 'memos' && renderSnippetsPanel && renderSnippetsPanel()}
                 {activeMode === 'notes' && renderNotesPanel && renderNotesPanel()}
+                {activeMode === 'knowledge' && <AIKnowledgeManager />}
 
                 {activeMode === 'chat' && (
                     <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
