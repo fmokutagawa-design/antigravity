@@ -178,5 +178,81 @@ export const ollamaService = {
             console.error("Completion failed:", error);
             throw error;
         }
+    },
+    
+    // RAG Bridge Server URL
+    ragServerUrl: 'http://localhost:8000',
+
+    // Chat with Local RAG (via Python Bridge Server)
+    async chatWithRAG(query, model = 'qwen3.5:9b', onChunk = null, signal = null) {
+        try {
+            const response = await fetch(`${this.ragServerUrl}/ask`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    query: query,
+                    model: model
+                }),
+                signal: signal
+            });
+
+            if (!response.ok) throw new Error(`RAG Bridge Error: ${response.statusText}`);
+
+            if (onChunk) {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                let fullText = '';
+
+                while (true) {
+                    if (signal && signal.aborted) {
+                        reader.cancel();
+                        break;
+                    }
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+
+                    for (const line of lines) {
+                        if (line.trim() === '') continue;
+                        try {
+                            const json = JSON.parse(line);
+                            if (json.message && json.message.content) {
+                                fullText += json.message.content;
+                                onChunk(json.message.content);
+                            }
+                            if (json.done) break;
+                        } catch (e) {
+                            console.warn("Error parsing RAG chunk:", e);
+                        }
+                    }
+                }
+                return fullText;
+            } else {
+                // Non-streaming (wait for the whole body)
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let fullText = '';
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    for (const line of lines) {
+                        if (!line.trim()) continue;
+                        const json = JSON.parse(line);
+                        fullText += json.message?.content || '';
+                    }
+                }
+                return fullText;
+            }
+        } catch (error) {
+            if (error.name === 'AbortError') return null;
+            console.error("RAG chat failed:", error);
+            throw error;
+        }
     }
 };

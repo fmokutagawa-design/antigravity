@@ -173,6 +173,7 @@ const AIAssistant = ({
     // Deprecated in favor of contextFiles
     const [contextFiles, setContextFiles] = useState([]); // List of handles
     const [showContextPicker, setShowContextPicker] = useState(false);
+    const [useRAG, setUseRAG] = useState(false); // Local RAG (ChromaDB) toggle
     const [promptPreview, setPromptPreview] = useState({ visible: false, prompt: '', sysPrompt: '', mode: '', options: {} });
 
     // AI States
@@ -474,15 +475,36 @@ const AIAssistant = ({
 
             if (aiModel === 'local') {
                 abortControllerRef.current = new AbortController();
-                const fullResponse = await ollamaService.chat(
-                    messagesToSend,
-                    selectedLocalModel,
-                    null,
-                    abortControllerRef.current.signal
-                );
+                let fullResponse = "";
+                
+                const onChunk = (chunk) => {
+                    fullResponse += chunk;
+                    // Update the last message in real-time
+                    setChatMessages(prev => {
+                        const newMsgs = [...prev];
+                        if (newMsgs.length > 0 && newMsgs[newMsgs.length - 1].role === 'assistant') {
+                            newMsgs[newMsgs.length - 1].content = fullResponse;
+                        } else {
+                            newMsgs.push({ role: 'assistant', content: fullResponse });
+                        }
+                        return newMsgs;
+                    });
+                };
 
-                if (fullResponse) {
-                    setChatMessages(prev => [...prev, { role: 'assistant', content: fullResponse }]);
+                if (useRAG) {
+                    await ollamaService.chatWithRAG(
+                        userMessage,
+                        selectedLocalModel,
+                        onChunk,
+                        abortControllerRef.current.signal
+                    );
+                } else {
+                    await ollamaService.chat(
+                        messagesToSend,
+                        selectedLocalModel,
+                        onChunk,
+                        abortControllerRef.current.signal
+                    );
                 }
             } else {
                 // Mock for Cloud
@@ -618,6 +640,8 @@ const AIAssistant = ({
                             isGenerating={isGenerating}
                             contextFiles={contextFiles}
                             onClearChat={() => setMessages([])}
+                            useRAG={useRAG}
+                            setUseRAG={setUseRAG}
                         />
                         {showContextPicker && (
                             <ContextPicker

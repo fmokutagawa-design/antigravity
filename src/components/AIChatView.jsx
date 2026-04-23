@@ -6,7 +6,9 @@ const AIChatView = ({
     onSendMessage,
     isGenerating = false,
     contextFiles = [],
-    onClearChat
+    onClearChat,
+    useRAG = false,
+    setUseRAG
 }) => {
     const [input, setInput] = useState('');
     const messagesEndRef = useRef(null);
@@ -36,21 +38,47 @@ const AIChatView = ({
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-            {/* Context Indicator */}
-            {contextFiles.length > 0 && (
-                <div style={{
-                    padding: '8px 12px',
-                    background: '#e3f2fd',
-                    borderBottom: '1px solid #bbdefb',
-                    fontSize: '12px',
-                    color: '#0d47a1',
+            {/* AI Control Bar */}
+            <div style={{
+                padding: '8px 12px',
+                background: '#f8f9fa',
+                borderBottom: '1px solid #eee',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontSize: '11px',
+                flexShrink: 0
+            }}>
+                {/* Context Indicator */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {contextFiles.length > 0 ? (
+                        <span style={{ color: '#0d47a1', background: '#e3f2fd', padding: '2px 8px', borderRadius: '10px' }}>
+                            📚 本文コンテキスト: {contextFiles.length}
+                        </span>
+                    ) : (
+                        <span style={{ color: '#999' }}>コンテキスト未選択</span>
+                    )}
+                </div>
+
+                {/* RAG Toggle */}
+                <label style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px'
+                    gap: '6px',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    color: useRAG ? 'var(--accent-color, #2196f3)' : '#666',
+                    fontWeight: useRAG ? 'bold' : 'normal'
                 }}>
-                    <span>📚 本文コンテキスト: {contextFiles.length}ファイル</span>
-                </div>
-            )}
+                    <input
+                        type="checkbox"
+                        checked={useRAG}
+                        onChange={(e) => setUseRAG(e.target.checked)}
+                        style={{ cursor: 'pointer', accentColor: 'var(--accent-color, #2196f3)' }}
+                    />
+                    <span>過去の全原稿DBから検索</span>
+                </label>
+            </div>
 
             {/* Messages Area */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
