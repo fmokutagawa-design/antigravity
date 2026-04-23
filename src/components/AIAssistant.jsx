@@ -455,7 +455,7 @@ const AIAssistant = ({
         if (!userMessage.trim()) return;
 
         const newMessages = [...chatMessages, { role: 'user', content: userMessage }];
-        setChatMessages(newMessages);
+        setMessages(newMessages);
         setIsGenerating(true);
 
         try {
@@ -480,7 +480,7 @@ const AIAssistant = ({
                 const onChunk = (chunk) => {
                     fullResponse += chunk;
                     // Update the last message in real-time
-                    setChatMessages(prev => {
+                    setMessages(prev => {
                         const newMsgs = [...prev];
                         if (newMsgs.length > 0 && newMsgs[newMsgs.length - 1].role === 'assistant') {
                             newMsgs[newMsgs.length - 1].content = fullResponse;
@@ -509,7 +509,7 @@ const AIAssistant = ({
             } else {
                 // Mock for Cloud
                 setTimeout(() => {
-                    setChatMessages(prev => [...prev, { role: 'assistant', content: "クラウドAIのチャット機能はまだ実装されていません。" }]);
+                    setMessages(prev => [...prev, { role: 'assistant', content: "クラウドAIのチャット機能はまだ実装されていません。" }]);
                 }, 1000);
             }
 
