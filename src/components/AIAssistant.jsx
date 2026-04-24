@@ -823,28 +823,27 @@ const AIAssistant = ({
                                             構造解析
                                         </button>
                                         <button
-                                            onClick={() => handleLaunchAI('summarize')}
-                                            disabled={isGenerating || !text}
+                                            onClick={handleStartFullAudit}
+                                            disabled={isGenerating || isAuditing}
                                             style={{
                                                 flex: 1, padding: '8px', fontSize: '12px',
-                                                background: '#e8f5e9', border: '1px solid #c8e6c9', color: '#1b5e20',
+                                                background: '#f3e5f5', border: '1px solid #e1bee7', color: '#4a148c',
                                                 borderRadius: '4px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center'
                                             }}
                                         >
-                                            <span style={{ fontSize: '16px' }}>📋</span>
-                                            要約
+                                            <span style={{ fontSize: '16px' }}>⚖️</span>
+                                            {isAuditing ? '中...' : '校正監査'}
                                         </button>
                                         <button
-                                            onClick={() => handleLaunchAI('relextract')}
-                                            disabled={isGenerating || !text}
+                                            onClick={() => window.api?.invoke?.('window:openKnowledge')}
                                             style={{
                                                 flex: 1, padding: '8px', fontSize: '12px',
-                                                background: '#f3e5f5', border: '1px solid #e1bee7', color: '#7b1fa2',
+                                                background: '#fff9c4', border: '1px solid #fff176', color: '#f57f17',
                                                 borderRadius: '4px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center'
                                             }}
                                         >
-                                            <span style={{ fontSize: '16px' }}>🔗</span>
-                                            相関抽出
+                                            <span style={{ fontSize: '16px' }}>🧠</span>
+                                            知識ベース
                                         </button>
                                     </div>
                                 )}

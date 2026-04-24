@@ -738,7 +738,37 @@ function App() {
     const savedText = localStorage.getItem('novel-editor-text');
     if (savedText && !isWindowWithFile) setText(savedText);
 
-    const settingsKey = isWindowMode ? 'novel-editor-settings-window' : 'novel-editor-settings';
+    // 校正監査からのジャンプ用リスナーを登録
+    const handleJumpEvent = async (e) => {
+      const { file, line, path } = e.detail;
+      console.log(`[JumpRequest] File: ${file}, Line: ${line}, Path: ${path}`);
+      
+      // ファイルを特定して開く
+      // pathがある場合は最優先、なければ名前で検索
+      const targetFile = allMaterialFiles.find(f => 
+        (path && f.path === path) || f.name === file || f.name === `${file}.txt`
+      );
+
+      if (targetFile) {
+        await handleOpenFile(targetFile.handle, targetFile.name, { path: targetFile.path });
+        
+        // エディタの準備ができたらジャンプ
+        const tryJumpToLine = (attempts = 0) => {
+          if (editorRef.current?.jumpToLine) {
+            editorRef.current.jumpToLine(line);
+          } else if (attempts < 20) {
+            setTimeout(() => tryJumpToLine(attempts + 1), 100);
+          }
+        };
+        setTimeout(() => tryJumpToLine(0), 300);
+      } else {
+        showToast(`ジャンプ先のファイル "${file}" が見つかりませんでした。`, 'error');
+      }
+    };
+
+    window.addEventListener('nexus-jump-to-text', handleJumpEvent);
+    return () => window.removeEventListener('nexus-jump-to-text', handleJumpEvent);
+  }, [allMaterialFiles, handleOpenFile, showToast]);
     let savedSettings = localStorage.getItem(settingsKey);
 
     if (!savedSettings && isWindowMode) {
