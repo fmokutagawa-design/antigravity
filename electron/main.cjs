@@ -10,6 +10,32 @@ const {
 
 const isDev = !app.isPackaged;
 
+let bridgeProcess = null;
+
+function startBridgeServer() {
+    const pythonPath = 'python3';
+    const scriptPath = '/Users/mokutagawa/Documents/nexus_projects/mem0/bridge_server.py';
+
+    if (!fs.existsSync(scriptPath)) {
+        console.warn('AI Bridge Server script not found at:', scriptPath);
+        return;
+    }
+
+    console.log('Starting AI Bridge Server...');
+    // 子プロセスとしてPythonサーバーを起動
+    bridgeProcess = require('child_process').spawn(pythonPath, [scriptPath], {
+        stdio: 'inherit'
+    });
+
+    bridgeProcess.on('error', (err) => {
+        console.error('Failed to start AI Bridge Server:', err);
+    });
+
+    process.on('exit', () => {
+        if (bridgeProcess) bridgeProcess.kill();
+    });
+}
+
 // Mac用Editメニュー設定
 const template = [
     ...(process.platform === 'darwin' ? [{
@@ -146,6 +172,7 @@ async function runStartupCleanup() {
 }
 
 app.whenReady().then(() => {
+    startBridgeServer();
     createWindow();
 
     // ★ 起動時クリーンアップ：前回クラッシュで残った .tmp.* 残骸を削除
@@ -164,6 +191,13 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         app.quit();
+    }
+});
+
+app.on('will-quit', () => {
+    if (bridgeProcess) {
+        bridgeProcess.kill();
+        bridgeProcess = null;
     }
 });
 
