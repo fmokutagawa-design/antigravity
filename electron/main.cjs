@@ -201,6 +201,26 @@ app.on('will-quit', () => {
     }
 });
 
+ipcMain.handle('window:openKnowledge', async () => {
+    const win = new BrowserWindow({
+        width: 1000,
+        height: 800,
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            preload: path.join(__dirname, 'preload.cjs'),
+        },
+        title: 'AI 知識ベース管理',
+    });
+
+    if (isDev) {
+        win.loadURL('http://localhost:5173?mode=knowledge');
+    } else {
+        const indexPath = path.join(__dirname, '../dist/index.html');
+        win.loadURL(`file://${indexPath}?mode=knowledge`);
+    }
+});
+
 // --- IPC Handlers for File System ---
 
 ipcMain.handle('dialog:openDirectory', async () => {

@@ -37,6 +37,7 @@ import ProgressPanel from './components/ProgressPanel';
 import NotesPanel from './components/NotesPanel';
 import TodoPanel from './components/TodoPanel';
 import SnapshotPanel from './components/SnapshotPanel';
+import AIKnowledgeManager from './components/AIKnowledgeManager';
 import { saveSnapshot } from './utils/snapshotStore';
 import './components/MaterialsPanel.css';
 import './components/LinkPanel.css';
@@ -163,6 +164,11 @@ function App() {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get('mode') === 'window';
   }); // Window Mode State
+
+  const [isKnowledgeMode] = useState(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('mode') === 'knowledge';
+  });
 
   const [sidebarTab, setSidebarTab] = useState('settings'); // 'files', 'tags', 'links', or 'settings'
   const [projectHandle, setProjectHandle] = useState(null);
@@ -711,6 +717,16 @@ function App() {
   // SearchReplace State
   const [searchReplaceInitialTerm, setSearchReplaceInitialTerm] = useState('');
   const [searchReplaceInitialGrepMode, setSearchReplaceInitialGrepMode] = useState(false);
+
+  // --- Knowledge Window Mode ---
+  if (isKnowledgeMode) {
+    return (
+      <div className={`app-container ${isDarkMode ? 'dark-mode' : 'light'}`} style={{ height: '100vh', width: '100vw', overflow: 'hidden' }}>
+        <AIKnowledgeManager />
+        <NotificationToast toasts={toasts} onRemove={removeToast} />
+      </div>
+    );
+  }
 
   // Load settings and presets from local storage on mount
   useEffect(() => {

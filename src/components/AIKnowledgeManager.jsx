@@ -44,10 +44,29 @@ const AIKnowledgeManager = () => {
         }
     };
 
+    const isKnowledgeWindow = new URLSearchParams(window.location.search).get('mode') === 'knowledge';
+
+    const handlePopOut = () => {
+        if (window.api && window.api.invoke) {
+            window.api.invoke('window:openKnowledge');
+        }
+    };
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', padding: '15px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                <h3 style={{ margin: 0, fontSize: '16px' }}>AI 知識ベース管理</h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h3 style={{ margin: 0, fontSize: '16px' }}>AI 知識ベース管理</h3>
+                    {!isKnowledgeWindow && (
+                        <button 
+                            onClick={handlePopOut}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: '4px', opacity: 0.6 }}
+                            title="別ウィンドウで開く"
+                        >
+                            ❐
+                        </button>
+                    )}
+                </div>
                 <button 
                     onClick={handleSync} 
                     disabled={isSyncing}
