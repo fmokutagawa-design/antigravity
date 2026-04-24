@@ -6,12 +6,21 @@ const AIKnowledgeManager = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
     const [message, setMessage] = useState('');
+    const [error, setError] = useState(null);
 
     const loadItems = async () => {
         setIsLoading(true);
-        const data = await ollamaService.listDBItems();
-        setItems(data);
-        setIsLoading(false);
+        setError(null);
+        try {
+            console.log("Fetching knowledge items from bridge server...");
+            const data = await ollamaService.listDBItems();
+            setItems(data || []);
+        } catch (err) {
+            console.error("Failed to load knowledge items:", err);
+            setError("データの読み込みに失敗しました。Pythonブリッジサーバー(localhost:8000)が起動しているか確認してください。");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     useEffect(() => {
@@ -135,6 +144,16 @@ const AIKnowledgeManager = () => {
             <div style={{ flex: 1, overflowY: 'auto', border: '1px solid #eee', borderRadius: '4px', backgroundColor: '#fff' }}>
                 {isLoading ? (
                     <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>読み込み中...</div>
+                ) : error ? (
+                    <div style={{ padding: '20px', textAlign: 'center' }}>
+                        <div style={{ color: '#d32f2f', marginBottom: '10px', fontSize: '13px' }}>{error}</div>
+                        <button 
+                            onClick={loadItems}
+                            style={{ padding: '4px 12px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #ddd' }}
+                        >
+                            再試行
+                        </button>
+                    </div>
                 ) : items.length === 0 ? (
                     <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>データが登録されていません</div>
                 ) : (
