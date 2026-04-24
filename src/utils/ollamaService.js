@@ -184,14 +184,15 @@ export const ollamaService = {
     ragServerUrl: 'http://localhost:8000',
 
     // Chat with Local RAG (via Python Bridge Server)
-    async chatWithRAG(query, model = 'qwen3.5:9b', onChunk = null, signal = null) {
+    async chatWithRAG(query, model = 'qwen3.5:9b', onChunk = null, signal = null, systemPrompt = '') {
         try {
             const response = await fetch(`${this.ragServerUrl}/ask`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     query: query,
-                    model: model
+                    model: model,
+                    system_prompt: systemPrompt
                 }),
                 signal: signal
             });
@@ -315,6 +316,26 @@ export const ollamaService = {
         }
     },
 
+    // Hybrid Proofread (Rules + AI)
+    async proofreadWithRules(text, model = 'qwen3.5:9b') {
+        try {
+            const response = await fetch(`${this.ragServerUrl}/analyze/proofread`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    query: text,
+                    model: model
+                })
+            });
+            if (!response.ok) throw new Error('Proofread endpoint failed');
+            const data = await response.json();
+            return data.corrections || "";
+        } catch (error) {
+            console.error("Hybrid proofread failed:", error);
+            throw error;
+        }
+    },
+
     // Trigger ingestion script
     async triggerIngest() {
         try {
@@ -325,6 +346,34 @@ export const ollamaService = {
         } catch (error) {
             console.error("Error triggering ingest:", error);
             return false;
+        }
+    },
+
+    // --- Story Integrity Audit (Batch) ---
+
+    // Start a full batch audit
+    async startFullAudit() {
+        try {
+            const response = await fetch(`${this.ragServerUrl}/analyze/audit/start`, {
+                method: 'POST'
+            });
+            if (!response.ok) throw new Error('Full audit failed to start');
+            return await response.json();
+        } catch (error) {
+            console.error("Error starting full audit:", error);
+            throw error;
+        }
+    },
+
+    // Retrieve the homework list
+    async getAuditReport() {
+        try {
+            const response = await fetch(`${this.ragServerUrl}/analyze/audit/report`);
+            if (!response.ok) throw new Error('Failed to fetch audit report');
+            return await response.json();
+        } catch (error) {
+            console.error("Error fetching audit report:", error);
+            return [];
         }
     }
 };

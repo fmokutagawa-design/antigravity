@@ -5,6 +5,7 @@ import ContextPicker from './ContextPicker';
 import PromptPreviewModal from './PromptPreviewModal';
 import AIChatView from './AIChatView';
 import AIKnowledgeManager from './AIKnowledgeManager';
+import AuditReportWindow from './AuditReportWindow';
 
 
 const SYSTEM_PROMPTS = {
@@ -70,13 +71,18 @@ const SYSTEM_PROMPTS = {
 `,
     PROOFREAD: `
 あなたはプロの編集者・校正者です。
-提示された小説のテキストを読み、誤字脱字、文法エラー、表記ゆれ、矛盾点などを指摘してください。
+提示された小説のテキストに対し、以下の2点を中心にチェックを行ってください。
+
+1. 【文章校正】: 誤字脱字、文法エラー、不自然な日本語、表記ゆれ。
+2. 【物語監査】: 提供された <creation_memory>（プロットや設定資料）との矛盾。
+   - 例：キャラの機体名が違う、舞台の場所が設定と食い違っている、過去の出来事と矛盾している。
+
 指摘事項は必ず以下のタグ形式で1件ずつ出力してください。
 
 <correction>
 <original>指摘箇所の原文（短いフレーズ、検索可能なもの）</original>
 <suggested>修正後の案</suggested>
-<reason>指摘の理由・アドバイス</reason>
+<reason>指摘の理由（設定矛盾の場合は、どの資料と矛盾しているかも明記）</reason>
 </correction>
 
 説明文、挨拶、前置きなどは一切不要です。タグのみを正確に出力してください。
@@ -183,6 +189,8 @@ const AIAssistant = ({
     const [cloudInput, setCloudInput] = useState('');
     const [isCloudFlow, setIsCloudFlow] = useState(false);
     const [activeAIAction, setActiveAIAction] = useState(initialAction);
+    const [isAuditing, setIsAuditing] = useState(false);
+    const [showAuditReport, setShowAuditReport] = useState(false);
     const thinkingTimer = React.useRef(null);
     const abortControllerRef = React.useRef(null);
 
@@ -320,8 +328,25 @@ const AIAssistant = ({
             return;
         }
 
-        if (aiModel === 'local') {
-            if (!isLocalConnected) {
+            if (aiModel === 'local') {
+                if (mode === 'proofread') {
+                    setIsGenerating(true);
+                    setGeneratedText('🚩 プログラム校正を実行中（LanguageTool/textlint/Tomarigi準拠）...');
+                    try {
+                        const resultXml = await ollamaService.proofreadWithRules(options.selectedText || text.slice(-8000), selectedLocalModel);
+                        setGeneratedText(resultXml || '指摘事項はありませんでした。');
+                        parseCorrections(resultXml);
+                    } catch (err) {
+                        console.error("Proofread failed", err);
+                        alert("校正に失敗しました");
+                    } finally {
+                        setIsGenerating(false);
+                        clearTimeout(thinkingTimer.current);
+                    }
+                    return;
+                }
+                
+                if (!isLocalConnected) {
                 alert('Ollamaに接続できません。Ollamaが起動しているか確認してください。');
                 setGeneratedText('');
                 clearTimeout(thinkingTimer.current);
@@ -342,10 +367,19 @@ const AIAssistant = ({
                     { role: 'user', content: prompt }
                 ];
                 let fullText = "";
-                await ollamaService.chat(messages, selectedLocalModel, (chunk) => {
-                    fullText += chunk;
-                    setGeneratedText(fullText);
-                }, abortControllerRef.current.signal);
+                
+                // Proofread の場合は RAG (物語監査) を優先使用する
+                if (mode === 'proofread') {
+                    await ollamaService.chatWithRAG(prompt, selectedLocalModel, (chunk) => {
+                        fullText += chunk;
+                        setGeneratedText(fullText);
+                    }, abortControllerRef.current.signal, systemPrompt);
+                } else {
+                    await ollamaService.chat(messages, selectedLocalModel, (chunk) => {
+                        fullText += chunk;
+                        setGeneratedText(fullText);
+                    }, abortControllerRef.current.signal);
+                }
                 if (!fullText) {
                     // Aborted
                     return;
@@ -404,6 +438,23 @@ const AIAssistant = ({
             clearTimeout(thinkingTimer.current);
         }
     }, [aiModel, isLocalConnected, selectedLocalModel, allFiles, activeFile, text, chatInput, useStrictRules, includeContext, parseCorrections, setGhostText, setCorrections, addCandidate, contextFiles]);
+
+    const handleStartFullAudit = async () => {
+        setIsAuditing(true);
+        setGeneratedText('🚩 【校正監査モード】を開始しました。全原稿の同期と、設定資料との照合をバックグラウンドで実行しています。大規模な原稿の場合、数分かかることがあります。');
+        try {
+            const data = await ollamaService.startFullAudit();
+            if (data.status === 'completed') {
+                setGeneratedText('🎉 監査が完了しました！別窓の「宿題リスト」に指摘事項が表示されます。');
+                setShowAuditReport(true);
+            }
+        } catch (error) {
+            console.error('Audit failed:', error);
+            setGeneratedText('❌ 監査中にエラーが発生しました。Pythonブリッジサーバーのログを確認してください。');
+        } finally {
+            setIsAuditing(false);
+        }
+    };
 
     useEffect(() => {
         if (isOpen && initialAction) {
@@ -1343,7 +1394,11 @@ const AIAssistant = ({
                     </>
                 )}
             </div>
-        </div >
+            <AuditReportWindow 
+                isOpen={showAuditReport} 
+                onClose={() => setShowAuditReport(false)} 
+            />
+        </div>
     );
 };
 

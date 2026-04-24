@@ -1,0 +1,122 @@
+.audit-report-window {
+  position: fixed;
+  top: 60px;
+  right: 20px;
+  width: 380px;
+  max-height: 80vh;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.audit-header {
+  padding: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8f9fa;
+  border-radius: 12px 12px 0 0;
+}
+
+.audit-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.refresh-btn, .close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: #666;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.refresh-btn:hover { background: rgba(0, 0, 0, 0.05); color: #000; }
+.close-btn:hover { background: rgba(255, 0, 0, 0.1); color: #d00; }
+
+.audit-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.homework-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.homework-item {
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.homework-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: #007aff;
+}
+
+.item-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #999;
+  margin-bottom: 6px;
+}
+
+.item-original {
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 4px;
+  background: #fff9db;
+  padding: 2px 4px;
+  border-radius: 2px;
+}
+
+.item-suggestion {
+  font-size: 13px;
+  color: #007aff;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.item-reason {
+  font-size: 11px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.loading, .no-items {
+  padding: 40px;
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+}
