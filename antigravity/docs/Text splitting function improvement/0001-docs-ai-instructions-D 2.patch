@@ -1,0 +1,355 @@
+From 5e8faa810a639d288a2deef2550530bb0a393137 Mon Sep 17 00:00:00 2001
+From: Claude <claude@anthropic.com>
+Date: Mon, 20 Apr 2026 06:00:58 +0000
+Subject: [PATCH] =?UTF-8?q?docs(ai-instructions):=20=E6=8C=87=E7=A4=BA?=
+ =?UTF-8?q?=E6=9B=B8D=E4=BB=98=E9=8C=B2=EF=BC=9A=E5=AE=9F=E3=82=BD?=
+ =?UTF-8?q?=E3=83=BC=E3=82=B9=E7=A2=BA=E8=AA=8D=E3=81=AB=E3=82=88=E3=82=8B?=
+ =?UTF-8?q?=E7=B5=B1=E5=90=88=E8=A9=B3=E7=B4=B0?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+冬之助さんから src/ 全体をアップロードしてもらい、実コードを確認した
+結果を指示書D付録として追加。指示書D本体は抽象的な仕様に留めつつ、
+付録で具体的な統合位置・既存コードとの整合を確定させる。
+
+内容:
+- A/B/C は既にマージ済みの可能性（boundaryDetector.js 実在）
+- App.jsx の具体的な統合位置（import 19 行、フック呼び出し、
+  ExportPanel 1950 行、FileTree 1696 行、モーダルレンダー位置）
+- fileSystem アダプタの実インターフェース（createFile 主用、
+  親ディレクトリハンドルの組み立て方）
+- FileTree 右クリックメニュー統合を任意拡張として追加
+  （既存の onDuplicate パターンと同じで実装可能）
+- openModalForFile（右クリック経由）の実装ヒント
+
+Sonnet は D 本体と APPENDIX の両方を読んで実装する。
+矛盾があれば APPENDIX 優先。FileTree 統合で詰まったら
+スキップして ExportPanel 経由だけ完成させてよい。
+---
+ .../D_split_by_chapters_APPENDIX.md           | 313 ++++++++++++++++++
+ 1 file changed, 313 insertions(+)
+ create mode 100644 docs/ai_instructions/D_split_by_chapters_APPENDIX.md
+
+diff --git a/docs/ai_instructions/D_split_by_chapters_APPENDIX.md b/docs/ai_instructions/D_split_by_chapters_APPENDIX.md
+new file mode 100644
+index 0000000..f8af376
+--- /dev/null
++++ b/docs/ai_instructions/D_split_by_chapters_APPENDIX.md
+@@ -0,0 +1,313 @@
++# 指示書 D 付録：実ソース確認メモ
++
++冬之助さんの NEXUS 実ソース（2026-04-20 時点）を確認した結果、**指示書 D 本体で仮置きしていた実装詳細を確定** するための追加情報。指示書 D 本体と併読すること。
++
++---
++
++## A. 前提の確認結果
++
++- ✅ `src/utils/boundaryDetector.js` と `boundaryDetector.test.cjs` は既にマージ済み（指示書 C の成果）
++- ✅ `src/components/FileTree.jsx`（524 行）が実在する
++- ✅ `src/components/ExportPanel.jsx`（137 行）は指示書 D §3.6.2 の想定どおりの構造
++- ✅ `src/App.jsx`（2608 行）
++
++つまり**派生元ブランチには A/B/C は既に組み込まれている**。追加で merge する作業は不要。`feature/split-by-chapters` は直接 `feature/uncontrolled-editor-v3` の最新から切ってよい。
++
++---
++
++## B. App.jsx 統合の具体的な位置
++
++### B.1 import 追加（19 行目付近）
++
++```jsx
++// 既存:
++// import FileTree from './components/FileTree';
++// import ExportPanel from './components/ExportPanel';
++
++// 追加:
++import SplitByChaptersModal from './components/SplitByChaptersModal';
++import { useSplitByChapters } from './hooks/useSplitByChapters';
++```
++
++### B.2 フック呼び出し位置
++
++App コンポーネント関数内、**既存のフック群**と同じブロックに追加する。`useFileOperations` を呼んでいる箇所の**直後**が最も自然（`refreshMaterials`、`showToast` がすでに在域）。
++
++具体的には、`const { handleSaveFile, handleUpdateFile, handleLoadFile, handleDuplicateFile, handleBatchCopy, handleBatchExport } = useFileOperations({ ... });` のあとに：
++
++```jsx
++const splitChapters = useSplitByChapters({
++    activeFileHandle,
++    text,
++    projectHandle,
++    refreshMaterials,
++    showToast,
++});
++```
++
++**注意**：`text`・`activeFileHandle`・`projectHandle`・`refreshMaterials`・`showToast` はすべて既に App.jsx 内に存在する（useMaterials と useToastConfirm とその他から来る）。新たに state を作る必要はない。
++
++### B.3 ExportPanel への props（**1950 行目**付近）
++
++現状：
++
++```jsx
++<ExportPanel
++  onFormat={handleFormat}
++  onPrint={handlePrint}
++  onEpubExport={() => handleEpubExport(null, allMaterialFiles)}
++  onDocxExport={handleDocxExport}
++  onBatchExport={handleBatchExport}
++  colorTheme={settings.colorTheme}
++/>
++```
++
++変更後（`onSplitByChapters` を追加）：
++
++```jsx
++<ExportPanel
++  onFormat={handleFormat}
++  onPrint={handlePrint}
++  onEpubExport={() => handleEpubExport(null, allMaterialFiles)}
++  onDocxExport={handleDocxExport}
++  onBatchExport={handleBatchExport}
++  onSplitByChapters={splitChapters.openModal}
++  colorTheme={settings.colorTheme}
++/>
++```
++
++### B.4 モーダルのレンダー位置
++
++App.jsx の JSX 末尾付近、**既存の他のモーダル（InputModal、CustomConfirmModal など）がレンダーされているあたり**に追加。App.jsx の最後の `</div>` か Fragment 閉じ前に置くのが基本。
++
++位置の特定方法：`grep -n "InputModal\|CustomConfirmModal" src/App.jsx` で既存モーダルの位置を探し、その隣に置く。
++
++```jsx
++<SplitByChaptersModal
++    isOpen={splitChapters.isOpen}
++    plan={splitChapters.plan}
++    sourceText={text}
++    isExecuting={splitChapters.isExecuting}
++    onClose={splitChapters.closeModal}
++    onRemoveSegment={splitChapters.handleRemoveSegment}
++    onRenameSegment={splitChapters.handleRenameSegment}
++    onExecute={splitChapters.executeSplit}
++/>
++```
++
++---
++
++## C. fileSystem アダプタの実態
++
++現状の `src/utils/fileSystem.electron.js`（確認済み）は以下のインターフェース：
++
++```js
++// ハンドルの型（多形）:
++// - 'string' (絶対パス) そのまま
++// - { handle: string, name: string, kind: 'file' | 'directory' }
++
++// 主要メソッド:
++async readFile(fileHandle)       // 内容を返す
++async writeFile(fileHandle, content)  // 書き込み（既に atomic write 経由）
++async createFile(parentHandle, fileName, content = '')  // 新規作成、戻り値 { handle, name, kind }
++async createFolder(parentHandle, folderName)            // 新規作成、戻り値 { handle, name, kind }
++async readDirectory(dirHandle)                           // エントリ配列
++async deleteEntry(handle)                                // 削除
++```
++
++### C.1 分割実行で使う API 対応
++
++指示書 D §3.3.2 の `performSplit` で：
++
++| 用途 | 正しい API 呼び出し |
++|---|---|
++| バックアップディレクトリ作成 | `fileSystem.createFolder(parentDirHandle, '.backup')` |
++| バックアップファイル作成 | `fileSystem.createFile(backupDirHandle, backupFileName, sourceText)` |
++| 親ディレクトリ一覧取得 | `fileSystem.readDirectory(parentDirHandle)` |
++| 新ファイル作成 | `fileSystem.createFile(parentDirHandle, targetName, segment.content)` |
++| 新ファイル削除（ロールバック） | `fileSystem.deleteEntry(createdHandle)` |
++
++**`fileSystem.writeFile` を新ファイル作成に使うのは避ける**。`createFile` の方が意図が明確で、返り値がハンドルオブジェクトなのでロールバック時の deleteEntry に使える。
++
++### C.2 親ディレクトリハンドルの作り方
++
++`activeFileHandle` から親ディレクトリハンドルを作る：
++
++```js
++// activeFileHandle は string か { handle, name, kind } のいずれか
++const filePath = typeof activeFileHandle === 'string'
++    ? activeFileHandle
++    : (activeFileHandle.handle || activeFileHandle.path);
++
++const sep = filePath.includes('\\') ? '\\' : '/';
++const parentDir = filePath.substring(0, filePath.lastIndexOf(sep));
++const parentDirName = parentDir.split(sep).pop();
++
++const parentDirHandle = {
++    handle: parentDir,
++    name: parentDirName,
++    kind: 'directory',
++};
++```
++
++---
++
++## D. FileTree 右クリック統合（任意拡張、推奨）
++
++元の指示書 D では「FileTree への右クリック統合は将来」としたが、**実コードを見た結果、既存パターン（`onDuplicate` など）と同じ粒度で統合可能**。指示書 D の範囲内で追加してよい。
++
++### D.1 FileTree.jsx の props 追加
++
++524 行目付近の `FileTree` 関数定義：
++
++```js
++// 変更前:
++const FileTree = ({ tree, activeFile, onFileSelect, onCreateFile, onCreateFolder, 
++                    onRequestCreateFile, onRequestCreateFolder, onOpenReference, 
++                    onOpenInNewWindow, onShowInFinder, onRename, onDelete, 
++                    onDuplicate, onMergeFile, onMove }) => {
++
++// 変更後（onSplitByChapters を追加）:
++const FileTree = ({ tree, activeFile, onFileSelect, onCreateFile, onCreateFolder, 
++                    onRequestCreateFile, onRequestCreateFolder, onOpenReference, 
++                    onOpenInNewWindow, onShowInFinder, onRename, onDelete, 
++                    onDuplicate, onMergeFile, onMove, onSplitByChapters }) => {
++```
++
++### D.2 handleSplitByChapters ハンドラ追加
++
++`handleDuplicate`（204 行目付近）の直後に：
++
++```jsx
++const handleSplitByChapters = async () => {
++    if (onSplitByChapters && contextMenu.itemHandle) {
++        await onSplitByChapters(contextMenu.itemHandle);
++    }
++    handleCloseContextMenu();
++};
++```
++
++### D.3 右クリックメニュー項目追加
++
++ファイル右クリックメニュー（391〜430 行目付近）の `📑 複製 (別名保存)` の**直前**に追加：
++
++```jsx
++<div className="context-menu-item" onClick={handleDuplicate}>
++    📑 複製 (別名保存)
++</div>
++
++{/* 追加: */}
++{onSplitByChapters && (
++    <div className="context-menu-item" onClick={handleSplitByChapters}>
++        ✂️ 章ごとに分割
++    </div>
++)}
++
++<div className="context-menu-item" onClick={handleDelete} style={{ color: '#d32f2f' }}>
++    🗑️ 削除
++</div>
++```
++
++### D.4 App.jsx の FileTree 呼び出し箇所への props 追加（1696 行目）
++
++現状：
++
++```jsx
++<FileTree
++  ...
++  onDuplicate={handleDuplicateFile}
++  onMove={handleMoveItem}
++/>
++```
++
++変更後：
++
++```jsx
++<FileTree
++  ...
++  onDuplicate={handleDuplicateFile}
++  onMove={handleMoveItem}
++  onSplitByChapters={splitChapters.openModalForFile}
++/>
++```
++
++### D.5 useSplitByChapters フックに `openModalForFile` を追加
++
++現在の指示書 D §3.3.1 の `openModal` は「現在エディタに開いているファイルを分割する」仕様だが、**FileTree の右クリックは別ファイルに対して発動**する。そのため、handle を受け取る別メソッドが必要。
++
++`useSplitByChapters.js` に以下を追加：
++
++```jsx
++const openModalForFile = useCallback(async (fileHandle) => {
++    if (!fileHandle) {
++        showToast('ファイルが指定されていません');
++        return;
++    }
++    try {
++        // ファイル内容を読み込む
++        const content = await fileSystem.readFile(fileHandle);
++        const fileName = typeof fileHandle === 'string'
++            ? fileHandle.split(/[/\\]/).pop()
++            : (fileHandle.name || 'untitled.txt');
++
++        // 分割計画を作る
++        const newPlan = createSplitPlan(content, fileName);
++
++        // フックが保持する state を書き換える
++        // ただし、この経路では activeFileHandle ではなく別の handle を使いたい
++        // そのため targetFileHandle を別途 state で保持する
++        setTargetFileHandle(fileHandle);
++        setSourceText(content);
++        setPlan(newPlan);
++        setIsOpen(true);
++    } catch (e) {
++        console.error('[split] failed to open:', e);
++        showToast(`ファイルの読み込みに失敗: ${e.message}`);
++    }
++}, [showToast]);
++```
++
++**重要**：この拡張によりフック内部の state 管理が少し複雑になる。`targetFileHandle` 用の state を新設し、`openModal`（エディタ上から呼ばれる経路）と `openModalForFile`（右クリック経路）の両方で共通に使う。
++
++`performSplit` 内部でも `activeFileHandle` の代わりに `targetFileHandle` を参照するよう変更する。
++
++### D.6 D.5 を含めた場合の実装複雑度
++
++右クリック統合を入れると、フックの state が 1 つ増え、分岐が増える。**合計で指示書 D の実装量が 15〜20% 増える**。Sonnet の 1 ターンには収まる範囲だが、厳しくなる場合は D.1〜D.6 は**全部スキップしてよい**（ExportPanel のボタンだけで完結）。
++
++### D.7 スキップ判断基準
++
++- Sonnet が ExportPanel 経由の実装で手一杯なら FileTree 統合は見送り
++- FileTree 統合が重く感じたら、まず ExportPanel 経由だけ完成させて push
++- 右クリック統合は**別ブランチ・別指示書（指示書 D-2）**として冬之助さんが後日切り出す
++
++---
++
++## E. 実装時の優先順位
++
++1. 【必須】`src/utils/splitByChapters.js` と `.test.cjs`
++2. 【必須】`src/hooks/useSplitByChapters.js`（`openModal` のみ実装、`openModalForFile` は D.5 でやる場合のみ）
++3. 【必須】`src/components/SplitByChaptersModal.jsx` と `.css`
++4. 【必須】`src/App.jsx` のフック呼び出しとモーダルレンダー
++5. 【必須】`src/components/ExportPanel.jsx` にボタン追加と props 配線
++6. 【任意】FileTree 右クリック統合（D.1〜D.6）
++
++1〜5 までで機能完成。6 は「やれれば嬉しい」程度。
++
++---
++
++## F. 指示書 D 本体からの差分サマリー
++
++- §3.6 の統合箇所の行番号を**具体化**（B.1〜B.4）
++- §3.3.2 の fileSystem API 使用を**実態に合わせて補正**（C.1〜C.2）
++- FileTree 右クリック統合を**任意拡張として明示**（D.1〜D.7）
++
++---
++
++## G. 冬之助さんからのお願い
++
++Sonnet が指示書 D と付録（この文書）を両方読んで実装するにあたり、以下を念押し：
++
++1. **本付録は指示書 D 本体の「上書き」ではなく「補強」**。矛盾する記述がある場合は本付録を優先
++2. FileTree 右クリック統合で詰まったら**即座にスキップして ExportPanel 経由だけで完結**させる
++3. 詰まったら Opus に戻す、のルールは指示書 D §5 のまま有効
+-- 
+2.43.0
+

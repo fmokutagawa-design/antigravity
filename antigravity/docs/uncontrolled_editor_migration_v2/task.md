@@ -1,0 +1,19 @@
+- `[/]` Phase 1: applyText の導入と insertText の追加
+  - `[x]` `Editor.jsx` の状態を初期化（ベースライン復旧）
+  - `[x]` `applyText` 関数を定義（タイマー破棄、DOM非操作）
+  - `[x]` `pasteFromHistory`、`insertRuby` を更新
+  - `[x]` `insertText` を新規追加
+  - `[x]` コンテキストメニュー関連を更新
+  - `[x]` ドラッグ＆ドロップ、GhostText 等を更新
+  - `[ ]` Phase 1 のビルドおよび入力・操作テスト
+- `[ ]` Phase 2: localText state の ref 化
+  - `[ ]` state 依存を `localTextRef.current` に置換
+  - `[ ]` デバウンスを state useEffect からタイマー管理へ移行
+  - `[ ]` Phase 2 のテスト
+- `[ ]` Phase 3: Uncontrolled への切り替え
+  - `[ ]` value を defaultValue に変更し、localText を削除
+  - `[ ]` `applyText` を本番仕様（DOM直接操作・ハイライト即時更新）に変更
+  - `[ ]` `handleChange`、`localOnChange` の最適化
+  - `[ ]` ファイル切替等の同期処理を更新
+  - `[ ]` `useUndoHistory` などの接続を再構築
+  - `[ ]` Phase 3 の最終総合テスト

@@ -1,0 +1,494 @@
+/* Preview Container */
+.preview-container {
+    width: 100%;
+    height: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    /* Main scroll is horizontal for vertical text */
+    background-color: #e0e0e0;
+    padding: 10px;
+
+    /* Use RTL direction for natural right-to-left scrolling */
+    direction: rtl;
+
+    /* Remove flex to avoid scroll issues, rely on RTL for start position */
+    display: block;
+    position: relative;
+}
+
+/* Ensure vertical scrolling works if needed (though main checks imply vertical-rl) */
+
+
+/* WikiLink Styles */
+.wiki-link {
+    color: #2196f3;
+    /* Force blue even in manuscript */
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.wiki-link:hover {
+    text-decoration: underline;
+}
+
+/* Manuscript Wrapper */
+.manuscript-wrapper {
+    /* Pages flow from Right to Left */
+    display: flex;
+    flex-direction: row-reverse;
+    /* Natural flow in RTL container is Right-to-Left */
+    gap: 40px;
+    padding-bottom: 40px;
+
+    /* Ensure wrapper can grow */
+    min-width: min-content;
+
+    /* CRITICAL: Reset direction to LTR for the content inside, 
+       otherwise writing-mode: vertical-rl might behave unexpectedly (bottom-to-top) */
+    direction: ltr;
+}
+
+/* Manuscript Page */
+.manuscript-page {
+    background-color: #fdfbf7;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 40px 30px;
+
+    /* Enable positioning for page number */
+    position: relative;
+
+    /* NATIVE VERTICAL WRITING */
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+
+    display: flex;
+    flex-direction: column;
+    /* Lines stack right-to-left (block axis in vertical-rl) */
+    align-items: flex-start;
+    /* Characters start from the top */
+    justify-content: flex-start;
+    /* Lines pack from the right edge */
+    gap: 12px;
+
+    flex-shrink: 0;
+    height: auto;
+    min-height: 80vh;
+}
+
+/* Page Number */
+.page-number {
+    position: absolute;
+    bottom: 20px;
+    left: 0;
+    width: 100%;
+    text-align: right;
+    /* Changed to Right for submission format */
+    padding-right: 30px;
+    /* Offset from right edge */
+    font-size: 12px;
+    font-family: var(--font-mincho);
+    color: #888;
+
+    /* Force horizontal writing for number */
+    writing-mode: horizontal-tb;
+    pointer-events: none;
+}
+
+/* Page Dimensions */
+/* Default (A4 Portrait) */
+.manuscript-page {
+    width: 210mm;
+    height: 297mm;
+}
+
+/* Size Variants */
+.manuscript-page.size-A4.orient-portrait {
+    width: 210mm;
+    height: 297mm;
+}
+
+.manuscript-page.size-A4.orient-landscape {
+    width: 297mm;
+    height: 210mm;
+}
+
+.manuscript-page.size-B5.orient-portrait {
+    width: 176mm;
+    height: 250mm;
+}
+
+.manuscript-page.size-B5.orient-landscape {
+    width: 250mm;
+    height: 176mm;
+}
+
+.manuscript-page.size-A5.orient-portrait {
+    width: 148mm;
+    height: 210mm;
+}
+
+.manuscript-page.size-A5.orient-landscape {
+    width: 210mm;
+    height: 148mm;
+}
+
+
+
+/* Manuscript Line */
+.manuscript-line {
+    /* We want cells to stack Top-to-Bottom.
+     This is the Inline Axis (row) in vertical-rl.
+  */
+    display: flex;
+    flex-direction: row;
+
+    gap: 0;
+    width: var(--cell-width, var(--cell-size, 34px));
+    flex-shrink: 0;
+}
+
+/* Collapse vertical borders */
+.manuscript-cell+.manuscript-cell {
+    margin-top: -1px;
+}
+
+/* Tate-Chu-Yoko */
+.tcy-digits {
+    /* Modern standard for Tate-Chu-Yoko */
+    text-combine-upright: all;
+    /* Fallback/Spacing */
+    text-align: center;
+    vertical-align: middle;
+}
+
+/* Manuscript Cell */
+.manuscript-cell {
+    width: var(--cell-width, var(--cell-size, 34px));
+    height: var(--cell-height, var(--cell-size, 34px));
+    flex-shrink: 0;
+    /* Prevent shrinking */
+
+    /* Genkou Youshi Orange/Brown Border (O's Style) */
+    border: 1px solid rgba(184, 134, 11, 0.5);
+    /* DarkGoldenRod */
+
+    /* Center content */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    box-sizing: border-box;
+    /* Include border in size */
+
+    /* Typography */
+    font-size: var(--preview-font-size, 20px);
+    line-height: 1;
+    color: #111 !important;
+    font-family: var(--font-mincho);
+
+    /* Ensure font inheritance */
+    font-family: inherit;
+
+    position: relative;
+    overflow: visible;
+}
+
+/* Hanging Punctuation (Burasage) - No Grid Border */
+.manuscript-cell.is-hanging {
+    border: none !important;
+    /* Optional: Ensure it renders transparently if overlapped, 
+       but typically it just sits in margin. */
+}
+
+/* Hide Grid Mode */
+.hide-grid .manuscript-cell,
+.manuscript-wrapper.no-grid .manuscript-cell,
+.manuscript-wrapper.no-grid .ruby-base-char {
+    border-color: transparent !important;
+}
+
+/* Ruby Cell Wrapper */
+.manuscript-cell.has-ruby {
+    border: none !important;
+    padding: 0;
+
+    /* Flex Row in Vertical-RL = Top-to-Bottom stacking */
+    display: flex;
+    flex-direction: row;
+
+    align-items: stretch;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+
+    position: relative;
+    box-sizing: border-box;
+}
+
+/* Ruby Flex Container */
+/* Removed ruby selector as we are using divs now */
+
+/* Base Characters as Grid Cells */
+/* Base Characters as Grid Cells */
+.ruby-base-char {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: var(--cell-width, var(--cell-size, 34px));
+    /* Fixed width */
+    height: var(--cell-height, var(--cell-size, 34px));
+    /* Fixed height */
+    flex-shrink: 0;
+    /* Prevent shrinking */
+
+    /* Replicate Grid Border */
+    border: 1px solid rgba(184, 134, 11, 0.5);
+
+    /* Ensure font inheritance */
+    font-size: inherit;
+    line-height: 1;
+    color: inherit;
+    box-sizing: border-box;
+    /* Include border in size */
+
+    position: relative;
+}
+
+/* Collapse borders between base chars */
+.ruby-base-char+.ruby-base-char {
+    margin-top: -1px;
+}
+
+/* Ruby Text Overlay */
+.ruby-text {
+    /* Use relative size (half of base text) instead of fixed px */
+    font-size: 0.5em;
+    color: #555;
+    text-align: center;
+
+    /* Absolute positioning relative to the wrapper */
+    position: absolute;
+
+    /* Place on the PHYSICAL RIGHT of the cell */
+    /* Use 100% to stick to the right edge regardless of cell size */
+    left: 100%;
+    /* Add a tiny gap so it doesn't touch the border */
+    margin-left: 1px;
+    top: 0;
+
+    height: 100%;
+    width: max-content;
+    /* Ensure it can be wider than the cell if needed, though usually vertical text is tall */
+
+    display: flex;
+    flex-direction: row;
+    /* Main Axis: Top-to-Bottom (Vertical) in writing-mode: vertical-rl */
+    align-items: center;
+    /* Cross Axis: Center (Horizontal) */
+    justify-content: space-around;
+    /* Distribute with 1-2-1 spacing (better than space-between) */
+
+    line-height: 1;
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+/* Long Ruby Handling */
+.ruby-text.long-ruby {
+    font-size: 8px;
+    letter-spacing: -1px;
+}
+
+/* Plain Mode */
+.mode-plain .plain-content {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    background: white;
+    padding: 40px;
+    min-height: 80vh;
+    font-size: var(--preview-font-size, 18px);
+    line-height: 2;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    font-family: var(--font-mincho);
+
+    /* Ensure it takes up space but grows with content */
+    flex: none;
+    /* Don't flex, just be a block */
+    width: auto;
+    min-width: 100%;
+    /* At least full width */
+    height: auto;
+    min-height: 100%;
+    /* At least full height */
+
+    /* Reset direction to LTR to ensure standard vertical-rl behavior */
+    direction: ltr;
+}
+
+/* Reset ruby for plain mode to defaults */
+.mode-plain ruby {
+    display: ruby;
+    /* Use standard ruby display */
+    position: static;
+    width: auto;
+    height: auto;
+    ruby-position: right;
+    /* Explicitly set position */
+    margin: 0 2px;
+    /* Small margin for readability */
+}
+
+.mode-plain rt {
+    position: static;
+    display: ruby-text;
+    /* Standard ruby text behavior */
+    font-size: 0.5em;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* Aozora Headings */
+.is-heading-large {
+    font-weight: 900 !important;
+    /* transform: scale(1.1); Avoid scale to keep grid aligned */
+}
+
+.is-heading-medium {
+    font-weight: 700 !important;
+}
+
+.manuscript-cell.is-small {
+    font-size: calc(var(--preview-font-size, 20px) * 0.8) !important;
+}
+
+.is-spacer {
+    pointer-events: none;
+}
+
+
+
+/* No Grid Mode */
+.manuscript-wrapper.no-grid .manuscript-cell {
+    border: none !important;
+}
+
+/* ===== Print Styles ===== */
+@media print {
+    @page {
+        margin: 0;
+        /* size は Preview.jsx の印刷ハンドラで動的に設定される */
+    }
+
+    .no-print,
+    .line-number-indicator,
+    .sidebar,
+    .editor-pane,
+    .tab-nav-bottom,
+    .toolbar,
+    .editor-toolbar-overlay,
+    .preview-toolbar {
+        display: none !important;
+    }
+
+    body,
+    html,
+    #root {
+        background: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .app-container {
+        display: block !important;
+        padding: 0 !important;
+        background: white !important;
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .content-wrapper,
+    .main-content,
+    .editor-container,
+    .split-pane,
+    .pane.preview-pane {
+        display: block !important;
+        width: 100% !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        border: none !important;
+    }
+
+    .preview-container {
+        padding: 0 !important;
+        background: white !important;
+        overflow: visible !important;
+        display: block !important;
+        width: auto !important;
+        height: auto !important;
+        direction: ltr !important;
+    }
+
+    /* ★ wrapper の gap を 0 にして空白ページを防ぐ */
+    .manuscript-wrapper {
+        display: block !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: auto !important;
+        direction: ltr !important;
+        writing-mode: horizontal-tb !important;
+        gap: 0 !important;
+    }
+
+    .manuscript-page {
+        writing-mode: vertical-rl !important;
+        text-orientation: upright !important;
+
+        /* ★ 100vh ではなく auto — JS側の印刷ハンドラで正確なpxサイズを注入 */
+        width: 100% !important;
+        height: auto !important;
+        min-height: unset !important;
+
+        margin: 0 !important;
+        padding: 10mm !important;
+        box-shadow: none !important;
+        background-color: white !important;
+        border: none !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+
+        /* ★ ページ送り制御 */
+        page-break-after: always !important;
+        break-after: page !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+
+    /* ★ 最後のページの後に空白ページを生まない */
+    .manuscript-page:last-child {
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+    }
+
+    .page-number {
+        bottom: 10mm;
+        color: #000;
+        padding-right: 20mm;
+    }
+
+    .mode-plain .plain-content {
+        box-shadow: none;
+        padding: 15mm;
+        width: 100%;
+        min-height: auto;
+        height: auto;
+    }
+}

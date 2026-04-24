@@ -1,0 +1,13 @@
+- [/] 消失した正規コードの抽出（git log -p 1d0e5f1 等）
+- [ ] `src/App.jsx` の再統合
+  - [ ] `useState` 定義順序の整理（ReferenceError 対策）
+  - [ ] `handleImageDrop` 関数の復旧
+  - [ ] `ReaderView` 呼び出し、およびプレビューボタンとの共存
+- [ ] `src/components/Editor.jsx` の再統合
+  - [ ] `onImageDrop`, `handleDrop`, `handleDragOver` の復旧
+  - [ ] `MAX_HIGHLIGHT_ELEMENTS` による表示制限の復旧
+  - [ ] `React.memo` 化の復旧
+- [ ] 動作確認
+  - [ ] 画像ドラッグ＆ドロップ
+  - [ ] リーダーモード (Alt+R)
+  - [ ] 大規模原稿のハイライトパフォーマンス

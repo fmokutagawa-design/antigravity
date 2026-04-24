@@ -1,0 +1,22 @@
+# タスクリスト: Editor.jsx Uncontrolled 化 v3 (修正版)
+
+- [x] **1. State / Ref の再構成**
+    - [x] `localDocument` State の削除
+    - [x] `localDocumentRef` 真実のソース化
+    - [x] `localTextRef` の同期 useEffect 削除（手動更新へ）
+    - [x] `initialDisplayValue` の定義
+- [x] **2. 処理ロジックのリファクタリング**
+    - [x] `localOnChange` の全面書き換え（タイマー制御のハブ化）
+    - [x] `handleChange` の軽量化（Ref 更新のみ）
+    - [x] `handleCompositionEnd` の軽量化
+    - [x] `applyText` の本番仕様化（DOM更新 + タイマー破棄）
+- [x] **3. 副作用と依存のクリーンアップ**
+    - [x] `displayValue` / `useLayoutEffect` の削除
+    - [x] 外部 `value` プロップ同期を `applyText` 経由に差分更新化
+    - [x] `scrollToCaretPosition` 等の依存配列修正
+- [x] **4. Undo/Redo の接続修正**
+    - [x] `useUndoHistory` の接続先を `applyText` + `App.onChange` に変更
+- [x] **5. 最終検証**
+    - [x] `grep` による `localText` 変数・`displayValue` の残存確認
+    - [x] 42万字ファイルでの打鍵レスポンス確認
+    - [x] ファイル切替時の挙動確認

@@ -1,0 +1,9 @@
+services:
+  nexus-brain:
+    build: .
+    container_name: nexus-memory-server
+    volumes:
+      - .:/app
+      - /Volumes/Black6T/Nexus_Dev/antigravity:/data/antigravity
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

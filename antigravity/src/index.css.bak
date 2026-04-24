@@ -1,0 +1,1737 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500;700&family=Shippori+Mincho:wght@400;500;700&family=Zen+Kurenaido&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap');
+
+:root {
+  --font-mincho: 'Tsukushi A Old Mincho', 'Tsukushi Old Mincho', 'Shippori Mincho', 'Noto Serif JP', serif;
+  --font-gothic: 'Zen Kaku Gothic New', 'Noto Sans JP', sans-serif;
+  --font-hand: 'Zen Kurenaido', sans-serif;
+
+  /* Light Mode Colors */
+  --bg-paper: #fdfbf7;
+  --bg-paper-darker: #f5f2eb;
+  --text-paper: #2c3e50;
+  --accent-color: #8e44ad;
+  --accent-hover: #9b59b6;
+  --border-color: #e0e0e0;
+  --text-color: #2c3e50;
+  --bg-color: #fdfbf7;
+  --sidebar-bg: #f8f9fa;
+  --editor-bg: #ffffff;
+
+  --bg-dark: #1a1a1a;
+  --text-dark: #e0e0e0;
+
+  --sidebar-width: 300px;
+  /* Slightly wider for better spacing */
+  --toolbar-height: 60px;
+
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --radius-sm: 6px;
+  --radius-md: 12px;
+}
+
+/* Dark Mode */
+body.dark-mode {
+  --bg-paper: #1e1e1e;
+  --bg-paper-darker: #2a2a2a;
+  --text-paper: #e0e0e0;
+  --border-color: #404040;
+  --text-color: #e0e0e0;
+  --bg-color: #1e1e1e;
+  --sidebar-bg: #252525;
+  --editor-bg: #2a2a2a;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* Blackboard Theme (O's Editor Style) */
+body.theme-blackboard {
+  --bg-paper: #2F4F4F;
+  /* Dark Slate Gray */
+  --bg-paper-darker: #264040;
+  --text-paper: #FFFFFF;
+  --bg-color: #2F4F4F;
+  --text-color: #FFFFFF;
+  --sidebar-bg: #264040;
+  --editor-bg: #2F4F4F;
+  --border-color: #405d5d;
+  --accent-color: #ffd700;
+  /* Chalk Yellow */
+  --font-gothic: 'Zen Kaku Gothic New', sans-serif;
+  --font-mincho: 'Shippori Mincho', serif;
+  --font-mincho: 'Shippori Mincho', serif;
+}
+
+/* Sakura Theme (Cream/Classic Windows Style) */
+body[data-color-theme="sakura"] {
+  --bg-paper: #FFFEF3;
+  /* Classic Cream */
+  --bg-paper-darker: #F0F0F0;
+  /* Classic Windows Control Face */
+  --text-paper: #000000;
+  --bg-color: #FFFEF3;
+  --text-color: #000000;
+  --sidebar-bg: #F0F0F0;
+  /* Grey Sidebar like Windows App */
+  --editor-bg: #FFFEF3;
+  --border-color: #999999;
+  /* Stronger borders */
+  --accent-color: #000080;
+  /* Classic Navy Blue selection? */
+}
+
+/* Notebook Theme (University Note Style) */
+body.theme-notebook {
+  --bg-paper: #fdfbf7;
+  --bg-paper-darker: #f0ebe0;
+  --text-paper: #2c3e50;
+  --bg-color: #fdfbf7;
+  --sidebar-bg: #f8f5f0;
+  --editor-bg: #ffffff;
+  /* Notebook lines will be handled in Editor component specific styles or background-image */
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-gothic);
+  /* Default UI font */
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 0.3s, color 0.3s;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+}
+
+/* Layout */
+.app-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+.sidebar {
+  width: 420px;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border-color);
+  padding: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: width 0.3s ease;
+  backdrop-filter: blur(10px);
+  z-index: 10;
+  overflow-y: auto;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Wide class removed as it is now default */
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.8rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.nexus-logo {
+  max-width: 160px;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.1));
+}
+
+.sidebar h1 {
+  font-family: var(--font-mincho);
+  font-size: 1.4rem;
+  margin-bottom: 1.5rem;
+  color: var(--accent-color);
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+
+.main-content {
+  flex: 1;
+  position: relative;
+  display: flex;
+  overflow: hidden;
+  flex-direction: column;
+}
+
+.split-pane {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  overflow: hidden;
+  gap: 0;
+}
+
+.pane {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  display: none;
+}
+
+.pane.active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Editor Pane */
+.editor-pane {
+  background-color: var(--bg-paper);
+}
+
+/* Preview Pane */
+.preview-pane {
+  background-color: #e8e8e8;
+  /* Distinct background for preview area */
+}
+
+/* Status Bar */
+.status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8f9fa;
+  border-top: 1px solid var(--border-color);
+  height: 36px;
+  padding: 0 16px;
+  font-size: 0.8rem;
+  color: #555;
+  flex-shrink: 0;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.02);
+  z-index: 20;
+}
+
+.status-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.status-item {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.status-item strong {
+  font-family: monospace;
+  font-size: 0.9rem;
+  color: var(--text-paper);
+}
+
+.status-separator {
+  color: #ccc;
+  font-size: 0.8rem;
+}
+
+.text-muted {
+  color: #999;
+  font-size: 0.75rem;
+}
+
+.status-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.segmented-control {
+  display: flex;
+  background: #e9ecef;
+  padding: 2px;
+  border-radius: 6px;
+  gap: 2px;
+}
+
+.segment-btn {
+  border: none;
+  background: transparent;
+  padding: 2px 12px;
+  font-size: 0.75rem;
+  color: #666;
+  cursor: pointer;
+  border-radius: 4px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.segment-btn.active {
+  background: white;
+  color: var(--accent-color);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-weight: 700;
+}
+
+.status-right {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: fit-content;
+  /* Ensure it takes necessary space */
+}
+
+.icon-btn {
+  border: none;
+  background: transparent;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.icon-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.ruby-btn {
+  color: var(--accent-color);
+  background: rgba(142, 68, 173, 0.1);
+}
+
+.ruby-btn:hover {
+  background: rgba(142, 68, 173, 0.2);
+}
+
+.ai-btn {
+  color: #2e86de;
+  background: rgba(46, 134, 222, 0.1);
+  white-space: nowrap;
+  /* Prevent vertical text */
+  flex-shrink: 0;
+}
+
+.ai-btn:hover {
+  background: rgba(46, 134, 222, 0.2);
+}
+
+.ai-btn.active {
+  background: #2e86de;
+  color: white;
+}
+
+/* Compact Sidebar Overrides */
+.sidebar {
+  padding: 0.8rem;
+  gap: 0.4rem;
+}
+
+.sidebar h1 {
+  font-size: 1.1rem;
+  margin-bottom: 0.8rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.toolbar {
+  gap: 0.8rem;
+}
+
+.toolbar-group {
+  gap: 0.2rem;
+}
+
+.toolbar-group label {
+  font-size: 0.7rem;
+  color: #777;
+}
+
+.toolbar-group select,
+.toolbar-group input {
+  padding: 0.3rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+.toolbar-actions {
+  margin-top: 1rem;
+  gap: 0.5rem;
+}
+
+.btn {
+  padding: 0.5rem;
+  font-size: 0.8rem;
+}
+
+/* Hide old tab nav styles if any remain */
+.tab-nav-bottom {
+  display: none;
+}
+
+/* Tab Navigation (Bottom) */
+.tab-nav-bottom {
+  display: flex;
+  gap: 4px;
+  /* Removed background, padding, border-top, height to fit in status bar */
+  align-items: center;
+}
+
+.tab-btn-bottom {
+  padding: 2px 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: #888;
+  border-radius: 4px;
+  height: auto;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s ease;
+  font-family: var(--font-gothic);
+  white-space: nowrap;
+  /* Prevent wrap */
+  flex-shrink: 0;
+  /* Prevent shrinking */
+}
+
+.tab-btn-bottom:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-paper);
+}
+
+.tab-btn-bottom.active {
+  background: rgba(0, 0, 0, 0.05);
+  /* Unified style */
+  color: var(--accent-color);
+  font-weight: bold;
+  height: auto;
+  box-shadow: none;
+}
+
+/* Stats Styles */
+.stats-container {
+  margin-bottom: 1rem;
+  padding: 0.6rem;
+  background: white;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.5rem;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  color: #7f8c8d;
+}
+
+.stat-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-paper);
+  font-family: monospace;
+  /* Monospace for numbers alignment */
+}
+
+.stat-unit {
+  font-size: 0.75rem;
+  margin-left: 0.2rem;
+  color: #95a5a6;
+}
+
+.stat-detail {
+  font-size: 0.75rem;
+  color: #95a5a6;
+  text-align: right;
+  margin-top: 0.2rem;
+}
+
+/* Toolbar - Property Inspector Style */
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.toolbar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-bottom: 0.3rem;
+  padding-bottom: 0;
+}
+
+.section-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #95a5a6;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-bottom: 2px;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 0px;
+}
+
+.control-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.3rem;
+  align-items: start;
+}
+
+.control-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.control-item.span-full {
+  grid-column: 1 / -1;
+}
+
+.control-item label {
+  font-size: 0.65rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.control-item select,
+.control-item input {
+  width: 100%;
+  padding: 4px 6px;
+  font-size: 0.75rem;
+  padding: 2px 4px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background: #fdfdfd;
+  color: #333;
+  font-family: var(--font-gothic);
+  transition: all 0.2s;
+}
+
+.control-item select:hover,
+.control-item input:hover {
+  border-color: #ccc;
+}
+
+.control-item select:focus,
+.control-item input:focus {
+  border-color: var(--accent-color);
+  outline: none;
+  background: white;
+}
+
+/* Presets */
+.preset-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.preset-select {
+  flex: 1;
+  padding: 4px 6px;
+  font-size: 0.8rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}
+
+.icon-btn-add {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e0e0e0;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--accent-color);
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.icon-btn-add:hover {
+  background: var(--accent-color);
+  color: white;
+  border-color: var(--accent-color);
+}
+
+/* Action Buttons */
+.toolbar-actions {
+  margin-top: auto;
+  /* Push to bottom if space allows, or just margin */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.btn-action {
+  padding: 8px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  color: #555;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.btn-action:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
+  transform: translateY(-1px);
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 10px;
+  background: var(--text-paper);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-primary:hover {
+  background: var(--accent-color);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+/* Hide unused classes */
+.toolbar-group,
+.btn,
+.btn-small {
+  display: none;
+}
+
+/* Vertical Editor */
+.editor-wrapper {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  overflow: auto;
+  display: flex;
+  position: relative;
+}
+
+.editor-wrapper.vertical {
+  writing-mode: vertical-rl;
+}
+
+.editor-wrapper.horizontal {
+  writing-mode: horizontal-tb;
+  flex-direction: column;
+}
+
+.vertical-editor {
+  writing-mode: vertical-rl;
+  width: 100%;
+  height: 100%;
+  min-height: 80vh;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  font-family: var(--font-mincho);
+  /* Editor always Mincho by default */
+  font-size: var(--editor-font-size, 1.2rem) !important;
+  line-height: var(--editor-line-height, 2);
+  letter-spacing: 0.05em;
+  color: inherit;
+  color: inherit;
+  /* padding: 1rem; */
+  /* More padding for comfort - REDUCED to 1rem to match ruler/reduce gap */
+  /* REMOVED completely to let Editor.jsx control padding (2rem) */
+}
+
+.horizontal-editor {
+  writing-mode: horizontal-tb;
+  width: 100%;
+  height: 100%;
+  min-height: 80vh;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  font-family: var(--font-mincho);
+  font-size: var(--editor-font-size, 1.2rem) !important;
+  line-height: var(--editor-line-height, 2);
+  letter-spacing: 0.05em;
+  color: inherit;
+  color: inherit;
+  padding: 1rem;
+  max-width: 100%;
+  /* Use full width */
+  margin: 0;
+  /* Remove auto margin */
+
+  /* CRITICAL: Enforce Monospace Metrics for Proportional Fonts (Hiragino) */
+  /* CRITICAL: Enforce Monospace Metrics for Proportional Fonts (Hiragino) */
+  font-feature-settings: "palt" 0, "calt" 0, "kern" 0 !important;
+  font-variant-ligatures: none !important;
+  font-variant-east-asian: full-width !important;
+  letter-spacing: 0 !important;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.25);
+}
+
+.hidden {
+  display: none;
+}
+
+/* File Tree Styles */
+.file-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem 0;
+  font-size: 0.85rem;
+}
+
+.tree-item {
+  user-select: none;
+}
+
+.tree-item-content {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 0;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+  min-height: 24px;
+}
+
+.tree-item-content:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.tree-item-content.active {
+  background: var(--accent-color);
+  color: white;
+}
+
+.tree-item-content.active .tree-count {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.tree-expand-icon {
+  font-size: 0.65rem;
+  width: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #999;
+  cursor: pointer;
+}
+
+.tree-expand-icon:hover {
+  color: var(--text-paper);
+}
+
+.tree-icon {
+  font-size: 0.85rem;
+  width: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tree-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* Single line with ellipsis */
+  font-size: 0.8rem;
+  /* Slightly larger font */
+  line-height: 1.3;
+  padding-right: 4px;
+}
+
+.tree-count {
+  font-size: 0.7rem;
+  color: #999;
+  margin-left: auto;
+  padding-left: 8px;
+  flex-shrink: 0;
+}
+
+/* Sidebar Tab Switcher */
+.sidebar-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+  padding-bottom: 4px;
+}
+
+.sidebar-tab {
+  flex: 1;
+  padding: 8px 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: #888;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-tab.active {
+  color: var(--accent-color);
+  border-bottom-color: var(--accent-color);
+}
+
+.sidebar-tab:hover {
+  color: var(--text-paper);
+  background: var(--hover-color);
+}
+
+.sidebar-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  /* Allow scrolling for long settings/lists */
+  overflow-x: hidden;
+}
+
+.project-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 0.5rem;
+}
+
+.btn-open-project {
+  padding: 8px 12px;
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn-open-project:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+/* Context Menu */
+.context-menu {
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 160px;
+  /* Reduced width */
+  padding: 4px 0;
+  font-size: 0.8rem;
+  /* Smaller font */
+  z-index: 99999;
+  position: fixed;
+}
+
+.context-menu-item {
+  padding: 6px 12px;
+  /* More padding */
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-paper);
+  transition: background 0.1s;
+}
+
+.context-menu-item:hover {
+  background: rgba(142, 68, 173, 0.1);
+}
+
+.context-menu-item.disabled {
+  color: #999;
+  cursor: not-allowed;
+}
+
+.context-menu-item.disabled:hover {
+  background: transparent;
+}
+
+/* Utility for buttons in bottom bar */
+.tab-nav-bottom .ruby-btn,
+.tab-nav-bottom .ai-btn {
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.tab-nav-bottom .ruby-btn:hover,
+.tab-nav-bottom .ai-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-primary);
+}
+
+/* Reference Panel (Split View) */
+.main-content.split-view {
+  display: flex;
+  flex-direction: row;
+  /* Force side-by-side layout */
+  overflow: hidden;
+}
+
+.editor-container {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.reference-panel-wrapper {
+  display: flex;
+  height: 100vh;
+  background: #fcfcfc;
+  border-left: 1px solid var(--border-color);
+  position: relative;
+}
+
+.resize-handle {
+  width: 6px;
+  /* Slightly wider */
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.2s;
+  flex-shrink: 0;
+  z-index: 10;
+  border-left: 1px solid transparent;
+}
+
+.resize-handle:hover,
+.resize-handle.resizing {
+  background: var(--accent-color);
+  opacity: 0.5;
+}
+
+.reference-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  min-width: 200px;
+}
+
+.reference-header {
+  height: 40px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+  background: #f8f9fa;
+  flex-shrink: 0;
+}
+
+.reference-title {
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-close-reference {
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.btn-close-reference:hover {
+  color: #666;
+}
+
+.reference-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+  line-height: 1.8;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.reference-panel.full-page {
+  height: 100%;
+  width: 100%;
+  border-left: none;
+}
+
+.reference-panel.full-page .reference-content {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 3rem;
+}
+
+.reference-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #ccc;
+  text-align: center;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+/* Footer Styles */
+.footer {
+  padding: 0.5rem 1rem;
+  border-top: 1px solid var(--border-color);
+  background: #f8f9fa;
+  flex-shrink: 0;
+}
+
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+
+/* Theme Specific Editor Styles */
+
+/* Paper Style: Lined (University Note) */
+/* Horizontal Writing */
+/* Horizontal Writing */
+body[data-paper-style="lined"] .editor-wrapper.horizontal .horizontal-editor {
+  background-image: linear-gradient(transparent 95%, #aaccff 95%);
+  /* Use rounded integer height to match text exactly */
+  background-size: 100% var(--editor-row-height-px, calc(var(--editor-font-size) * var(--editor-line-height)));
+  background-attachment: local;
+  background-position: 0 2rem;
+  /* Align lines to start after top padding */
+  /* padding-top: 2rem !important; */
+  /* Handled by Editor.jsx inline style (2rem) */
+  line-height: var(--editor-line-height);
+  font-size: var(--editor-font-size);
+}
+
+/* Vertical Writing */
+body[data-paper-style="lined"] .editor-wrapper.vertical .vertical-editor {
+  /* Vertical Lines (Columns) for vertical writing */
+  /* Gradient flows to right. Line at start or end. */
+  /* Repeating pattern: Line (1px) | Transparent (Gap) */
+  background-image: linear-gradient(to left, transparent 1px, transparent calc(100% - 1px), #aaccff calc(100% - 1px));
+  /* Size: Width = LineHeight * FontSize. Height = 100% */
+  /* Use rounded integer height */
+  background-size: var(--editor-row-height-px, calc(var(--editor-font-size) * var(--editor-line-height))) 100%;
+  background-attachment: local;
+  /* Align to right edge (start of first line) */
+  background-position: right 0 top 0;
+
+  line-height: var(--editor-line-height);
+  font-size: var(--editor-font-size);
+}
+
+
+
+/* Horizontal Editor - Grid Mode (Scoped to Manuscript) */
+/* Horizontal Editor - Grid Mode (Scoped to Manuscript) */
+body[data-paper-style="manuscript"] .horizontal-editor,
+body[data-paper-style="manuscript"] .horizontal-editor.grid-mode {
+  /* 1. Colors */
+  --grid-color: rgba(184, 134, 11, 0.6);
+  /* Gold 0.6 */
+  --mask-color: #fdfbf7;
+  background-color: var(--mask-color) !important;
+  color: black !important;
+
+  /* 2. Grid Image */
+  background-image:
+    /* Layer 1: Gap Mask (Hides Rungs in Gap) */
+    linear-gradient(to bottom,
+      var(--mask-color) calc((var(--editor-line-height) - 1) / 2 * 1em),
+      transparent calc((var(--editor-line-height) - 1) / 2 * 1em),
+      transparent calc((var(--editor-line-height) - 1) / 2 * 1em + 1em),
+      var(--mask-color) calc((var(--editor-line-height) - 1) / 2 * 1em + 1em)),
+    /* Layer 2: Rails (Horizontal Lines) */
+    linear-gradient(to bottom,
+      transparent calc((var(--editor-line-height) - 1) / 2 * 1em),
+      var(--grid-color) calc((var(--editor-line-height) - 1) / 2 * 1em),
+      var(--grid-color) calc((var(--editor-line-height) - 1) / 2 * 1em + 1px),
+      transparent calc((var(--editor-line-height) - 1) / 2 * 1em + 1px),
+      transparent calc((var(--editor-line-height) - 1) / 2 * 1em + 1em - 1px),
+      var(--grid-color) calc((var(--editor-line-height) - 1) / 2 * 1em + 1em - 1px),
+      var(--grid-color) calc((var(--editor-line-height) - 1) / 2 * 1em + 1em),
+      transparent calc((var(--editor-line-height) - 1) / 2 * 1em + 1em)),
+    /* Layer 3: Rungs (Vertical Lines) */
+    linear-gradient(to right, var(--grid-color) 1px, transparent 1px) !important;
+
+  background-size:
+    100% 100%,
+    100% calc(var(--editor-line-height) * 1em),
+    100% calc(var(--editor-line-height) * 1em),
+    1em 1em !important;
+
+  background-repeat: no-repeat, repeat, repeat, repeat !important;
+  background-position: left top, left top, left top, left top !important;
+
+  /* Reset Metrics */
+  text-indent: 0 !important;
+  letter-spacing: 0 !important;
+  padding: 0 !important;
+  background-attachment: local !important;
+  line-height: var(--editor-line-height);
+  font-size: var(--editor-font-size);
+}
+
+/* Vertical Writing Editor - Core Styles */
+/* Applied directly to .vertical-editor class, independent of body attributes for robustness */
+.vertical-editor {
+  /* --- VERTICAL EDITOR RESET --- */
+  /* 1. Layout & Dimensions */
+  /* position: absolute !important; -- REMOVED for Grid Layout Support */
+  /* top: 0; left: 0; */
+  /* width: 100% !important; */
+  /* height: 100% !important; */
+  margin: 0 !important;
+  padding: 0 !important;
+
+  /* 2. Writing Mode (CRITICAL) */
+  writing-mode: vertical-rl !important;
+  -webkit-writing-mode: vertical-rl !important;
+  text-orientation: mixed !important;
+
+  /* 3. Visibility & Background */
+  background-color: transparent !important;
+  /* Let wrapper bg show or specific mode bg */
+
+  /* 4. Font (Restore Dynamic Settings) */
+  font-size: var(--editor-font-size) !important;
+  line-height: var(--editor-line-height) !important;
+  font-family: inherit;
+
+  /* 5. Interaction */
+  resize: none;
+  z-index: 10;
+  white-space: pre-wrap !important;
+  overflow: auto !important;
+
+  /* Padding - Let Editor.jsx control it via inline style */
+  /* padding: 0 !important; */
+
+  /* CRITICAL: Enforce Monospace Metrics */
+  letter-spacing: 0 !important;
+  font-feature-settings: "palt" 0, "vpal" 0 !important;
+  font-variant-east-asian: full-width !important;
+}
+
+
+/* Vertical Editor - GRID MODE SPECIFIC */
+/* Vertical Editor - GRID MODE SPECIFIC */
+body[data-paper-style="manuscript"] .vertical-editor,
+body[data-paper-style="manuscript"] .vertical-editor.grid-mode {
+  /* 1. Colors */
+  --grid-color: rgba(184, 134, 11, 0.6);
+  /* Gold 0.6 */
+  --mask-color: #fdfbf7;
+  background-color: var(--mask-color) !important;
+
+  /* GRID LOGIC */
+  --line-height-ratio: var(--editor-line-height);
+  --tile-width: var(--editor-row-height-px);
+  /* Fixed to Integer */
+
+  /* Calcs for Integer-Perfect Gradients */
+  --gap-size: calc((var(--editor-row-height-px) - var(--editor-font-size)) / 2);
+  --text-end: calc(var(--gap-size) + var(--editor-font-size));
+
+  /* 2. Grid Image - Converted to Repeating Gradients for Math Precision */
+  background-image:
+    /* Layer 1: Gap Mask (Hides Rungs in Gap) */
+    repeating-linear-gradient(to right,
+      var(--mask-color) 0,
+      var(--mask-color) var(--gap-size),
+      transparent var(--gap-size),
+      transparent var(--text-end),
+      var(--mask-color) var(--text-end),
+      var(--mask-color) var(--tile-width)),
+    /* Layer 2: Rails (Vertical Lines) */
+    repeating-linear-gradient(to right,
+      transparent 0,
+      transparent var(--gap-size),
+      var(--grid-color) var(--gap-size),
+      var(--grid-color) calc(var(--gap-size) + 1px),
+      transparent calc(var(--gap-size) + 1px),
+      transparent calc(var(--text-end) - 1px),
+      var(--grid-color) calc(var(--text-end) - 1px),
+      var(--grid-color) var(--text-end),
+      transparent var(--text-end),
+      transparent var(--tile-width)),
+    /* Layer 3: Rungs (Horizontal Lines) */
+    repeating-linear-gradient(to bottom,
+      var(--grid-color) 0,
+      var(--grid-color) 1px,
+      transparent 1px,
+      transparent var(--editor-font-size)) !important;
+
+  background-size: 100% 100% !important;
+
+  background-repeat: no-repeat, repeat, repeat, repeat !important;
+  background-position: right 0 top 0, right 0 top 0, right 0 top 0, right 0 top 0 !important;
+
+  /* MARGINS: Add padding and clip background to create a clean "Page Edge" */
+  /* CRITICAL: Use rounded integer padding to match Grid Pitch exactly */
+  padding: var(--editor-row-height-px) !important;
+  background-clip: content-box !important;
+  background-origin: content-box !important;
+  background-attachment: local !important;
+}
+
+/* Dark/Blackboard Theme Overrides for Manuscript Grid */
+body[data-color-theme="dark"][data-paper-style="manuscript"] .vertical-editor.grid-mode,
+body[data-color-theme="blackboard"][data-paper-style="manuscript"] .vertical-editor.grid-mode,
+body[data-color-theme="dark"] .vertical-editor.grid-mode,
+body[data-color-theme="blackboard"] .vertical-editor.grid-mode {
+  /* Use Theme Background instead of Cream */
+  background-color: transparent !important;
+
+  /* Use Light Grid for contrast */
+  /* ONLY for Manuscript, or if Grid is forced in dark mode? */
+  /* Actually, the loose selector here MIGHT be intended for generic grid in dark mode? */
+  /* But User complained about Plain showing grid. */
+  /* If Plain + Show Grid = True, then .grid-mode is present. */
+  /* If we have a rule for .grid-mode, it applies. */
+  /* The issue is that the generic grid styles were removed (good), but these OVERRIDES might persist? */
+  /* Override just sets bg color and variable. It doesn't ADD the grid image. */
+  /* The grid image was in the main rule I scoped earlier. */
+  /* So Plain + Grid Mode shouldn't have an image now. */
+  /* But it might have transparent background forcibly set here. */
+  /* Let's be safe and Scope everything to manuscript if that's the only place we want the Fancy Grid. */
+  /* Wait, does Plain + Show Grid mean "Show Simple Grid"? */
+  /* If so, where is the Simple Grid defined? */
+  /* It might be missing now if I scoped EVERYTHING to manuscript. */
+  /* If User wants Plain + Grid = Simple Grid, I should have a rule for .grid-mode that isn't manuscript. */
+  /* But User said "Plain has become old grid" as a COMPLAINT. */
+  /* Implies they want Plain to be PLAIN (no grid). */
+  /* Or maybe they want Plain + Grid = Simple Grid, but it looked "like old manuscript" (bad?). */
+  /* "无地が原稿用紙（旧）のようなマス目のみになってます" -> "Plain has become ONLY squares like old manuscript". */
+  /* This implies they DON'T like the squares on Plain. */
+  /* So scoping to Manuscript is correct to remove squares from Plain. */
+
+  /* So, I will scope these overrides too. */
+  --grid-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* FIX: Actually remove the loose selectors in the replacement below */
+
+body[data-color-theme="dark"][data-paper-style="manuscript"] .vertical-editor.grid-mode,
+body[data-color-theme="blackboard"][data-paper-style="manuscript"] .vertical-editor.grid-mode {
+  background-color: transparent !important;
+  --grid-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Force Cream Background for Light Mode Manuscript (Default) */
+body[data-color-theme="light"][data-paper-style="manuscript"] .vertical-editor.grid-mode,
+body:not([data-color-theme])[data-paper-style="manuscript"] .vertical-editor.grid-mode {
+  background-color: #fdfbf7 !important;
+}
+
+/* Vertical Writing - Lined Paper (University Note Style) */
+/* Vertical Writing - Lined Paper (University Note Style) */
+/* Vertical Writing - Lined Paper (University Note Style) */
+body[data-paper-style="lined"] .vertical-editor {
+  /* 1. Colors */
+  --grid-color: rgba(100, 100, 255, 0.4);
+  /* Light Blue */
+  --mask-color: #fdfbf7;
+  background-color: var(--mask-color) !important;
+
+  /* 2. Column Lines */
+  background-image:
+    linear-gradient(to right,
+      var(--grid-color) 1px,
+      transparent 1px) !important;
+
+  background-size: calc(var(--editor-font-size) * var(--editor-line-height)) 100% !important;
+
+  background-repeat: repeat-x !important;
+  background-attachment: local !important;
+  background-position: right 0 top 0 !important;
+
+  line-height: var(--editor-line-height);
+  font-size: var(--editor-font-size);
+}
+
+/* Color Theme: Blackboard */
+body[data-color-theme="blackboard"] {
+  --bg-paper: #2F4F4F;
+  --bg-paper-darker: #264040;
+  --text-paper: #FFFFFF;
+  --bg-color: #2F4F4F;
+  --text-color: #FFFFFF;
+  --sidebar-bg: #264040;
+  --editor-bg: #2F4F4F;
+  --border-color: #405d5d;
+  --accent-color: #ffd700;
+  --font-gothic: 'Zen Kaku Gothic New', sans-serif;
+  --font-mincho: 'Shippori Mincho', serif;
+}
+
+body[data-color-theme="blackboard"] .editor-wrapper textarea::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* I will start by forcing font-weight: normal on the textarea to ensure the baseline is stable.
+   Then I will inspect token styles. */
+body[data-color-theme="blackboard"] .editor-wrapper textarea {
+  color: #fff;
+  font-weight: normal;
+  /* Ensure consistent font-weight for layout */
+}
+
+/* Color Theme: Dark - (Handled by defaults or specific overrides) */
+/* body[data-color-theme="dark"] {} */
+
+
+.view-mode-toggle {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Electron Title Bar */
+.electron-title-bar {
+  height: 38px;
+  /* Height for traffic lights */
+  width: 100%;
+  background: var(--sidebar-bg);
+  /* Match sidebar */
+  border-bottom: 1px solid var(--border-color);
+  -webkit-app-region: drag;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  color: #999;
+  user-select: none;
+  z-index: 9999;
+  flex-shrink: 0;
+}
+
+.electron-title-bar span {
+  font-family: var(--font-gothic);
+  font-weight: 500;
+}
+
+/* =========================================================================
+   FORCE OVERRIDE: Robust Background Grid (Method A)
+   (Top: Mask | Middle: Rails | Bottom: Rungs)
+   ========================================================================= */
+
+/* --- Vertical Editor --- */
+body[data-paper-style="manuscript"] .vertical-editor.grid-mode {
+  --grid-color: rgba(184, 134, 11, 0.5);
+  --mask-color: #fdfbf7;
+
+  /* Pixel Exact Calculations for Grid */
+  /* We use the calculated integer pixels passed from JS to ensure perfect match */
+  --gap-size: calc((var(--editor-row-height-px) - var(--editor-font-size)) / 2);
+  --tile-size: var(--editor-row-height-px);
+  --cell-size: var(--editor-cell-pitch-px);
+
+  /* Method A: Unified Rulers via Repeating Gradients */
+  /* This avoids accumulated rounding errors from background-repeat */
+  background-image:
+    /* Layer 1: Gap Mask (Vertical Stripes) */
+    repeating-linear-gradient(to right,
+      var(--mask-color) 0,
+      var(--mask-color) var(--gap-size),
+      transparent var(--gap-size),
+      transparent calc(var(--gap-size) + var(--cell-size)),
+      var(--mask-color) calc(var(--gap-size) + var(--cell-size)),
+      var(--mask-color) var(--tile-size)),
+    /* Layer 2: Rails (Vertical Lines) */
+    repeating-linear-gradient(to right,
+      transparent 0,
+      transparent var(--gap-size),
+      var(--grid-color) var(--gap-size),
+      var(--grid-color) calc(var(--gap-size) + 1px),
+      transparent calc(var(--gap-size) + 1px),
+      transparent calc(var(--gap-size) + var(--cell-size) - 1px),
+      var(--grid-color) calc(var(--gap-size) + var(--cell-size) - 1px),
+      var(--grid-color) calc(var(--gap-size) + var(--cell-size)),
+      transparent calc(var(--gap-size) + var(--cell-size)),
+      transparent var(--tile-size)),
+    /* Layer 3: Rungs (Horizontal Lines) */
+    repeating-linear-gradient(to bottom,
+      var(--grid-color) 0,
+      var(--grid-color) 1px,
+      transparent 1px,
+      transparent var(--cell-size)) !important;
+
+  background-size: auto auto !important;
+  /* Let Repeating Gradients Fill */
+  background-position: right top !important;
+  background-repeat: no-repeat !important;
+  /* Gradients repeat themselves */
+  background-attachment: local !important;
+}
+
+/* --- Horizontal Editor --- */
+body[data-paper-style="manuscript"] .horizontal-editor.grid-mode {
+  --grid-color: rgba(184, 134, 11, 0.5);
+  --mask-color: #fdfbf7;
+
+  /* Pixel Exact Calc */
+  --gap-size: calc((var(--editor-row-height-px) - var(--editor-font-size)) / 2);
+  --tile-size: var(--editor-row-height-px);
+  --cell-size: var(--editor-cell-pitch-px);
+
+  background-image:
+    /* Layer 1 (Top): Gap Mask (Horizontal Stripes) */
+    linear-gradient(to bottom,
+      var(--mask-color) 0,
+      var(--mask-color) var(--gap-size),
+      transparent var(--gap-size),
+      transparent calc(var(--gap-size) + var(--cell-size)),
+      var(--mask-color) calc(var(--gap-size) + var(--cell-size)),
+      var(--mask-color) var(--tile-size)),
+    /* Layer 2 (Middle): Rails (Horizontal Lines) */
+    linear-gradient(to bottom,
+      transparent 0,
+      transparent var(--gap-size),
+      var(--grid-color) var(--gap-size),
+      var(--grid-color) calc(var(--gap-size) + 1px),
+      transparent calc(var(--gap-size) + 1px),
+      transparent calc(var(--gap-size) + var(--cell-size) - 1px),
+      var(--grid-color) calc(var(--gap-size) + var(--cell-size) - 1px),
+      var(--grid-color) calc(var(--gap-size) + var(--cell-size)),
+      transparent calc(var(--gap-size) + var(--cell-size))),
+    /* Layer 3 (Bottom): Rungs (Vertical Lines) */
+    linear-gradient(to right, var(--grid-color) 1px, transparent 1px) !important;
+
+  background-size:
+    /* Tile Height is derived from Row Height. Cell Width is Font Size. */
+    var(--cell-size) var(--tile-size),
+    var(--cell-size) var(--tile-size),
+    var(--cell-size) var(--tile-size) !important;
+
+  background-repeat: repeat !important;
+  background-position: left top !important;
+  background-attachment: local !important;
+}
+
+/* Utility for Syntax Highlighting */
+/* Removed */
+
+/* Sakura Editor / Novel Writing Style Extensions */
+
+/* Invisible Character Visualization */
+.token-space-full {
+  /* Box for Full-width Space */
+  outline: 1px solid rgba(0, 0, 0, 0.08);
+  outline-offset: -2px;
+  border-radius: 1px;
+  /* Optional: faint background */
+  background-color: rgba(0, 0, 0, 0.01);
+}
+
+/* Dark mode adjustment */
+body.dark-mode .token-space-full {
+  outline-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.token-tab {
+  /* Tab Arrow Visualization */
+  position: relative;
+  /* Use a pseudo-element to show arrow without affecting layout */
+}
+
+.token-tab::after {
+  content: '→';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: rgba(0, 0, 0, 0.15);
+  font-size: 0.8em;
+  pointer-events: none;
+  font-family: var(--font-gothic);
+}
+
+body.dark-mode .token-tab::after {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+/* Conversation Highlight */
+.token-conversation {
+  /* Subtle highlight for speech */
+  color: #2c3e50;
+  /* Keep text dark */
+  /* font-weight: 500; -- REMOVED to prevent width drift vs textarea */
+}
+
+/* Specific theme overrides */
+body[data-color-theme="sakura"] .token-conversation {
+  color: #5d4037;
+  /* Brown-ish for Sakura theme */
+}
+
+body.dark-mode .token-conversation {
+  color: #bdc3c7;
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.token-ruby {
+  color: var(--accent-color);
+  /* font-weight: bold; -- REMOVED */
+
+  /* CRITICAL: Protect layout from drift */
+  font-size: inherit !important;
+  transform: none !important;
+  display: inline !important;
+  letter-spacing: inherit !important;
+}
+
+/* Token Styling Overrides */
+.token-link {
+  color: #2980b9 !important;
+  text-decoration: underline !important;
+  cursor: pointer;
+  text-underline-offset: 2px;
+}
+
+body.dark-mode .token-link {
+  color: #5dade2 !important;
+}
+
+.token-emphasis {
+  /* font-weight: 700 !important; -- REMOVED */
+  color: inherit;
+  /* Emphasis dots REMOVED to prevent line height shift */
+}
+
+/* body.dark-mode .token-emphasis removed as it was only for dots */
+
+/* Utility to force transparency on Textarea - High Specificity */
+#root textarea.transparent-force {
+  background: transparent !important;
+  background-image: none !important;
+  background-color: transparent !important;
+  color: transparent !important;
+  /* FIXED: No more Red Ghost */
+  /* Keep text invisible but existent */
+
+  /* CRITICAL: Restore UI Elements caused by color: transparent */
+  caret-color: var(--text-color, #333) !important;
+
+  /* Ensure scrollbar visibility isn't lost */
+  overflow: auto !important;
+  scrollbar-color: auto !important;
+  /* Force system default or theme default */
+}
+
+/* Ensure Caret is visible in Dark Mode */
+body.dark-mode #root textarea.transparent-force {
+  caret-color: #fff !important;
+}
+
+/* 
+   CRITICAL: FORCE FULL WIDTH & STRICT MONOSPACE (Fixes Drift)
+   Apply to both underlying Textarea (layout source) 
+   and HighlightOverlay (visual source).
+   "palt" 0 / "vpal" 0 disables proportional metrics in OpenType fonts.
+*/
+#root textarea.transparent-force,
+.highlight-overlay,
+.highlight-overlay span,
+.vertical-editor,
+.horizontal-editor {
+  /* Layout Safety */
+  white-space: pre-wrap !important;
+  word-break: break-all !important;
+  /* CHANGED from normal to break-all to ensure identical wrapping with Textarea */
+  overflow-wrap: anywhere !important;
+}
+
+/* Hide scrollbar for Overlay Parity strategy */
+/* CRITICAL: Do NOT use display: none, as it removes the width reservation! */
+.highlight-overlay::-webkit-scrollbar {
+  background-color: transparent;
+}
+
+.highlight-overlay::-webkit-scrollbar-thumb {
+  background-color: transparent;
+}
+
+.highlight-overlay::-webkit-scrollbar-corner {
+  background-color: transparent;
+}
+
+/* Enforce Font Smoothing Parity */
+#root textarea.transparent-force,
+.highlight-overlay,
+.highlight-overlay span,
+.vertical-editor,
+.horizontal-editor {
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: optimizeLegibility !important;
+
+  /* Typography Safety */
+  /* text-transform: full-width !important; -- DISABLED: Suspect for drift */
+  /* font-variant-east-asian: full-width !important; -- DISABLED */
+  /* font-feature-settings: "palt" 0... !important; -- DISABLED */
+
+  font-feature-settings: "fwid" 1 !important;
+  font-variant: normal !important;
+  text-transform: full-width !important;
+  /* CRITICAL: Force ASCII to Fullwidth for Grid Alignment */
+
+  font-kerning: none !important;
+  font-variant-ligatures: none !important;
+  letter-spacing: 0px !important;
+  word-spacing: 0px !important;
+  tab-size: 2 !important;
+}
+
+/* Ensure HighlightOverlay uses transparent scrollbars (hidden but space reserved via scrollbar-gutter) */
+.highlight-overlay {
+  position: absolute !important;
+  /* CRITICAL: Overlay must sit on top of textarea */
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+
+  pointer-events: none !important;
+  /* CRITICAL: Pass events to underlying textarea */
+  z-index: 0 !important;
+  /* Ensure it is behind */
+
+  /* SCROLLBAR SYNC: Match Textarea's scrollbar presence to ensure identical wrapping/column breaks */
+  scrollbar-color: transparent transparent !important;
+  overflow: scroll !important;
+  /* CHANGED: Force scrollbar track to always be present to match Textarea */
+  /* Must match textarea 'auto' or 'scroll' */
+  scrollbar-gutter: stable;
+  /* Optional but good practice */
+
+  /* Sync Layout Logic */
+  white-space: pre-wrap !important;
+  /* CRITICAL: Respect \n from tokenization */
+  word-break: break-all !important;
+}
+
+/* Apply same scrollbar to both Overlay AND Textarea */
+.highlight-overlay::-webkit-scrollbar,
+#root textarea.transparent-force::-webkit-scrollbar {
+  background: transparent;
+  width: 8px;
+  height: 8px;
+}
+
+.highlight-overlay::-webkit-scrollbar-thumb,
+#root textarea.transparent-force::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  /* Make visible for user feedback */
+  border-radius: 4px;
+}
+
+.highlight-overlay::-webkit-scrollbar-track,
+#root textarea.transparent-force::-webkit-scrollbar-track {
+  background: transparent;
+}

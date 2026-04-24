@@ -1,0 +1,5147 @@
+[
+  {
+    "id": "SITAGATTE_END",
+    "category": "文法",
+    "pattern": "したがって",
+    "suggestion": "したがって",
+    "message": "したがっては文の最後にきません。したがって「。」を削除して、文を続けるのが正しいです"
+  },
+  {
+    "id": "O",
+    "category": "文法",
+    "pattern": "お",
+    "suggestion": "名詞を",
+    "message": "文法ミスがあります。名詞を見る"
+  },
+  {
+    "id": "KAIKETUNARU",
+    "category": "文法",
+    "pattern": "解決なる",
+    "suggestion": "解決になる",
+    "message": "文法ミスがあります。解決になるの間違いです。"
+  },
+  {
+    "id": "DOUSI_DEHA",
+    "category": "文法",
+    "pattern": "では",
+    "suggestion": "のでは",
+    "message": "文法ミスがあります。のではの間違いです。"
+  },
+  {
+    "id": "MEISI_DESUMU",
+    "category": "文法",
+    "pattern": "で住む",
+    "suggestion": "に住む",
+    "message": "文法ミスがあります。に住むの間違いです。"
+  },
+  {
+    "id": "MOTISITE",
+    "category": "文法",
+    "pattern": "用して",
+    "suggestion": "用いて",
+    "message": "文法ミスがあります。用いての間違いです。"
+  },
+  {
+    "id": "DOYATTE",
+    "category": "文法",
+    "pattern": "どやって",
+    "suggestion": "どうやって",
+    "message": "文法ミスがあります。どうやっての間違いです。"
+  },
+  {
+    "id": "WOAGARU",
+    "category": "文法",
+    "pattern": "を上がる",
+    "suggestion": "を上げる",
+    "message": "文法ミスがあります。を上げるの間違いです。"
+  },
+  {
+    "id": "KOREWA",
+    "category": "文法",
+    "pattern": "これわ",
+    "suggestion": "これは",
+    "message": "文法ミスがあります。これはの間違いです。"
+  },
+  {
+    "id": "MEISI_YOMU",
+    "category": "文法",
+    "pattern": "読む",
+    "suggestion": "を読む",
+    "message": "文法ミスがあります。を読むの間違いです。"
+  },
+  {
+    "id": "WOSANNKASITE",
+    "category": "文法",
+    "pattern": "を参加し",
+    "suggestion": "に参加して",
+    "message": "文法ミスがあります。に参加しての間違いです。"
+  },
+  {
+    "id": "DOUSI_KOTOGADEKIRU",
+    "category": "文法",
+    "pattern": "ことができる\\|出来る",
+    "suggestion": "",
+    "message": "「ことができる」という表現は冗長な可能性があります。"
+  },
+  {
+    "id": "KINNJOHE",
+    "category": "文法",
+    "pattern": "近所へ",
+    "suggestion": "近所で",
+    "message": "文法ミスがあります。近所での間違いです。"
+  },
+  {
+    "id": "DOUSI_GANAGAKUNARU",
+    "category": "文法",
+    "pattern": "が長く",
+    "suggestion": "暮らしが長く",
+    "message": "文法ミスがあります。暮らしが長くなるの間違いです。"
+  },
+  {
+    "id": "DEATA",
+    "category": "文法",
+    "pattern": "であた",
+    "suggestion": "であった",
+    "message": "文法ミスがあります。であったの間違いです。"
+  },
+  {
+    "id": "GAKUSEITATI",
+    "category": "文法",
+    "pattern": "学生たち",
+    "suggestion": "学生",
+    "message": "文法ミスがあります。学生の間違いです。"
+  },
+  {
+    "id": "WOMITUKATTA",
+    "category": "文法",
+    "pattern": "を見つかった",
+    "suggestion": "を見つけた",
+    "message": "文法ミスがあります。を見つけたの間違いです。"
+  },
+  {
+    "id": "ATUMETTE",
+    "category": "文法",
+    "pattern": "集めって",
+    "suggestion": "集めて",
+    "message": "文法ミスがあります。集めての間違いです。"
+  },
+  {
+    "id": "SAKINAKUNATTA",
+    "category": "文法",
+    "pattern": "先亡くなった",
+    "suggestion": "先に亡くなった",
+    "message": "文法ミスがあります。先に亡くなったの間違いです。"
+  },
+  {
+    "id": "ZUTTO_DOUSI_TARA",
+    "category": "文法",
+    "pattern": "ずっとたら",
+    "suggestion": "ずっと開けていたら",
+    "message": "文法ミスがあります。ずっと開けていたらの間違いです。"
+  },
+  {
+    "id": "HATOHAIU",
+    "category": "文法",
+    "pattern": "鳩は言う",
+    "suggestion": "鳩は鳴く",
+    "message": "文法ミスがあります。鳩は鳴くの間違いです。"
+  },
+  {
+    "id": "KUMOMOHITOTUNAKU",
+    "category": "文法",
+    "pattern": "雲も一つなく",
+    "suggestion": "雲一つなく",
+    "message": "文法ミスがあります。雲一つなくの間違いです。"
+  },
+  {
+    "id": "KONITIHA",
+    "category": "文法",
+    "pattern": "こにちは",
+    "suggestion": "こんにちは",
+    "message": "文法ミスがあります。こんにちはの間違いです。"
+  },
+  {
+    "id": "HAJIMEMOSITE",
+    "category": "文法",
+    "pattern": "始めもして",
+    "suggestion": "始めまして",
+    "message": "文法ミスがあります。始めましての間違いです。"
+  },
+  {
+    "id": "MANABETAI",
+    "category": "文法",
+    "pattern": "学べたい",
+    "suggestion": "学びたい",
+    "message": "文法ミスがあります。学びたいの間違いです。"
+  },
+  {
+    "id": "KOTOSIHASAI",
+    "category": "文法",
+    "pattern": "今年は歳",
+    "suggestion": "今年で_歳",
+    "message": "文法ミスがあります。今年で_歳の間違いです。"
+  },
+  {
+    "id": "KIKUTOKONIYORUTO",
+    "category": "文法",
+    "pattern": "聞くことによると",
+    "suggestion": "聞くところによると",
+    "message": "文法ミスがあります。聞くところによるとの間違いです。"
+  },
+  {
+    "id": "SAISYONANIKKI",
+    "category": "文法",
+    "pattern": "最初な日記",
+    "suggestion": "最初の日記",
+    "message": "文法ミスがあります。最初の日記の間違いです。"
+  },
+  {
+    "id": "SENNTAKUWOARAU",
+    "category": "文法",
+    "pattern": "洗濯を洗う",
+    "suggestion": "洗濯をする",
+    "message": "文法ミスがあります。洗濯をするの間違いです。"
+  },
+  {
+    "id": "GOWOMOTTEIRU",
+    "category": "文法",
+    "pattern": "語を持っている",
+    "suggestion": "語を習得している",
+    "message": "文法ミスがあります。語を習得しているの間違いです。"
+  },
+  {
+    "id": "DAIGAKUJI",
+    "category": "文法",
+    "pattern": "大学時",
+    "suggestion": "大学の時",
+    "message": "文法ミスがあります。大学の時の間違いです。"
+  },
+  {
+    "id": "KIREIMO",
+    "category": "文法",
+    "pattern": "きれいも",
+    "suggestion": "きれいで",
+    "message": "文法ミスがあります。きれいでの間違いです。"
+  },
+  {
+    "id": "OOKINA_MEISI",
+    "category": "文法",
+    "pattern": "大きいな",
+    "suggestion": "大きい部屋",
+    "message": "文法ミスがあります。大きい部屋の間違いです。"
+  },
+  {
+    "id": "MADENIYOHUKASI",
+    "category": "文法",
+    "pattern": "までに夜更かし",
+    "suggestion": "まで夜更かし",
+    "message": "文法ミスがあります。まで夜更かしの間違いです。"
+  },
+  {
+    "id": "HUTTANAI",
+    "category": "文法",
+    "pattern": "降ったない",
+    "suggestion": "降らなかった",
+    "message": "文法ミスがあります。降らなかったの間違いです。"
+  },
+  {
+    "id": "SEIBUNNHAKOMUGI",
+    "category": "文法",
+    "pattern": "成分は小麦",
+    "suggestion": "材料は小麦",
+    "message": "文法ミスがあります。材料は小麦の間違いです。"
+  },
+  {
+    "id": "NAZOKATTE",
+    "category": "文法",
+    "pattern": "なぞ買って",
+    "suggestion": "なにを買って",
+    "message": "文法ミスがあります。なにを買っての間違いです。"
+  },
+  {
+    "id": "SANNKANIIKU",
+    "category": "文法",
+    "pattern": "参加に行く",
+    "suggestion": "参加しに行く",
+    "message": "文法ミスがあります。参加しに行くの間違いです。"
+  },
+  {
+    "id": "TIGAUHANANI",
+    "category": "文法",
+    "pattern": "違うはなに",
+    "suggestion": "違いはなに",
+    "message": "文法ミスがあります。違いはなにの間違いです。"
+  },
+  {
+    "id": "TAKUSANNNAHITO",
+    "category": "文法",
+    "pattern": "たくさんな人",
+    "suggestion": "たくさんの人",
+    "message": "文法ミスがあります。たくさんの人の間違いです。"
+  },
+  {
+    "id": "YASUMIHI",
+    "category": "文法",
+    "pattern": "休み日",
+    "suggestion": "休みの日",
+    "message": "文法ミスがあります。休みの日の間違いです。"
+  },
+  {
+    "id": "KOMARUDESU",
+    "category": "文法",
+    "pattern": "困るです",
+    "suggestion": "困ります",
+    "message": "文法ミスがあります。困りますの間違いです。"
+  },
+  {
+    "id": "OSAEDEKIRU",
+    "category": "文法",
+    "pattern": "抑えできる",
+    "suggestion": "抑えられる",
+    "message": "文法ミスがあります。抑えられるの間違いです。"
+  },
+  {
+    "id": "KATURYOKUNAHITO",
+    "category": "文法",
+    "pattern": "活力な人",
+    "suggestion": "元気な人",
+    "message": "文法ミスがあります。元気な人の間違いです。"
+  },
+  {
+    "id": "RIYUUWONAI",
+    "category": "文法",
+    "pattern": "理由をない",
+    "suggestion": "理由はない",
+    "message": "文法ミスがあります。理由はないの間違いです。"
+  },
+  {
+    "id": "MEISI_WOARI",
+    "category": "文法",
+    "pattern": "をあり",
+    "suggestion": "コーヒーがある",
+    "message": "文法ミスがあります。コーヒーがあるの間違いです。"
+  },
+  {
+    "id": "MEISI_WOOWATTA",
+    "category": "文法",
+    "pattern": "を終わった",
+    "suggestion": "宿題をを終えた",
+    "message": "文法ミスがあります。宿題をを終えたの間違いです。"
+  },
+  {
+    "id": "MEISI_WOHAJIMATTA",
+    "category": "文法",
+    "pattern": "を始まった",
+    "suggestion": "試験が始まった",
+    "message": "文法ミスがあります。試験が始まったの間違いです。"
+  },
+  {
+    "id": "GATUDUKITAI",
+    "category": "文法",
+    "pattern": "が続きたい",
+    "suggestion": "を続けたい",
+    "message": "文法ミスがあります。を続けたいの間違いです。"
+  },
+  {
+    "id": "KEKKOSITA",
+    "category": "文法",
+    "pattern": "けっこした",
+    "suggestion": "けっこうした",
+    "message": "文法ミスがあります。けっこうしたの間違いです。"
+  },
+  {
+    "id": "SUBEKINOHA",
+    "category": "文法",
+    "pattern": "すべきのは",
+    "suggestion": "すべきなのは",
+    "message": "文法ミスがあります。すべきなのはの間違いです。"
+  },
+  {
+    "id": "NO_SURU",
+    "category": "文法",
+    "pattern": "の表示する",
+    "suggestion": "を",
+    "message": "目的語を表すにはをを使用します。"
+  },
+  {
+    "id": "JOUKIDOORI",
+    "category": "文法",
+    "pattern": "上記通り",
+    "suggestion": "上記の通り",
+    "message": "文法ミスがあります。上記の通りの間違いです。"
+  },
+  {
+    "id": "NATOTONOTTEITE",
+    "category": "文法",
+    "pattern": "な整っていて",
+    "suggestion": "に整っていて",
+    "message": "文法ミスがあります。に整っていての間違いです。"
+  },
+  {
+    "id": "GOHENNJI",
+    "category": "文法",
+    "pattern": "ご返事",
+    "suggestion": "お返事",
+    "message": "文法ミスがあります。お返事の間違いです。"
+  },
+  {
+    "id": "MUZUKASITO",
+    "category": "文法",
+    "pattern": "むずかしと",
+    "suggestion": "むずかしいと",
+    "message": "文法ミスがあります。むずかしいとの間違いです。"
+  },
+  {
+    "id": "KEDO",
+    "category": "文法",
+    "pattern": "げと",
+    "suggestion": "けど",
+    "message": "文法ミスがあります。けどの間違いです。"
+  },
+  {
+    "id": "KANOJOHA_MEISI_GAIRU",
+    "category": "文法",
+    "pattern": "彼女はがいる",
+    "suggestion": "彼女には友達がいる",
+    "message": "文法ミスがあります。彼女には友達がいるの間違いです。"
+  },
+  {
+    "id": "KOTAEGAMATIGAETA",
+    "category": "文法",
+    "pattern": "答えが間違えた",
+    "suggestion": "答えを間違えた",
+    "message": "文法ミスがあります。答えを間違えたの間違いです。"
+  },
+  {
+    "id": "MOKUTEKINIAKIRAKA",
+    "category": "文法",
+    "pattern": "目的に明らか",
+    "suggestion": "目的を明らか",
+    "message": "文法ミスがあります。目的を明らかの間違いです。"
+  },
+  {
+    "id": "START2",
+    "category": "文法",
+    "pattern": "ー－っゃゅょ",
+    "suggestion": "ーや",
+    "message": "「ー」の後に小さい文字はきません。「ーや」の間違いではありませんか。"
+  },
+  {
+    "id": "CHIGAI",
+    "category": "文法",
+    "pattern": "違くて",
+    "suggestion": "違って",
+    "message": "文法ミスがあります。違っての間違いです。"
+  },
+  {
+    "id": "CHIGATTA",
+    "category": "文法",
+    "pattern": "違かった",
+    "suggestion": "違った",
+    "message": "文法ミスがあります。違ったの間違いです。"
+  },
+  {
+    "id": "OMACHIDOU",
+    "category": "文法",
+    "pattern": "お待ち\\|おまちどお",
+    "suggestion": "お待ちどう",
+    "message": "文法ミスがあります。お待ちどうの間違いです。"
+  },
+  {
+    "id": "MOTOZUKU",
+    "category": "文法",
+    "pattern": "基\\|もとずく",
+    "suggestion": "基づく",
+    "message": "文法ミスがあります。基づくの間違いです。"
+  },
+  {
+    "id": "IWAZUMOKANA",
+    "category": "文法",
+    "pattern": "言わ\\|いわずもかな",
+    "suggestion": "言わずもがな",
+    "message": "文法ミスがあります。言わずもがなの間違いです。"
+  },
+  {
+    "id": "SIITEHAKOTOWOSISONNZURU",
+    "category": "文法",
+    "pattern": "強しては事\\|ことを仕損ずる",
+    "suggestion": "急いては事を仕損じる",
+    "message": "文法ミスがあります。急いては事を仕損じるの間違いです。"
+  },
+  {
+    "id": "NEGAWAKUBA",
+    "category": "文法",
+    "pattern": "願わくば",
+    "suggestion": "願わくは",
+    "message": "文法ミスがあります。願わくはの間違いです。"
+  },
+  {
+    "id": "HANANIKAKENAI",
+    "category": "文法",
+    "pattern": "鼻にも掛け\\|かけない",
+    "suggestion": "鼻に掛けない",
+    "message": "文法ミスがあります。鼻に掛けないの間違いです。"
+  },
+  {
+    "id": "HARADADASII",
+    "category": "文法",
+    "pattern": "腹立だしい",
+    "suggestion": "腹立たしい",
+    "message": "文法ミスがあります。腹立たしいの間違いです。"
+  },
+  {
+    "id": "HETENAKANNGAEYASUMUNINITARI",
+    "category": "文法",
+    "pattern": "下手な考え休むに似\\|にたり",
+    "suggestion": "下手の考え休むに似たり",
+    "message": "文法ミスがあります。下手の考え休むに似たりの間違いです。"
+  },
+  {
+    "id": "MATIDOUSII",
+    "category": "文法",
+    "pattern": "待ち\\|まちどうしい\\|しく",
+    "suggestion": "待ちどおしい",
+    "message": "文法ミスがあります。待ちどおしいの間違いです。"
+  },
+  {
+    "id": "MARENIMINU",
+    "category": "文法",
+    "pattern": "稀に見\\|みぬ",
+    "suggestion": "稀に見る",
+    "message": "文法ミスがあります。稀に見るの間違いです。"
+  },
+  {
+    "id": "MITIHIKI",
+    "category": "文法",
+    "pattern": "満ち干き",
+    "suggestion": "満ち干",
+    "message": "文法ミスがあります。満ち干の間違いです。"
+  },
+  {
+    "id": "MIKKATOAKEZU",
+    "category": "文法",
+    "pattern": "三日と空けず",
+    "suggestion": "三日に上げず",
+    "message": "文法ミスがあります。三日に上げずの間違いです。"
+  },
+  {
+    "id": "YAMONAKU",
+    "category": "文法",
+    "pattern": "やもなく",
+    "suggestion": "やむなく",
+    "message": "文法ミスがあります。やむなくの間違いです。"
+  },
+  {
+    "id": "YAMUOEZU",
+    "category": "文法",
+    "pattern": "やむおえず",
+    "suggestion": "やむをえず",
+    "message": "文法ミスがあります。やむをえずの間違いです。"
+  },
+  {
+    "id": "WARAWOMOSUGARU",
+    "category": "文法",
+    "pattern": "藁をも縋る",
+    "suggestion": "藁にも縋る",
+    "message": "文法ミスがあります。藁にも縋るの間違いです。"
+  },
+  {
+    "id": "TUKUZUKU",
+    "category": "文法",
+    "pattern": "つくずく",
+    "suggestion": "つくづく",
+    "message": "文法ミスがあります。つくづくの間違いです。"
+  },
+  {
+    "id": "TUREZURE",
+    "category": "文法",
+    "pattern": "つれずれ",
+    "suggestion": "つれづれ",
+    "message": "文法ミスがあります。つれづれの間違いです。"
+  },
+  {
+    "id": "ZURAI",
+    "category": "文法",
+    "pattern": "ずらい\\|らく",
+    "suggestion": "づらい",
+    "message": "文法ミスがあります。づらいの間違いです。"
+  },
+  {
+    "id": "TAAINAI",
+    "category": "文法",
+    "pattern": "他愛\\|たあいない",
+    "suggestion": "たわい無い",
+    "message": "文法ミスがあります。たわい無いの間違いです。"
+  },
+  {
+    "id": "ENAI",
+    "category": "文法",
+    "pattern": "ざるおえ\\|得ない",
+    "suggestion": "ざるを得ない",
+    "message": "文法ミスがあります。ざるを得ないの間違いです。"
+  },
+  {
+    "id": "AJIAWASERU",
+    "category": "誤字",
+    "pattern": "味\\|あじあわせる",
+    "suggestion": "味わわせる",
+    "message": "誤字があります。味わわせるの間違いです。"
+  },
+  {
+    "id": "ARAKASAMA",
+    "category": "誤字",
+    "pattern": "あらかさま",
+    "suggestion": "あからさま",
+    "message": "誤字があります。あからさまの間違いです。"
+  },
+  {
+    "id": "AKUGYAKUHIDOU",
+    "category": "誤字",
+    "pattern": "悪逆非道",
+    "suggestion": "悪逆無道",
+    "message": "誤字があります。悪逆無道の間違いです。"
+  },
+  {
+    "id": "ATOHEMOSAKINIMOHIKENU",
+    "category": "誤字",
+    "pattern": "後へも先へも引け\\|ひけぬ",
+    "suggestion": "後へも先へも行かぬ",
+    "message": "誤字があります。後へも先へも行かぬの間違いです。"
+  },
+  {
+    "id": "IZASIRAZU",
+    "category": "誤字",
+    "pattern": "いざ知ら\\|しらず",
+    "suggestion": "いさ知らず",
+    "message": "誤字があります。いさ知らずの間違いです。"
+  },
+  {
+    "id": "ITINENNHUNKI",
+    "category": "誤字",
+    "pattern": "一念奮起",
+    "suggestion": "一念発起",
+    "message": "誤字があります。一念発起の間違いです。"
+  },
+  {
+    "id": "ISSYOKENMEI",
+    "category": "誤字",
+    "pattern": "一所懸命",
+    "suggestion": "一生懸命",
+    "message": "誤字があります。一生懸命の間違いです。"
+  },
+  {
+    "id": "ISSOKUSYOKUHATU",
+    "category": "誤字",
+    "pattern": "一即触発",
+    "suggestion": "一触即発",
+    "message": "誤字があります。一触即発の間違いです。"
+  },
+  {
+    "id": "INAGAOUNIMO",
+    "category": "誤字",
+    "pattern": "否が応にも",
+    "suggestion": "弥が上にも",
+    "message": "誤字があります。弥が上にもの間違いです。"
+  },
+  {
+    "id": "ISSOUNOKOTO",
+    "category": "誤字",
+    "pattern": "いっそうのこと",
+    "suggestion": "いっそのこと",
+    "message": "誤字があります。いっそのことの間違いです。"
+  },
+  {
+    "id": "ARUKUHODOU",
+    "category": "誤字",
+    "pattern": "歩く歩道",
+    "suggestion": "動く歩道",
+    "message": "誤字があります。動く歩道の間違いです。"
+  },
+  {
+    "id": "UYOUKYOKUSETU",
+    "category": "誤字",
+    "pattern": "うよう曲折",
+    "suggestion": "紆余曲折",
+    "message": "誤字があります。紆余曲折の間違いです。"
+  },
+  {
+    "id": "URUOBOE",
+    "category": "誤字",
+    "pattern": "うる覚え\\|おぼえ",
+    "suggestion": "うろ覚え",
+    "message": "誤字があります。うろ覚えの間違いです"
+  },
+  {
+    "id": "EIENTO",
+    "category": "誤字",
+    "pattern": "永遠と",
+    "suggestion": "延延と",
+    "message": "誤字があります。延延との間違いです。"
+  },
+  {
+    "id": "OMOIMOTUKANAI",
+    "category": "誤字",
+    "pattern": "思い\\|おももつか\\|付かない",
+    "suggestion": "思いも寄らない",
+    "message": "誤字があります。思いも寄らないの間違いです。"
+  },
+  {
+    "id": "OMOTOMEYASUI",
+    "category": "誤字",
+    "pattern": "お求め易い\\|やすい",
+    "suggestion": "お求めに成り易い",
+    "message": "誤字があります。お求めに成り易いの間違いです。"
+  },
+  {
+    "id": "OYAKUMEGOMEN",
+    "category": "誤字",
+    "pattern": "御役目御免",
+    "suggestion": "御役御免",
+    "message": "誤字があります。御役御免の間違いです。"
+  },
+  {
+    "id": "AOIROTOIKI",
+    "category": "誤字",
+    "pattern": "青色吐息",
+    "suggestion": "青息吐息",
+    "message": "誤字があります。青息吐息の間違いです。"
+  },
+  {
+    "id": "YOIKOTODARAKE",
+    "category": "誤字",
+    "pattern": "良い\\|よい事\\|ことだらけ",
+    "suggestion": "良い事尽くめ",
+    "message": "誤字があります。良い事尽くめの間違いです。"
+  },
+  {
+    "id": "UNOMETAKANOME",
+    "category": "誤字",
+    "pattern": "魚の目鷹の目",
+    "suggestion": "鵜の目鷹の目",
+    "message": "誤字があります。鵜の目鷹の目の間違いです。"
+  },
+  {
+    "id": "OIKANEMASENN",
+    "category": "誤字",
+    "pattern": "負い\\|おいかねません",
+    "suggestion": "負いかねます",
+    "message": "誤字があります。負いかねますの間違いです。"
+  },
+  {
+    "id": "OBOTUKANU",
+    "category": "誤字",
+    "pattern": "おぼつかぬ",
+    "suggestion": "覚束無い",
+    "message": "誤字があります。覚束無いの間違いです。"
+  },
+  {
+    "id": "OMEIBANNKAI",
+    "category": "誤字",
+    "pattern": "汚名挽回",
+    "suggestion": "汚名返上",
+    "message": "誤字があります。汚名返上の間違いです。"
+  },
+  {
+    "id": "BOKINN",
+    "category": "誤字",
+    "pattern": "募金",
+    "suggestion": "寄付",
+    "message": "誤字があります。寄付の間違いです。"
+  },
+  {
+    "id": "KANPUUMASATU",
+    "category": "誤字",
+    "pattern": "寒風摩擦",
+    "suggestion": "乾布摩擦",
+    "message": "誤字があります。乾布摩擦の間違いです。"
+  },
+  {
+    "id": "KATAKUSOUSA",
+    "category": "誤字",
+    "pattern": "家宅捜査",
+    "suggestion": "家宅捜索",
+    "message": "誤字があります。家宅捜索の間違いです。"
+  },
+  {
+    "id": "KAKEGAI",
+    "category": "誤字",
+    "pattern": "掛け\\|がえ甲斐",
+    "suggestion": "掛け替え",
+    "message": "誤字があります。掛け替えの間違いです。"
+  },
+  {
+    "id": "KAIMAKIKU",
+    "category": "誤字",
+    "pattern": "垣間聞く\\|ぎく\\|きく",
+    "suggestion": "垣間見る",
+    "message": "誤字があります。垣間見るの間違いです。"
+  },
+  {
+    "id": "KOJINNMARI",
+    "category": "誤字",
+    "pattern": "こじんまり",
+    "suggestion": "こぢんまり",
+    "message": "誤字があります。こぢんまりの間違いです。"
+  },
+  {
+    "id": "KAZENOUWASA",
+    "category": "誤字",
+    "pattern": "風の噂\\|うわさ",
+    "suggestion": "風の便り",
+    "message": "誤字があります。風の便りの間違いです。"
+  },
+  {
+    "id": "KATAHARAITAI",
+    "category": "誤字",
+    "pattern": "片腹痛い",
+    "suggestion": "傍ら痛し",
+    "message": "誤字があります。傍ら痛しの間違いです。"
+  },
+  {
+    "id": "KITAIDAORE",
+    "category": "誤字",
+    "pattern": "期待倒れ",
+    "suggestion": "期待外れ",
+    "message": "誤字があります。期待外れの間違いです。"
+  },
+  {
+    "id": "KYUUTAIZEN",
+    "category": "誤字",
+    "pattern": "旧態然",
+    "suggestion": "旧態依然",
+    "message": "誤字があります。旧態依然の間違いです。"
+  },
+  {
+    "id": "GIRONHAKUTYUU",
+    "category": "誤字",
+    "pattern": "議論伯仲",
+    "suggestion": "議論白熱",
+    "message": "誤字があります。議論白熱の間違いです。"
+  },
+  {
+    "id": "KIWAMETUKE",
+    "category": "誤字",
+    "pattern": "極め付け\\|極めつけ",
+    "suggestion": "極め付き",
+    "message": "誤字があります極め付きの間違いです。"
+  },
+  {
+    "id": "TEIJIBANN",
+    "category": "誤字",
+    "pattern": "提示板",
+    "suggestion": "掲示板",
+    "message": "誤字があります。掲示板の間違いです。"
+  },
+  {
+    "id": "KOKEOROSU",
+    "category": "誤字",
+    "pattern": "こけおろす",
+    "suggestion": "扱き下ろす",
+    "message": "誤字があります。扱き下ろすの間違いです。"
+  },
+  {
+    "id": "OKYOUJYUKUDASAI",
+    "category": "誤字",
+    "pattern": "御\\|ご教授下さい\\|ください",
+    "suggestion": "御教示下さい",
+    "message": "誤字があります。御教示下さいの間違いです。"
+  },
+  {
+    "id": "KOTEIGAINEN",
+    "category": "誤字",
+    "pattern": "固定概念",
+    "suggestion": "固定観念",
+    "message": "誤字があります。固定観念の間違いです。"
+  },
+  {
+    "id": "KONGARAGARU",
+    "category": "誤字",
+    "pattern": "こんがらがる",
+    "suggestion": "こんがらかる",
+    "message": "誤字があります。こんがらかるの間違いです。"
+  },
+  {
+    "id": "KENNKENNGAKUGAKU",
+    "category": "誤字",
+    "pattern": "喧喧諤諤",
+    "suggestion": "喧喧囂囂",
+    "message": "誤字があります。喧喧囂囂の間違いです。"
+  },
+  {
+    "id": "SONJASOKORA",
+    "category": "誤字",
+    "pattern": "そんじゃそこら",
+    "suggestion": "そんじょそこら",
+    "message": "誤字があります。そんじょそこらの間違いです。"
+  },
+  {
+    "id": "SAKIDORU",
+    "category": "誤字",
+    "pattern": "先取る",
+    "suggestion": "先取りする",
+    "message": "誤字があります。先取りするの間違いです。"
+  },
+  {
+    "id": "JIDENNSYA",
+    "category": "誤字",
+    "pattern": "じでん車",
+    "suggestion": "じてん車",
+    "message": "誤字があります。じてん車の間違いです。"
+  },
+  {
+    "id": "SIJOUMEIDAI",
+    "category": "誤字",
+    "pattern": "至上命題",
+    "suggestion": "至上命令",
+    "message": "誤字があります。至上命令の間違いです。"
+  },
+  {
+    "id": "KISETUGARA",
+    "category": "誤字",
+    "pattern": "季節柄",
+    "suggestion": "時節柄",
+    "message": "誤字があります。時節柄の間違いです。"
+  },
+  {
+    "id": "MESENN",
+    "category": "誤字",
+    "pattern": "目線",
+    "suggestion": "視線",
+    "message": "誤字があります。視線の間違いです。"
+  },
+  {
+    "id": "SYUKKETUSI",
+    "category": "誤字",
+    "pattern": "出血死",
+    "suggestion": "失血死",
+    "message": "誤字があります。失血死の間違いです。"
+  },
+  {
+    "id": "JISSUNNDAI",
+    "category": "誤字",
+    "pattern": "実寸大",
+    "suggestion": "実物大",
+    "message": "誤字があります。実物大の間違いです。"
+  },
+  {
+    "id": "IKIIWOGU",
+    "category": "誤字",
+    "pattern": "生き\\|いき急ぐ\\|いそぐ",
+    "suggestion": "死に急ぐ",
+    "message": "誤字があります。死に急ぐの間違いです。"
+  },
+  {
+    "id": "SYAKAIHOUJINN",
+    "category": "誤字",
+    "pattern": "社会法人",
+    "suggestion": "社団法人",
+    "message": "誤字があります。社団法人の間違いです。"
+  },
+  {
+    "id": "SYANIMUNI",
+    "category": "誤字",
+    "pattern": "遮二無",
+    "suggestion": "遮二無二",
+    "message": "誤字があります。遮二無二の間違いです。"
+  },
+  {
+    "id": "SYOUKONIMONAKU",
+    "category": "誤字",
+    "pattern": "証拠にも無く\\|なく",
+    "suggestion": "性懲りも無く",
+    "message": "誤字があります。性懲りも無くの間違いです。"
+  },
+  {
+    "id": "SYOSINNWASURURUBEKARAZU",
+    "category": "誤字",
+    "pattern": "初心忘\\|わするるべからず",
+    "suggestion": "初心忘るべからず",
+    "message": "誤字があります。初心忘るべからずの間違いです。"
+  },
+  {
+    "id": "IAWNUGAHOTOKE",
+    "category": "誤字",
+    "pattern": "言わ\\|いわぬが仏\\|ほとけ",
+    "suggestion": "知らぬが仏",
+    "message": "誤字があります。知らぬが仏の間違いです。"
+  },
+  {
+    "id": "SIROUTOHADASI",
+    "category": "誤字",
+    "pattern": "素人\\|しろうと跣",
+    "suggestion": "素人離れ",
+    "message": "誤字があります。素人離れの間違いです。"
+  },
+  {
+    "id": "KUTISAKISANNZUNN",
+    "category": "誤字",
+    "pattern": "口先三寸",
+    "suggestion": "舌先三寸",
+    "message": "誤字があります。舌先三寸の間違いです。"
+  },
+  {
+    "id": "HITUKOI",
+    "category": "誤字",
+    "pattern": "ひつこい",
+    "suggestion": "しつこい",
+    "message": "誤字があります。しつこいの間違いです。"
+  },
+  {
+    "id": "JINNSEIITARUTOKOROSEIZANNARI",
+    "category": "誤字",
+    "pattern": "人生いたるところ青山あり",
+    "suggestion": "人間いたるところ青山あり",
+    "message": "誤字があります。人間いたるところ青山ありの間違いです。"
+  },
+  {
+    "id": "SETIGANAI",
+    "category": "誤字",
+    "pattern": "せちがない\\|なく",
+    "suggestion": "せちがらい",
+    "message": "誤字があります。せちがらいの間違いです。"
+  },
+  {
+    "id": "KUTUJOKUSENN",
+    "category": "誤字",
+    "pattern": "屈辱戦",
+    "suggestion": "雪辱戦",
+    "message": "誤字があります。雪辱戦の間違いです。"
+  },
+  {
+    "id": "JIKISOUSOU",
+    "category": "誤字",
+    "pattern": "時期早早",
+    "suggestion": "時期尚早",
+    "message": "誤字があります。時期尚早の間違いです。"
+  },
+  {
+    "id": "SYUSIGAE",
+    "category": "誤字",
+    "pattern": "趣旨替え",
+    "suggestion": "宗旨変え",
+    "message": "誤字があります。宗旨変えの間違いです。"
+  },
+  {
+    "id": "SUTORI-TOKINGU",
+    "category": "誤字",
+    "pattern": "ストリートキング",
+    "suggestion": "ストリーキング",
+    "message": "誤字があります。ストリーキングの間違いです。"
+  },
+  {
+    "id": "DARASINAI",
+    "category": "誤字",
+    "pattern": "だらしない\\|なく",
+    "suggestion": "しだらない",
+    "message": "誤字があります。しだらないの間違いです。"
+  },
+  {
+    "id": "DAIENNDANN",
+    "category": "誤字",
+    "pattern": "大円団",
+    "suggestion": "大団円",
+    "message": "誤字があります。大団円の間違いです。"
+  },
+  {
+    "id": "TAISYORYOUHOU",
+    "category": "誤字",
+    "pattern": "対処療法",
+    "suggestion": "対症療法",
+    "message": "誤字があります。対症療法の間違いです。"
+  },
+  {
+    "id": "TOBUTORIATOWONIGOSAZU",
+    "category": "誤字",
+    "pattern": "飛ぶ鳥跡を濁さ\\|にごず",
+    "suggestion": "立つ鳥跡を濁さず",
+    "message": "誤字があります。立つ鳥跡を濁さずの間違いです。"
+  },
+  {
+    "id": "TYOSAKUKENNIHANN",
+    "category": "誤字",
+    "pattern": "著作権違反",
+    "suggestion": "著作権法違反",
+    "message": "誤字があります。著作権法違反の間違いです。"
+  },
+  {
+    "id": "KOUTUUDOME",
+    "category": "誤字",
+    "pattern": "交通止め\\|どめ",
+    "suggestion": "通行止め",
+    "message": "誤字があります。通行止めの間違いです。"
+  },
+  {
+    "id": "TEMOTIBUTASA",
+    "category": "誤字",
+    "pattern": "てもちぶたさ",
+    "suggestion": "てもちぶさた",
+    "message": "誤字があります。てもちぶさたの間違いです。"
+  },
+  {
+    "id": "TENIOHA",
+    "category": "誤字",
+    "pattern": "てにおは",
+    "suggestion": "てにをは",
+    "message": "誤字があります。てにをはの間違いです。"
+  },
+  {
+    "id": "TENNTITENNMEI",
+    "category": "誤字",
+    "pattern": "天地天命",
+    "suggestion": "天地神明",
+    "message": "誤字があります。天地神明の間違いです。"
+  },
+  {
+    "id": "TORITUKUHIMAMONAI",
+    "category": "誤字",
+    "pattern": "取り付く暇もない",
+    "suggestion": "取り付く島もない",
+    "message": "誤字があります。取り付く島もないの間違いです。"
+  },
+  {
+    "id": "TORUMONOMOTORAZU",
+    "category": "誤字",
+    "pattern": "取るものも取ら\\|とらず",
+    "suggestion": "取る物も取り敢えず",
+    "message": "誤字があります。取る物も取り敢えずの間違いです。"
+  },
+  {
+    "id": "DEHUXORUTOSUTANDA-DO",
+    "category": "誤字",
+    "pattern": "デフォルトスタンダード",
+    "suggestion": "デファクトスタンダード",
+    "message": "誤字があります。デファクトスタンダードの間違いです。"
+  },
+  {
+    "id": "NEMUKEME",
+    "category": "誤字",
+    "pattern": "眠気眼",
+    "suggestion": "寝惚け眼",
+    "message": "誤字があります。寝惚け眼の間違いです。"
+  },
+  {
+    "id": "NOUARUTAKAHATUMEWOkAKUSU",
+    "category": "誤字",
+    "pattern": "脳ある鷹は爪を隠す",
+    "suggestion": "能ある鷹はめを隠す",
+    "message": "誤字があります。能ある鷹はめを隠すの間違いです。"
+  },
+  {
+    "id": "HATARAKIZUKUME",
+    "category": "誤字",
+    "pattern": "働き尽く\\|づくめ",
+    "suggestion": "働き詰め",
+    "message": "誤字があります。働き詰めの間違いです。"
+  },
+  {
+    "id": "RYOUHU",
+    "category": "誤字",
+    "pattern": "領布",
+    "suggestion": "頒布",
+    "message": "誤字があります。頒布の間違いです。"
+  },
+  {
+    "id": "HIONOMITINIMOOTORU",
+    "category": "誤字",
+    "pattern": "人の道にも劣る",
+    "suggestion": "人の道にもとる",
+    "message": "誤字があります。人の道にもとるの間違いです。"
+  },
+  {
+    "id": "BOUBIROKU",
+    "category": "誤字",
+    "pattern": "忘備録",
+    "suggestion": "備忘録",
+    "message": "誤字があります。備忘録の間違いです。"
+  },
+  {
+    "id": "HITOTUHENNJI",
+    "category": "誤字",
+    "pattern": "一つ返事",
+    "suggestion": "二つ返事",
+    "message": "誤字があります。二つ返事の間違いです。"
+  },
+  {
+    "id": "MAKEZUGIRAI",
+    "category": "誤字",
+    "pattern": "負けず嫌い",
+    "suggestion": "負け嫌い",
+    "message": "誤字があります。負け嫌いの間違いです。"
+  },
+  {
+    "id": "MAKERUTOMOOTORANAI",
+    "category": "誤字",
+    "pattern": "負けるとも劣らない\\|ず",
+    "suggestion": "勝るとも劣らない",
+    "message": "誤字があります。勝るとも劣らないの間違いです。"
+  },
+  {
+    "id": "MAGONOTE",
+    "category": "誤字",
+    "pattern": "まごの手",
+    "suggestion": "まこの手",
+    "message": "誤字があります。まこの手の間違いです。"
+  },
+  {
+    "id": "MUNESANZUN",
+    "category": "誤字",
+    "pattern": "胸先寸",
+    "suggestion": "胸三寸",
+    "message": "誤字があります。胸三寸の間違いです。"
+  },
+  {
+    "id": "MOZUKUTONARUTRANSPO",
+    "category": "誤字",
+    "pattern": "もずくとなる",
+    "suggestion": "もくずとなる",
+    "message": "誤字があります。もくずとなるの間違いです。"
+  },
+  {
+    "id": "MOUSIWAKEGOZAIMASENN",
+    "category": "誤字",
+    "pattern": "申し訳ございません",
+    "suggestion": "申し訳ない",
+    "message": "誤字があります。申し訳ないの間違いです。"
+  },
+  {
+    "id": "YAKIMAWASI",
+    "category": "誤字",
+    "pattern": "焼き\\|やき回し\\|まわし",
+    "suggestion": "焼き増し",
+    "message": "誤字があります。焼き増しの間違いです。"
+  },
+  {
+    "id": "YAMAAI",
+    "category": "誤字",
+    "pattern": "山合い\\|あい",
+    "suggestion": "山間",
+    "message": "誤字があります。山間の間違いです。"
+  },
+  {
+    "id": "BOUBOKUMINN",
+    "category": "誤字",
+    "pattern": "放牧民",
+    "suggestion": "遊牧民",
+    "message": "誤字があります。遊牧民の間違いです。"
+  },
+  {
+    "id": "YUKIYAKONNKONNARAREYAKONNKONN",
+    "category": "誤字",
+    "pattern": "雪やこんこんあられやこんこん",
+    "suggestion": "雪やこんこあられやこんこ",
+    "message": "誤字があります。雪やこんこあられやこんこの間違いです。"
+  },
+  {
+    "id": "RIRONNSEIZENN",
+    "category": "誤字",
+    "pattern": "理論整然",
+    "suggestion": "理路整然",
+    "message": "誤字があります。理路整然の間違いです。"
+  },
+  {
+    "id": "REKKITOSITA",
+    "category": "誤字",
+    "pattern": "列記とした",
+    "suggestion": "歴とした",
+    "message": "誤字があります。歴としたの間違いです。"
+  },
+  {
+    "id": "RIHATTYAKU",
+    "category": "誤字",
+    "pattern": "離発着",
+    "suggestion": "離着陸",
+    "message": "誤字があります。離着陸の間違いです。"
+  },
+  {
+    "id": "WARUDAKUMI",
+    "category": "誤字",
+    "pattern": "悪企み",
+    "suggestion": "悪巧み",
+    "message": "誤字があります。悪巧みの間違いです。"
+  },
+  {
+    "id": "ATARAZUTOMOTOOKARAZU",
+    "category": "誤変換",
+    "pattern": "当たらずとも遠から\\|とおからず",
+    "suggestion": "中らずといえども遠からず",
+    "message": "誤変換です。中らずといえども遠からずの間違いです"
+  },
+  {
+    "id": "ASAZUKE",
+    "category": "誤変換",
+    "pattern": "浅漬け\\|づけ",
+    "suggestion": "朝漬け",
+    "message": "誤変換です。朝漬けの間違いです。"
+  },
+  {
+    "id": "ANNGOU",
+    "category": "誤変換",
+    "pattern": "暗合",
+    "suggestion": "暗号",
+    "message": "誤変換です。暗号の間違いです"
+  },
+  {
+    "id": "AIKURUSII",
+    "category": "誤変換",
+    "pattern": "愛苦しい",
+    "suggestion": "愛くるしい",
+    "message": "誤変換です。愛くるしいの間違いです。"
+  },
+  {
+    "id": "AIKOTOBA",
+    "category": "誤変換",
+    "pattern": "相言葉\\|ことば",
+    "suggestion": "合い言葉",
+    "message": "誤変換です。合い言葉の間違いです"
+  },
+  {
+    "id": "AONISAI",
+    "category": "誤変換",
+    "pattern": "青二歳",
+    "suggestion": "青二才",
+    "message": "誤変換です。青二才の間違いです。"
+  },
+  {
+    "id": "AKUTAI",
+    "category": "誤変換",
+    "pattern": "悪体",
+    "suggestion": "悪態",
+    "message": "誤変換です。悪態の間違いです。"
+  },
+  {
+    "id": "ISAI",
+    "category": "誤変換",
+    "pattern": "異才",
+    "suggestion": "異彩",
+    "message": "誤変換です。異彩の間違いです。"
+  },
+  {
+    "id": "ISSEIITIDAI",
+    "category": "誤変換",
+    "pattern": "一生一代",
+    "suggestion": "一世一代",
+    "message": "誤変換です。一世一代の間違いです。"
+  },
+  {
+    "id": "IGAITO",
+    "category": "誤変換",
+    "pattern": "以外と",
+    "suggestion": "意外と",
+    "message": "誤変換です。意外との間違いです。"
+  },
+  {
+    "id": "YUUISA",
+    "category": "誤変換",
+    "pattern": "有意差",
+    "suggestion": "優位差",
+    "message": "誤変換です。優位差の間違いです。"
+  },
+  {
+    "id": "UTYOUTEN",
+    "category": "誤変換",
+    "pattern": "有頂点",
+    "suggestion": "有頂天",
+    "message": "誤変換です。有頂天の間違いです。"
+  },
+  {
+    "id": "OUGI",
+    "category": "誤変換",
+    "pattern": "奥技",
+    "suggestion": "奥義",
+    "message": "誤変換です。奥義の間違いです。"
+  },
+  {
+    "id": "AIMAI",
+    "category": "誤変換",
+    "pattern": "曖味",
+    "suggestion": "曖昧",
+    "message": "誤変換です。曖昧の間違いです。"
+  },
+  {
+    "id": "ANNZENNHOSYOU",
+    "category": "誤変換",
+    "pattern": "安全保証",
+    "suggestion": "安全保障",
+    "message": "誤変換です。安全保障の間違いです。"
+  },
+  {
+    "id": "ANNNOJOU",
+    "category": "誤変換",
+    "pattern": "案の条",
+    "suggestion": "案の定",
+    "message": "誤変換です。案の定の間違いです。"
+  },
+  {
+    "id": "ARUPUSUITIMANNJYAKU",
+    "category": "誤変換",
+    "pattern": "アルプス一万弱",
+    "suggestion": "アルプス一万尺",
+    "message": "誤変換です。アルプス一万尺の間違いです。"
+  },
+  {
+    "id": "IKUDOUONN",
+    "category": "誤変換",
+    "pattern": "異句同音",
+    "suggestion": "異口同音",
+    "message": "誤変換です。異口同音の間違いです。"
+  },
+  {
+    "id": "IKANN",
+    "category": "誤変換",
+    "pattern": "遺感",
+    "suggestion": "遺憾",
+    "message": "誤変換です。遺憾の間違いです。"
+  },
+  {
+    "id": "ISIHYOUJI",
+    "category": "誤変換",
+    "pattern": "意志表示",
+    "suggestion": "意思表示",
+    "message": "誤変換です。意思表示の間違いです。"
+  },
+  {
+    "id": "ISOGASII",
+    "category": "誤変換",
+    "pattern": "急がしい",
+    "suggestion": "忙しい",
+    "message": "誤変換です。忙しいの間違いです。"
+  },
+  {
+    "id": "ITAZURANIJIKANNGASUGIRU",
+    "category": "誤変換",
+    "pattern": "悪戯に時間が過ぎる",
+    "suggestion": "徒に時間が過ぎる",
+    "message": "誤変換です。徒に時間が過ぎるの間違いです。"
+  },
+  {
+    "id": "ITIHAYAKU",
+    "category": "誤変換",
+    "pattern": "一早く",
+    "suggestion": "逸早く",
+    "message": "誤変換です。逸早くの間違いです。"
+  },
+  {
+    "id": "ITIMATUNOHUANN",
+    "category": "誤変換",
+    "pattern": "一末の不安",
+    "suggestion": "一抹の不安",
+    "message": "誤変換です。一抹の不安の間違いです。"
+  },
+  {
+    "id": "ITIRITU",
+    "category": "誤変換",
+    "pattern": "一率",
+    "suggestion": "一律",
+    "message": "連合関係がおかしいです。一律の間違いです。"
+  },
+  {
+    "id": "IKKAINOISI",
+    "category": "誤変換",
+    "pattern": "一界の医師",
+    "suggestion": "一介の医師",
+    "message": "誤変換です。一介の医師の間違いです。"
+  },
+  {
+    "id": "IKKAKUSENNKINN",
+    "category": "誤変換",
+    "pattern": "一獲千金",
+    "suggestion": "一攫千金",
+    "message": "誤変換です。一攫千金の間違いです。"
+  },
+  {
+    "id": "IKKATU",
+    "category": "誤変換",
+    "pattern": "一活",
+    "suggestion": "一括",
+    "message": "誤変換です。一括の間違いです。"
+  },
+  {
+    "id": "IKKANNNOOWARI",
+    "category": "誤変換",
+    "pattern": "一貫の終わり\\|おわり",
+    "suggestion": "一巻の終わり",
+    "message": "誤変換です。一巻の終わりの間違いです。"
+  },
+  {
+    "id": "ISSINNDOUTAI",
+    "category": "誤変換",
+    "pattern": "一身同体",
+    "suggestion": "一心同体",
+    "message": "誤変換です。一心同体の間違いです。"
+  },
+  {
+    "id": "ISSUINOYUME",
+    "category": "誤変換",
+    "pattern": "一睡の夢",
+    "suggestion": "一炊の夢",
+    "message": "誤変換です。一炊の夢の間違いです。"
+  },
+  {
+    "id": "ISSEINI",
+    "category": "誤変換",
+    "pattern": "一勢に",
+    "suggestion": "一斉に",
+    "message": "誤変換です。一斉にの間違いです。"
+  },
+  {
+    "id": "IPPENNTOU",
+    "category": "誤変換",
+    "pattern": "一遍倒",
+    "suggestion": "一辺倒",
+    "message": "誤変換です。一辺倒の間違いです。"
+  },
+  {
+    "id": "IHATUWOTUGU",
+    "category": "誤変換",
+    "pattern": "遺髪を継ぐ\\|つぐ",
+    "suggestion": "衣鉢を継ぐ",
+    "message": "誤変換です。衣鉢を継ぐの間違いです。"
+  },
+  {
+    "id": "IMADANI",
+    "category": "誤変換",
+    "pattern": "今だに",
+    "suggestion": "未だに",
+    "message": "誤変換です。未だにの間違いです。"
+  },
+  {
+    "id": "IMISINNTYOU",
+    "category": "誤変換",
+    "pattern": "意味慎重",
+    "suggestion": "意味深長",
+    "message": "誤変換です。意味深長の間違いです。"
+  },
+  {
+    "id": "IMAHANOGIWA",
+    "category": "誤変換",
+    "pattern": "今はの際",
+    "suggestion": "今際の際",
+    "message": "誤変換です。今際の際の間違いです。"
+  },
+  {
+    "id": "IMOHORI",
+    "category": "誤変換",
+    "pattern": "芋堀",
+    "suggestion": "芋掘り",
+    "message": "誤変換です。芋掘りの間違いです。"
+  },
+  {
+    "id": "OTYAWOIRERU",
+    "category": "誤変換",
+    "pattern": "御\\|お茶を入れる",
+    "suggestion": "御茶を淹れる",
+    "message": "誤変換です。御茶を淹れるの間違いです。"
+  },
+  {
+    "id": "IWAKANN",
+    "category": "誤変換",
+    "pattern": "異和感",
+    "suggestion": "違和感",
+    "message": "誤変換です。違和感の間違いです。"
+  },
+  {
+    "id": "KOKOTIYOI",
+    "category": "誤変換",
+    "pattern": "心地\\|ここち良い",
+    "suggestion": "心地好い",
+    "message": "誤変換です。心地好いの間違いです。"
+  },
+  {
+    "id": "UKIME",
+    "category": "誤変換",
+    "pattern": "浮き目\\|め",
+    "suggestion": "憂き目",
+    "message": "誤変換です。憂き目の間違いです。"
+  },
+  {
+    "id": "USIRODATE",
+    "category": "誤変換",
+    "pattern": "後ろ立て",
+    "suggestion": "後ろ盾",
+    "message": "誤変換です。後ろ盾の間違いです。"
+  },
+  {
+    "id": "UZUDAKAI",
+    "category": "誤変換",
+    "pattern": "うず高い",
+    "suggestion": "堆い",
+    "message": "誤変換です。堆いの間違いです。"
+  },
+  {
+    "id": "USOHUKU",
+    "category": "誤変換",
+    "pattern": "嘘吹く\\|ふく",
+    "suggestion": "嘯く",
+    "message": "誤変換です。嘯くの間違いです。"
+  },
+  {
+    "id": "UMEMUKU",
+    "category": "誤変換",
+    "pattern": "呷く",
+    "suggestion": "呻く",
+    "message": "誤変換です。呻くの間違いです。"
+  },
+  {
+    "id": "URASABISII",
+    "category": "誤変換",
+    "pattern": "裏寂しい",
+    "suggestion": "心寂しい",
+    "message": "誤変換です。心寂しいの間違いです。"
+  },
+  {
+    "id": "URUSAGATAE",
+    "category": "誤変換",
+    "pattern": "うるさ方",
+    "suggestion": "うるさ型",
+    "message": "誤変換です。うるさ型の間違いです。"
+  },
+  {
+    "id": "EIKIWOYASINAU",
+    "category": "誤変換",
+    "pattern": "鋭気を養う",
+    "suggestion": "英気を養う",
+    "message": "誤変換です。英気を養うの間違いです。"
+  },
+  {
+    "id": "EIKYUSENNPANN",
+    "category": "誤変換",
+    "pattern": "永久戦犯",
+    "suggestion": "A級戦犯",
+    "message": "誤変換です。A級戦犯の間違いです。"
+  },
+  {
+    "id": "ENNENNTYOUDANORETU",
+    "category": "誤変換",
+    "pattern": "延延長蛇の列",
+    "suggestion": "蜿蜒長蛇の列",
+    "message": "誤変換です。蜿蜒長蛇の列の間違いです。"
+  },
+  {
+    "id": "ENNSYOU",
+    "category": "誤変換",
+    "pattern": "炎焼",
+    "suggestion": "延焼",
+    "message": "誤変換です。延焼の間違いです。"
+  },
+  {
+    "id": "ENNRYO",
+    "category": "誤変換",
+    "pattern": "遠虜",
+    "suggestion": "遠慮",
+    "message": "誤変換です。遠慮の間違いです。"
+  },
+  {
+    "id": "OUTAI",
+    "category": "誤変換",
+    "pattern": "応待",
+    "suggestion": "応対",
+    "message": "誤変換です。応対の間違いです。"
+  },
+  {
+    "id": "OOBANNHURUMAI",
+    "category": "誤変換",
+    "pattern": "大番振る舞い\\|ふるまい",
+    "suggestion": "椀飯振る舞い",
+    "message": "誤変換です。椀飯振る舞いの間違いです。"
+  },
+  {
+    "id": "OETU",
+    "category": "誤変換",
+    "pattern": "鳴咽",
+    "suggestion": "嗚咽",
+    "message": "誤変換です。嗚咽の間違いです。"
+  },
+  {
+    "id": "OOINI",
+    "category": "誤変換",
+    "pattern": "多いに",
+    "suggestion": "大いに",
+    "message": "誤変換です。大いにの間違いです。"
+  },
+  {
+    "id": "OKASIRA",
+    "category": "誤変換",
+    "pattern": "御頭",
+    "suggestion": "尾頭",
+    "message": "誤変換です。尾頭の間違いです。"
+  },
+  {
+    "id": "OKANN",
+    "category": "誤変換",
+    "pattern": "悪感",
+    "suggestion": "悪寒",
+    "message": "誤変換です。悪寒の間違いです。"
+  },
+  {
+    "id": "OKUMENNMONAKU",
+    "category": "誤変換",
+    "pattern": "憶面もなく",
+    "suggestion": "臆面もなく",
+    "message": "誤変換です。臆面もなくの間違いです。"
+  },
+  {
+    "id": "OSIKISE",
+    "category": "誤変換",
+    "pattern": "押し\\|おし着せ\\|きせ",
+    "suggestion": "御仕着せ",
+    "message": "誤変換です。御仕着せの間違いです。"
+  },
+  {
+    "id": "OSIROKO",
+    "category": "誤変換",
+    "pattern": "お白粉",
+    "suggestion": "白粉",
+    "message": "誤変換です。白粉の間違いです。"
+  },
+  {
+    "id": "OSOMAKI",
+    "category": "誤変換",
+    "pattern": "遅巻き",
+    "suggestion": "遅蒔き",
+    "message": "誤変換です。遅蒔きの間違いです。"
+  },
+  {
+    "id": "OTAHUKU",
+    "category": "誤変換",
+    "pattern": "御多福",
+    "suggestion": "阿多福",
+    "message": "誤変換です。阿多福の間違いです。"
+  },
+  {
+    "id": "ODORASETE",
+    "category": "誤変換",
+    "pattern": "踊らせて",
+    "suggestion": "躍せて",
+    "message": "誤変換です。躍せての間違いです。"
+  },
+  {
+    "id": "ONINOSAKURANN",
+    "category": "誤変換",
+    "pattern": "鬼の攪乱",
+    "suggestion": "鬼の霍乱",
+    "message": "誤変換です。鬼の霍乱の間違いです。"
+  },
+  {
+    "id": "OMOKAJIIPPAI",
+    "category": "誤変換",
+    "pattern": "主舵いっぱい",
+    "suggestion": "面舵いっぱい",
+    "message": "誤変換です。面舵いっぱいの間違いです。"
+  },
+  {
+    "id": "OYAHUKOU",
+    "category": "誤変換",
+    "pattern": "親不幸",
+    "suggestion": "親不孝",
+    "message": "誤変換です。親不孝の間違いです。"
+  },
+  {
+    "id": "ORIMAZERU",
+    "category": "誤変換",
+    "pattern": "折り交ぜる\\|まぜる",
+    "suggestion": "織り交ぜる",
+    "message": "誤変換です。織り交ぜるの間違いです。"
+  },
+  {
+    "id": "OURI",
+    "category": "誤変換",
+    "pattern": "御売",
+    "suggestion": "卸売",
+    "message": "誤変換です。卸売の間違いです。"
+  },
+  {
+    "id": "ONNNOJI",
+    "category": "誤変換",
+    "pattern": "恩の字",
+    "suggestion": "御の字",
+    "message": "誤変換です。御の字の間違いです。"
+  },
+  {
+    "id": "KAWASE",
+    "category": "誤変換",
+    "pattern": "替為",
+    "suggestion": "為替",
+    "message": "誤変換です。為替の間違いです。"
+  },
+  {
+    "id": "KAKURITSUBUNPU",
+    "category": "誤変換",
+    "pattern": "確立分布",
+    "suggestion": "確率分布",
+    "message": "誤変換です。確率分布の間違いです。"
+  },
+  {
+    "id": "KAKUREMINOJYUTU",
+    "category": "誤変換",
+    "pattern": "隠れ身の術",
+    "suggestion": "隠れ蓑の術",
+    "message": "誤変換です。隠れ蓑の術の間違いです。"
+  },
+  {
+    "id": "KATAHIJIHARU",
+    "category": "誤変換",
+    "pattern": "片肘\\|ひじ張る\\|がえ",
+    "suggestion": "肩肘張る",
+    "message": "誤変換です。肩肘張るの間違いです。"
+  },
+  {
+    "id": "KAKKOII",
+    "category": "誤変換",
+    "pattern": "かっこいい",
+    "suggestion": "恰好良い",
+    "message": "誤変換です。恰好良いの間違いです。"
+  },
+  {
+    "id": "KADOTEKI",
+    "category": "誤変換",
+    "pattern": "過度的",
+    "suggestion": "過渡的",
+    "message": "誤変換です。過渡的の間違いです。"
+  },
+  {
+    "id": "KANNNINN",
+    "category": "誤変換",
+    "pattern": "勘忍",
+    "suggestion": "堪忍",
+    "message": "誤変換です。堪忍の間違いです。"
+  },
+  {
+    "id": "KANNBENN",
+    "category": "誤変換",
+    "pattern": "堪弁",
+    "suggestion": "勘弁",
+    "message": "誤変換です。勘弁の間違いです。"
+  },
+  {
+    "id": "MOHANNKAITOU",
+    "category": "誤変換",
+    "pattern": "模範回答",
+    "suggestion": "模範解答",
+    "message": "誤変換です。模範解答の間違いです。"
+  },
+  {
+    "id": "KAKIIREDOKI",
+    "category": "誤変換",
+    "pattern": "掻き入れ\\|いれ時\\|どき",
+    "suggestion": "書き入れ時",
+    "message": "誤変換です。書き入れ時の間違いです。"
+  },
+  {
+    "id": "KAKUU",
+    "category": "誤変換",
+    "pattern": "仮空",
+    "suggestion": "架空",
+    "message": "誤変換です。架空の間違い。"
+  },
+  {
+    "id": "GAKEPPUTI",
+    "category": "誤変換",
+    "pattern": "崖\\|がけっ淵",
+    "suggestion": "崖っ縁",
+    "message": "誤変換です。崖っ縁の間違いです。"
+  },
+  {
+    "id": "KAGEHINATA",
+    "category": "誤変換",
+    "pattern": "影日向",
+    "suggestion": "陰日向",
+    "message": "誤変換です。陰日向の間違いです。"
+  },
+  {
+    "id": "KATAKURUSII",
+    "category": "誤変換",
+    "pattern": "堅苦しい",
+    "suggestion": "肩苦しい",
+    "message": "誤変換です。肩苦しいの間違いです。"
+  },
+  {
+    "id": "KATIKANN",
+    "category": "誤変換",
+    "pattern": "価値感",
+    "suggestion": "価値観",
+    "message": "誤変換です。価値観の間違いです。"
+  },
+  {
+    "id": "KANNSINNSURU",
+    "category": "誤変換",
+    "pattern": "関心する",
+    "suggestion": "感心する",
+    "message": "誤変換です感心するの間違いです。"
+  },
+  {
+    "id": "KANNTIGAI",
+    "category": "誤変換",
+    "pattern": "感違い\\|ちがい",
+    "suggestion": "勘違い",
+    "message": "誤変換です。勘違いの間違いです。"
+  },
+  {
+    "id": "KANNHEKI",
+    "category": "誤変換",
+    "pattern": "完壁",
+    "suggestion": "完璧",
+    "message": "誤変換です。完璧の間違いです。"
+  },
+  {
+    "id": "KANNREKI",
+    "category": "誤変換",
+    "pattern": "還歴",
+    "suggestion": "還暦",
+    "message": "誤変換です。還暦の間違いです。"
+  },
+  {
+    "id": "KIKAIGAKUSYUU",
+    "category": "誤変換",
+    "pattern": "機会学習",
+    "suggestion": "機械学習",
+    "message": "誤変換です。機械学習の間違いです。"
+  },
+  {
+    "id": "KIKKYUU",
+    "category": "誤変換",
+    "pattern": "喫急",
+    "suggestion": "喫緊",
+    "message": "誤変換です。喫緊の間違いです。"
+  },
+  {
+    "id": "KIBUTUSONGAIZAI",
+    "category": "誤変換",
+    "pattern": "器物損害罪",
+    "suggestion": "器物損壊罪",
+    "message": "誤変換です。器物損壊罪の間違いです。"
+  },
+  {
+    "id": "GYOKUSEKIKONGOU",
+    "category": "誤変換",
+    "pattern": "玉石混合",
+    "suggestion": "玉石混淆",
+    "message": "誤変換です。玉石混淆の間違いです"
+  },
+  {
+    "id": "KIKIIPPATU",
+    "category": "誤変換",
+    "pattern": "危機一発",
+    "suggestion": "危機一髪",
+    "message": "誤変換です。危機一髪の間違いです。"
+  },
+  {
+    "id": "KIGENN",
+    "category": "誤変換",
+    "pattern": "気嫌",
+    "suggestion": "機嫌",
+    "message": "誤変換です。機嫌の間違いです。"
+  },
+  {
+    "id": "KISYOKUMANNSAI",
+    "category": "誤変換",
+    "pattern": "気色満面",
+    "suggestion": "喜色満面",
+    "message": "誤変換です。喜色満面の間違いです。"
+  },
+  {
+    "id": "KYUKYO",
+    "category": "誤変換",
+    "pattern": "急拠",
+    "suggestion": "急遽",
+    "message": "誤変換です。急遽の間違いです。"
+  },
+  {
+    "id": "KYUUTEI",
+    "category": "誤変換",
+    "pattern": "宮庭",
+    "suggestion": "宮廷",
+    "message": "誤変換です。宮廷の間違いです。"
+  },
+  {
+    "id": "KUNOU",
+    "category": "誤変換",
+    "pattern": "苦脳",
+    "suggestion": "苦悩",
+    "message": "誤変換です。苦悩の間違いです"
+  },
+  {
+    "id": "KEKKAOURAI",
+    "category": "誤変換",
+    "pattern": "結果往来",
+    "suggestion": "結果オーライ",
+    "message": "誤変換です。結果オーライの間違いです。"
+  },
+  {
+    "id": "GEKIYAKU",
+    "category": "誤変換",
+    "pattern": "激薬",
+    "suggestion": "劇薬",
+    "message": "誤変換です。劇薬の間違いです。"
+  },
+  {
+    "id": "KOBURAGAERI",
+    "category": "誤変換",
+    "pattern": "コブラ返り\\|がえり",
+    "suggestion": "腓返り",
+    "message": "誤変換です。腓返りの間違いです。"
+  },
+  {
+    "id": "KOBOREBI",
+    "category": "誤変換",
+    "pattern": "木洩れ日",
+    "suggestion": "零れ日",
+    "message": "誤変換です。零れ日の間違いです。"
+  },
+  {
+    "id": "KOUGANNMUTI",
+    "category": "誤変換",
+    "pattern": "厚顔無知",
+    "suggestion": "厚顔無恥",
+    "message": "誤変換です。厚顔無恥の間違いです。"
+  },
+  {
+    "id": "KOUGI",
+    "category": "誤変換",
+    "pattern": "講議",
+    "suggestion": "講義",
+    "message": "誤変換です。講義の間違いです。"
+  },
+  {
+    "id": "KOUSEIBUSSITU",
+    "category": "誤変換",
+    "pattern": "抗性物質",
+    "suggestion": "抗生物質",
+    "message": "誤変換です。抗生物質の間違いです。"
+  },
+  {
+    "id": "KOUTYAKU",
+    "category": "誤変換",
+    "pattern": "硬着",
+    "suggestion": "膠着",
+    "message": "誤変換です。膠着の間違いです。"
+  },
+  {
+    "id": "KOUTOUBENNRONN",
+    "category": "誤変換",
+    "pattern": "口答弁論",
+    "suggestion": "口頭弁論",
+    "message": "誤変換です。口頭弁論の間違いです。"
+  },
+  {
+    "id": "KOUBAI",
+    "category": "誤変換",
+    "pattern": "購売",
+    "suggestion": "購買",
+    "message": "誤変換です。購買の間違いです。"
+  },
+  {
+    "id": "KOUHYOU",
+    "category": "誤変換",
+    "pattern": "公評",
+    "suggestion": "公表",
+    "message": "誤変換です。公表の間違いです。"
+  },
+  {
+    "id": "GOKAKU",
+    "category": "誤変換",
+    "pattern": "互格",
+    "suggestion": "互角",
+    "message": "誤変換です。互角の間違いです。"
+  },
+  {
+    "id": "KOKAISYA",
+    "category": "誤変換",
+    "pattern": "小会社",
+    "suggestion": "子会社",
+    "message": "誤変換です。子会社の間違いです。"
+  },
+  {
+    "id": "KOTONOHOKA",
+    "category": "誤変換",
+    "pattern": "事の外\\|ほか",
+    "suggestion": "殊の外",
+    "message": "誤変換です。殊の外の間違いです。"
+  },
+  {
+    "id": "KOTOBADUKAI",
+    "category": "誤変換",
+    "pattern": "言葉遣い\\|ことば遣い",
+    "suggestion": "言葉使い",
+    "message": "誤変換です。言葉使いの間違いです。"
+  },
+  {
+    "id": "KOBETUHOUMONN",
+    "category": "誤変換",
+    "pattern": "戸別訪問",
+    "suggestion": "個別訪問",
+    "message": "誤変換です。個別訪問の間違いです。"
+  },
+  {
+    "id": "KOYUUMEISI",
+    "category": "誤変換",
+    "pattern": "個有名詞",
+    "suggestion": "固有名詞",
+    "message": "誤変換です。固有名詞の間違いです。"
+  },
+  {
+    "id": "KORITUMUENN",
+    "category": "誤変換",
+    "pattern": "孤立無縁",
+    "suggestion": "孤立無援",
+    "message": "誤変換です。孤立無援の間違いです。"
+  },
+  {
+    "id": "GORIMUTYUU",
+    "category": "誤変換",
+    "pattern": "五里夢中",
+    "suggestion": "五里霧中",
+    "message": "誤変換です。五里霧中の間違いです。"
+  },
+  {
+    "id": "KONNRANN",
+    "category": "誤変換",
+    "pattern": "困乱",
+    "suggestion": "混乱",
+    "message": "誤変換です。混乱の間違いです。"
+  },
+  {
+    "id": "KAIKETU",
+    "category": "誤変換",
+    "pattern": "快傑",
+    "suggestion": "怪傑",
+    "message": "誤変換です。怪傑の間違いです。"
+  },
+  {
+    "id": "GAITOU",
+    "category": "誤変換",
+    "pattern": "概当",
+    "suggestion": "該当",
+    "message": "誤変換です。該当の間違いです。"
+  },
+  {
+    "id": "KAETTEYOKUNAI",
+    "category": "誤変換",
+    "pattern": "返ってよくない",
+    "suggestion": "却ってよくない",
+    "message": "誤変換です。却ってよくないの間違いです。"
+  },
+  {
+    "id": "KAKAADENNKA",
+    "category": "誤変換",
+    "pattern": "かかあ殿下",
+    "suggestion": "嚊天下",
+    "message": "誤変換です。嚊天下の間違いです。"
+  },
+  {
+    "id": "GAKAI",
+    "category": "誤変換",
+    "pattern": "瓦壊",
+    "suggestion": "瓦解",
+    "message": "誤変換です。瓦解の間違いです。"
+  },
+  {
+    "id": "KASITANNPOSEKININN",
+    "category": "誤変換",
+    "pattern": "貸し担保責任",
+    "suggestion": "瑕疵担保責任",
+    "message": "誤変換です。瑕疵担保責任の間違いです。"
+  },
+  {
+    "id": "KAJIYA",
+    "category": "誤変換",
+    "pattern": "鍛治屋",
+    "suggestion": "鍛冶屋",
+    "message": "誤変換です。鍛冶屋の間違いです。"
+  },
+  {
+    "id": "KATATIDORU",
+    "category": "誤変換",
+    "pattern": "形取る",
+    "suggestion": "象る",
+    "message": "誤変換です。象るの間違いです。"
+  },
+  {
+    "id": "KATANN",
+    "category": "誤変換",
+    "pattern": "加担",
+    "suggestion": "荷担",
+    "message": "誤変換です。荷担の間違いです。"
+  },
+  {
+    "id": "KARITATERU",
+    "category": "誤変換",
+    "pattern": "狩り立てる",
+    "suggestion": "駆り立てる",
+    "message": "誤変換です。駆り立てるの間違いです。"
+  },
+  {
+    "id": "GARYOUTENNSEI",
+    "category": "誤変換",
+    "pattern": "画竜点晴",
+    "suggestion": "画竜点睛",
+    "message": "誤変換です。画竜点睛の間違いです。"
+  },
+  {
+    "id": "GANNMAE",
+    "category": "誤変換",
+    "pattern": "顔前",
+    "suggestion": "眼前",
+    "message": "誤変換です。眼前の間違いです。"
+  },
+  {
+    "id": "KANNZENNTYOUAKU",
+    "category": "誤変換",
+    "pattern": "完全懲悪",
+    "suggestion": "勧善懲悪",
+    "message": "誤変換です。勧善懲悪の間違いです。"
+  },
+  {
+    "id": "KANNNISAWARU",
+    "category": "誤変換",
+    "pattern": "勘に障る",
+    "suggestion": "癇に障る",
+    "message": "誤変換です。癇に障るの間違いです。"
+  },
+  {
+    "id": "KIITAHUU",
+    "category": "誤変換",
+    "pattern": "聞いた風",
+    "suggestion": "利いた風",
+    "message": "誤変換です。利いた風の間違いです。"
+  },
+  {
+    "id": "GISONNKINN",
+    "category": "誤変換",
+    "pattern": "義損金",
+    "suggestion": "義捐金",
+    "message": "誤変換です。義捐金の間違いです。"
+  },
+  {
+    "id": "KOKYUUKIKANN",
+    "category": "誤変換",
+    "pattern": "呼吸器管",
+    "suggestion": "呼吸器官",
+    "message": "誤変換です。呼吸器官の間違いです。"
+  },
+  {
+    "id": "KIMAJIME",
+    "category": "誤変換",
+    "pattern": "気真面目",
+    "suggestion": "生真面目",
+    "message": "誤変換です。生真面目の間違いです。"
+  },
+  {
+    "id": "KIMARIGAWARUI",
+    "category": "誤変換",
+    "pattern": "気まりが良い\\|よい\\|いい",
+    "suggestion": "決まりが良い",
+    "message": "誤変換です。決まりが良いの間違いです。"
+  },
+  {
+    "id": "KIMI",
+    "category": "誤変換",
+    "pattern": "黄味",
+    "suggestion": "黄身",
+    "message": "誤変換です。黄身の間違いです。"
+  },
+  {
+    "id": "GIHEI",
+    "category": "誤変換",
+    "pattern": "偽瞞",
+    "suggestion": "欺瞞",
+    "message": "誤変換です。欺瞞の間違いです。"
+  },
+  {
+    "id": "KYUUKYUU",
+    "category": "誤変換",
+    "pattern": "急救",
+    "suggestion": "救急",
+    "message": "誤変換です。救急の間違いです。"
+  },
+  {
+    "id": "KYUUYAKUSEISYO",
+    "category": "誤変換",
+    "pattern": "旧訳聖書",
+    "suggestion": "旧約聖書",
+    "message": "誤変換です。旧約聖書の間違いです。"
+  },
+  {
+    "id": "KYOUKIRANNBU",
+    "category": "誤変換",
+    "pattern": "狂気乱舞",
+    "suggestion": "狂喜乱舞",
+    "message": "誤変換です。狂喜乱舞の間違いです。"
+  },
+  {
+    "id": "KYOUMISINNSINN",
+    "category": "誤変換",
+    "pattern": "興味深深",
+    "suggestion": "興味津津",
+    "message": "誤変換です。興味津津の間違いです。"
+  },
+  {
+    "id": "KYORON",
+    "category": "誤変換",
+    "pattern": "教論",
+    "suggestion": "教諭",
+    "message": "誤変換です。教諭の間違いです。"
+  },
+  {
+    "id": "KINNKOU",
+    "category": "誤変換",
+    "pattern": "均衝",
+    "suggestion": "均衡",
+    "message": "誤変換です。均衡の間違いです。"
+  },
+  {
+    "id": "KUSSINN",
+    "category": "誤変換",
+    "pattern": "屈身",
+    "suggestion": "屈伸",
+    "message": "誤変換です。屈伸の間違いです。"
+  },
+  {
+    "id": "KUTUNUGI",
+    "category": "誤変換",
+    "pattern": "靴脱ぎ\\|ぬぎ",
+    "suggestion": "沓脱ぎ",
+    "message": "誤変換です。沓脱ぎの間違いです。"
+  },
+  {
+    "id": "KUNIYABURETESANNGAARI",
+    "category": "誤変換",
+    "pattern": "国敗れて山河あり",
+    "suggestion": "国破れて山河があり",
+    "message": "誤変換です。国破れて山河がありの間違いです。"
+  },
+  {
+    "id": "KUBIJIKKENN",
+    "category": "誤変換",
+    "pattern": "首実験",
+    "suggestion": "首実検",
+    "message": "誤変換です。首実検の間違いです。"
+  },
+  {
+    "id": "KUMISIYASUI",
+    "category": "誤変換",
+    "pattern": "組し易い\\|やすい",
+    "suggestion": "与し易い",
+    "message": "誤変換です。与し易いの間違いです。"
+  },
+  {
+    "id": "GUNNKANN",
+    "category": "誤変換",
+    "pattern": "軍鑑",
+    "suggestion": "軍艦",
+    "message": "誤変換です。軍艦の間違いです。"
+  },
+  {
+    "id": "KENNKOUKOTU",
+    "category": "誤変換",
+    "pattern": "健康骨",
+    "suggestion": "肩甲骨",
+    "message": "誤変換です。肩甲骨の間違いです。"
+  },
+  {
+    "id": "KESINN",
+    "category": "誤変換",
+    "pattern": "化神",
+    "suggestion": "化身",
+    "message": "誤変換です。化身の間違いです。"
+  },
+  {
+    "id": "KESSENNTOUHYOU",
+    "category": "誤変換",
+    "pattern": "決戦投票",
+    "suggestion": "決選投票",
+    "message": "誤変換です。決選投票の間違いです。"
+  },
+  {
+    "id": "KETUMAKUENN",
+    "category": "誤変換",
+    "pattern": "血膜炎",
+    "suggestion": "結膜炎",
+    "message": "誤変換です。結膜炎の間違いです。"
+  },
+  {
+    "id": "GENNKABAIKYAKU",
+    "category": "誤変換",
+    "pattern": "原価償却",
+    "suggestion": "減価償却",
+    "message": "誤変換です。減価償却の間違いです。"
+  },
+  {
+    "id": "KENNTOUTIGAI",
+    "category": "誤変換",
+    "pattern": "検討違い\\|ちがい",
+    "suggestion": "見当違い",
+    "message": "誤変換です。見当違いの間違いです。"
+  },
+  {
+    "id": "GENNSI",
+    "category": "誤変換",
+    "pattern": "元師",
+    "suggestion": "元帥",
+    "message": "誤変換です。元帥の間違いです。"
+  },
+  {
+    "id": "KENNMOHORORO",
+    "category": "誤変換",
+    "pattern": "剣もほろろ",
+    "suggestion": "けんもほろろ",
+    "message": "誤変換です。けんもほろろの間違いです。"
+  },
+  {
+    "id": "KOII",
+    "category": "誤変換",
+    "pattern": "濃いい",
+    "suggestion": "濃い",
+    "message": "誤変換です。濃いの間違いです。"
+  },
+  {
+    "id": "KEIYAKUKOUKAI",
+    "category": "誤変換",
+    "pattern": "契約公開",
+    "suggestion": "契約更改",
+    "message": "誤変換です。契約更改の間違いです。"
+  },
+  {
+    "id": "KOUGAKUSINN",
+    "category": "誤変換",
+    "pattern": "好学心",
+    "suggestion": "向学心",
+    "message": "誤変換です。向学心の間違いです。"
+  },
+  {
+    "id": "KOUKANNSINNKENN",
+    "category": "誤変換",
+    "pattern": "交換神経",
+    "suggestion": "交感神経",
+    "message": "誤変換です。交感神経の間違いです。"
+  },
+  {
+    "id": "KOUSYAKU",
+    "category": "誤変換",
+    "pattern": "候爵",
+    "suggestion": "侯爵",
+    "message": "誤変換です。侯爵の間違いです。"
+  },
+  {
+    "id": "KOUSEIOSORUBESI",
+    "category": "誤変換",
+    "pattern": "後世おそるべし",
+    "suggestion": "後生畏る可し",
+    "message": "誤変換です。後生畏る可しの間違いです。"
+  },
+  {
+    "id": "KOSITANNTANN",
+    "category": "誤変換",
+    "pattern": "虎視耽耽",
+    "suggestion": "虎視眈眈",
+    "message": "誤変換です。虎視眈眈の間違いです。"
+  },
+  {
+    "id": "GOJINN",
+    "category": "誤変換",
+    "pattern": "御人",
+    "suggestion": "御仁",
+    "message": "誤変換です。御仁の間違いです。"
+  },
+  {
+    "id": "KOPPAMIJINN",
+    "category": "誤変換",
+    "pattern": "木っ葉微塵",
+    "suggestion": "木っ端微塵",
+    "message": "誤変換です。木っ端微塵の間違いです。"
+  },
+  {
+    "id": "GOHASANN",
+    "category": "誤変換",
+    "pattern": "御破産",
+    "suggestion": "御破算",
+    "message": "誤変換です。御破算の間違いです。"
+  },
+  {
+    "id": "KOREWOKINI",
+    "category": "誤変換",
+    "pattern": "これを期",
+    "suggestion": "これを機",
+    "message": "誤変換です。これを機の間違いです。"
+  },
+  {
+    "id": "KOEDAKA",
+    "category": "誤変換",
+    "pattern": "こえだか",
+    "suggestion": "声高",
+    "message": "誤変換です。声高の間違いです。"
+  },
+  {
+    "id": "KONNNITIWA",
+    "category": "誤変換",
+    "pattern": "こんにちわ",
+    "suggestion": "こんにちは",
+    "message": "誤変換です。こんにちはの間違いです。"
+  },
+  {
+    "id": "KONNBANNWA",
+    "category": "誤変換",
+    "pattern": "こんばんわ",
+    "suggestion": "こんばんは",
+    "message": "誤変換です。こんばんはの間違いです。"
+  },
+  {
+    "id": "JIKISOUSOUIMARK",
+    "category": "誤変換",
+    "pattern": "時期早々",
+    "suggestion": "時期尚早",
+    "message": "誤変換です。時期尚早の間違いです。"
+  },
+  {
+    "id": "SUZAMASII",
+    "category": "誤変換",
+    "pattern": "すざましい\\|しく",
+    "suggestion": "凄まじい",
+    "message": "誤変換です。凄まじいの間違いです。"
+  },
+  {
+    "id": "SAKUSUI",
+    "category": "誤変換",
+    "pattern": "散水",
+    "suggestion": "撒水",
+    "message": "誤変換です。撒水の間違いです。"
+  },
+  {
+    "id": "SAMEYAMANU",
+    "category": "誤変換",
+    "pattern": "覚め\\|さめ止まぬ",
+    "suggestion": "覚め遣らぬ",
+    "message": "誤変換です。覚め遣らぬの間違いです。"
+  },
+  {
+    "id": "SAIKOUTYOU",
+    "category": "誤変換",
+    "pattern": "最高調",
+    "suggestion": "最高潮",
+    "message": "誤変換です。最高潮の間違いです。"
+  },
+  {
+    "id": "SATTOU",
+    "category": "誤変換",
+    "pattern": "殺倒",
+    "suggestion": "殺到",
+    "message": "誤変換です。殺到の間違いです。"
+  },
+  {
+    "id": "SATOSU",
+    "category": "誤変換",
+    "pattern": "悟す\\|し",
+    "suggestion": "諭す",
+    "message": "誤変換です。諭すの間違いです。"
+  },
+  {
+    "id": "SANNZANN",
+    "category": "誤変換",
+    "pattern": "散散",
+    "suggestion": "散々",
+    "message": "誤変換です。散々の間違いです。"
+  },
+  {
+    "id": "SANMIITTAI",
+    "category": "誤変換",
+    "pattern": "三身一体",
+    "suggestion": "三位一体",
+    "message": "誤変換です。三位一体の間違いです。"
+  },
+  {
+    "id": "JINJIIDOU",
+    "category": "誤変換",
+    "pattern": "人事移動",
+    "suggestion": "人事異動",
+    "message": "誤変換です。人事異動の間違いです。"
+  },
+  {
+    "id": "JIGAJISANN",
+    "category": "誤変換",
+    "pattern": "自我自賛",
+    "suggestion": "自画自賛",
+    "message": "誤変換です。自画自賛の間違いです。"
+  },
+  {
+    "id": "SIKOUSAKUGO",
+    "category": "誤変換",
+    "pattern": "思考錯誤",
+    "suggestion": "試行錯誤",
+    "message": "誤変換です。試行錯誤の間違いです。"
+  },
+  {
+    "id": "SITUGIOUTOU",
+    "category": "誤変換",
+    "pattern": "質議応答",
+    "suggestion": "質疑応答",
+    "message": "誤変換です。質疑応答の間違いです。"
+  },
+  {
+    "id": "SINIMONOGURUI",
+    "category": "誤変換",
+    "pattern": "死に\\|しに者狂い",
+    "suggestion": "死に物狂い",
+    "message": "誤変換です。死に物狂いの間違いです。"
+  },
+  {
+    "id": "SIBUTOI",
+    "category": "誤変換",
+    "pattern": "渋太い",
+    "suggestion": "しぶとい",
+    "message": "誤変換です。しぶといの間違いです。"
+  },
+  {
+    "id": "SIMATU",
+    "category": "誤変換",
+    "pattern": "仕末",
+    "suggestion": "始末",
+    "message": "誤変換です。始末の間違いです。"
+  },
+  {
+    "id": "SEKININNTENNKA",
+    "category": "誤変換",
+    "pattern": "責任転換",
+    "suggestion": "責任転嫁",
+    "message": "誤変換です。責任転嫁の間違いです。"
+  },
+  {
+    "id": "SYAKOUJIREI",
+    "category": "誤変換",
+    "pattern": "社交辞礼",
+    "suggestion": "社交辞令",
+    "message": "誤変換です。社交辞令の間違いです。"
+  },
+  {
+    "id": "JISINN",
+    "category": "誤変換",
+    "pattern": "自身がをない持つ",
+    "suggestion": "自信",
+    "message": "誤変換です。自信の間違いです。"
+  },
+  {
+    "id": "JISINNKAJOU",
+    "category": "誤変換",
+    "pattern": "自身過剰",
+    "suggestion": "自信過剰",
+    "message": "誤変換です。自信過剰の間違いです。"
+  },
+  {
+    "id": "JYUUOUMUJINN",
+    "category": "誤変換",
+    "pattern": "縦横無人",
+    "suggestion": "縦横無尽",
+    "message": "誤変換です。縦横無尽の間違いです。"
+  },
+  {
+    "id": "SITADUDUMI",
+    "category": "誤変換",
+    "pattern": "舌包み",
+    "suggestion": "舌鼓",
+    "message": "誤変換です。舌鼓の間違いです。"
+  },
+  {
+    "id": "SYUUKAKU",
+    "category": "誤変換",
+    "pattern": "収獲",
+    "suggestion": "収穫",
+    "message": "誤変換です。収穫の間違いです。"
+  },
+  {
+    "id": "SYUUKANNSI",
+    "category": "誤変換",
+    "pattern": "週間誌",
+    "suggestion": "週刊誌",
+    "message": "誤変換です。週刊誌の間違いです。"
+  },
+  {
+    "id": "ZUTABUKURO",
+    "category": "誤変換",
+    "pattern": "ずた袋",
+    "suggestion": "ずだぶくろ",
+    "message": "誤変換です。ずだぶくろの間違いです。"
+  },
+  {
+    "id": "SEKIZUIDOUBUTU",
+    "category": "誤変換",
+    "pattern": "脊髄動物",
+    "suggestion": "脊椎動物",
+    "message": "誤変換です。脊椎動物の間違いです。"
+  },
+  {
+    "id": "SAIDAIMORASAZU",
+    "category": "誤変換",
+    "pattern": "最大漏らさ\\|もらさず",
+    "suggestion": "細大漏らさず",
+    "message": "誤変換です。細大漏らさずの間違いです。"
+  },
+  {
+    "id": "SAIBAI",
+    "category": "誤変換",
+    "pattern": "裁培",
+    "suggestion": "栽培",
+    "message": "誤変換です。栽培の間違いです。"
+  },
+  {
+    "id": "SANNHANNKIKANN",
+    "category": "誤変換",
+    "pattern": "三半器官",
+    "suggestion": "三半規管",
+    "message": "誤変換です。三半規管の間違いです。"
+  },
+  {
+    "id": "SANNMANN",
+    "category": "誤変換",
+    "pattern": "散慢",
+    "suggestion": "散漫",
+    "message": "誤変換です。散漫の間違いです。"
+  },
+  {
+    "id": "GPANN",
+    "category": "誤変換",
+    "pattern": "Gパン",
+    "suggestion": "ジーパン",
+    "message": "誤変換です。ジーパンの間違いです。"
+  },
+  {
+    "id": "SISIODOSI",
+    "category": "誤変換",
+    "pattern": "獅子脅し",
+    "suggestion": "鹿威し",
+    "message": "誤変換です。鹿威しの間違いです。"
+  },
+  {
+    "id": "SISOUKENNKO",
+    "category": "誤変換",
+    "pattern": "思想堅固",
+    "suggestion": "志操堅固",
+    "message": "誤変換です。志操堅固の間違いです。"
+  },
+  {
+    "id": "SITIMENNDOKUSAI",
+    "category": "誤変換",
+    "pattern": "七面倒くさい",
+    "suggestion": "しち面倒臭い",
+    "message": "誤変換です。しち面倒臭いの間違いです。"
+  },
+  {
+    "id": "SIMERU",
+    "category": "誤変換",
+    "pattern": "泌みる",
+    "suggestion": "沁みる",
+    "message": "誤変換です。沁みるの間違いです。"
+  },
+  {
+    "id": "JAKKANN",
+    "category": "誤変換",
+    "pattern": "若冠",
+    "suggestion": "弱冠",
+    "message": "誤変換です。弱冠の間違いです。"
+  },
+  {
+    "id": "SYARE",
+    "category": "誤変換",
+    "pattern": "酒落",
+    "suggestion": "洒落",
+    "message": "誤変換です。洒落の間違いです。"
+  },
+  {
+    "id": "SYUUSYUUGATUKANAI",
+    "category": "誤変換",
+    "pattern": "収集がつかない",
+    "suggestion": "収拾がつかない",
+    "message": "誤変換です。収拾がつかないの間違いです。"
+  },
+  {
+    "id": "SYUUJINNKANNSI",
+    "category": "誤変換",
+    "pattern": "衆人監視",
+    "suggestion": "衆人環視",
+    "message": "誤変換です。衆人環視の間違いです。"
+  },
+  {
+    "id": "SYUKUSYOU",
+    "category": "誤変換",
+    "pattern": "縮少",
+    "suggestion": "縮小",
+    "message": "誤変換です。縮小の間違いです。"
+  },
+  {
+    "id": "SYUKOU",
+    "category": "誤変換",
+    "pattern": "趣好",
+    "suggestion": "趣向",
+    "message": "誤変換です。趣向の間違いです。"
+  },
+  {
+    "id": "JYUNNSUIMUTI",
+    "category": "誤変換",
+    "pattern": "純心無垢",
+    "suggestion": "純真無垢",
+    "message": "誤変換です。純真無垢の間違いです。"
+  },
+  {
+    "id": "JUNNHUDOU",
+    "category": "誤変換",
+    "pattern": "順不動",
+    "suggestion": "順不同",
+    "message": "誤変換です。順不同の間違いです。"
+  },
+  {
+    "id": "JUNNREIDOU",
+    "category": "誤変換",
+    "pattern": "鐘乳洞",
+    "suggestion": "鍾乳洞",
+    "message": "誤変換です。鍾乳洞の間違いです。"
+  },
+  {
+    "id": "SYOGYOUMUJYOU",
+    "category": "誤変換",
+    "pattern": "諸行無情",
+    "suggestion": "諸行無常",
+    "message": "誤変換です。諸行無常の間違いです。"
+  },
+  {
+    "id": "SYOKUJIRYOUHOU",
+    "category": "誤変換",
+    "pattern": "食事療法",
+    "suggestion": "食餌療法",
+    "message": "誤変換です。食餌療法の間違いです。"
+  },
+  {
+    "id": "JOJONI",
+    "category": "誤変換",
+    "pattern": "除除に",
+    "suggestion": "徐徐に",
+    "message": "誤変換です。徐徐にの間違いです。"
+  },
+  {
+    "id": "SYOSEIJYUTU",
+    "category": "誤変換",
+    "pattern": "処生術",
+    "suggestion": "処世術",
+    "message": "誤変換です。処世術の間違いです。"
+  },
+  {
+    "id": "JYOMAKUSIKI",
+    "category": "誤変換",
+    "pattern": "序幕式",
+    "suggestion": "除幕式",
+    "message": "誤変換です。除幕式の間違いです。"
+  },
+  {
+    "id": "SYOYOUJIKANN",
+    "category": "誤変換",
+    "pattern": "所用時間",
+    "suggestion": "所要時間",
+    "message": "誤変換です。所要時間の間違いです。"
+  },
+  {
+    "id": "JIRAIGENN",
+    "category": "誤変換",
+    "pattern": "地雷源",
+    "suggestion": "地雷原",
+    "message": "誤変換です。地雷原の間違いです。"
+  },
+  {
+    "id": "JIRITUSINNKEI",
+    "category": "誤変換",
+    "pattern": "自立神経",
+    "suggestion": "自律神経",
+    "message": "誤変換です。自律神経の間違いです。"
+  },
+  {
+    "id": "JIGAREGOE",
+    "category": "誤変換",
+    "pattern": "皺枯れ声",
+    "suggestion": "嗄れ声",
+    "message": "誤変換です。嗄れ声の間違いです。"
+  },
+  {
+    "id": "SINNKIITENN",
+    "category": "誤変換",
+    "pattern": "心気一転",
+    "suggestion": "心機一転",
+    "message": "誤変換です。心機一転の間違いです。"
+  },
+  {
+    "id": "JINNKOUEISEI",
+    "category": "誤変換",
+    "pattern": "人口衛星",
+    "suggestion": "人工衛星",
+    "message": "誤変換です。人工衛星の間違いです。"
+  },
+  {
+    "id": "SINNKOKUZAI",
+    "category": "誤変換",
+    "pattern": "申告罪",
+    "suggestion": "親告罪",
+    "message": "誤変換です。親告罪の間違いです。"
+  },
+  {
+    "id": "SINNJIJITU",
+    "category": "誤変換",
+    "pattern": "真事実",
+    "suggestion": "新事実",
+    "message": "誤変換です。新事実の間違いです。"
+  },
+  {
+    "id": "SINNSINNSUIJAKU",
+    "category": "誤変換",
+    "pattern": "心身耗弱",
+    "suggestion": "心神耗弱",
+    "message": "誤変換です。心神耗弱の間違いです。"
+  },
+  {
+    "id": "SINNHANNNINN",
+    "category": "誤変換",
+    "pattern": "新犯人",
+    "suggestion": "真犯人",
+    "message": "誤変換です。真犯人の間違いです。"
+  },
+  {
+    "id": "SINNPYOU",
+    "category": "誤変換",
+    "pattern": "真憑",
+    "suggestion": "信憑",
+    "message": "誤変換です。信憑の間違いです。"
+  },
+  {
+    "id": "SINNBOU",
+    "category": "誤変換",
+    "pattern": "辛棒",
+    "suggestion": "辛抱",
+    "message": "誤変換です。辛抱の間違いです。"
+  },
+  {
+    "id": "JISSENNSURU",
+    "category": "誤変換",
+    "pattern": "実戦する",
+    "suggestion": "実践する",
+    "message": "誤変換です。実践するの間違いです。"
+  },
+  {
+    "id": "SUIRENN",
+    "category": "誤変換",
+    "pattern": "水蓮",
+    "suggestion": "睡蓮",
+    "message": "誤変換です。睡蓮の間違いです。"
+  },
+  {
+    "id": "SUUDONN",
+    "category": "誤変換",
+    "pattern": "酢うどん",
+    "suggestion": "素うどん",
+    "message": "誤変換です。素うどんの間違いです。"
+  },
+  {
+    "id": "ZUGAITOTU",
+    "category": "誤変換",
+    "pattern": "頭骸骨",
+    "suggestion": "頭蓋骨",
+    "message": "誤変換です。頭蓋骨の間違いです。"
+  },
+  {
+    "id": "ZUNINORU",
+    "category": "誤変換",
+    "pattern": "頭に乗る\\|のる",
+    "suggestion": "図に乗る",
+    "message": "誤変換です。図に乗るの間違いです。"
+  },
+  {
+    "id": "SUNNDENOTOKORODE",
+    "category": "誤変換",
+    "pattern": "寸での所\\|ところで",
+    "suggestion": "既での所で",
+    "message": "誤変換です。既での所での間違いです。"
+  },
+  {
+    "id": "SEIKONNTUKIHATERU",
+    "category": "誤変換",
+    "pattern": "精魂尽き\\|つき",
+    "suggestion": "精根尽き",
+    "message": "誤変換です。精根尽き果てるの間違いです。"
+  },
+  {
+    "id": "SEITOUHA",
+    "category": "誤変換",
+    "pattern": "正当派",
+    "suggestion": "正統派",
+    "message": "誤変換です。正統派の間違いです。"
+  },
+  {
+    "id": "SEKAISEIHUKU",
+    "category": "誤変換",
+    "pattern": "世界制服",
+    "suggestion": "世界征服",
+    "message": "誤変換です。世界征服の間違いです。"
+  },
+  {
+    "id": "ZETTAIZETUMEI",
+    "category": "誤変換",
+    "pattern": "絶対絶命",
+    "suggestion": "絶体絶命",
+    "message": "誤変換です。絶体絶命の間違いです。"
+  },
+  {
+    "id": "SETUWOMAGERU",
+    "category": "誤変換",
+    "pattern": "説を曲げる\\|まげる",
+    "suggestion": "節を曲げる",
+    "message": "誤変換です。節を曲げるの間違いです。"
+  },
+  {
+    "id": "ZEHI",
+    "category": "誤変換",
+    "pattern": "是否",
+    "suggestion": "是非",
+    "message": "誤変換です。是非の間違いです。"
+  },
+  {
+    "id": "SENNSENNHUKOKU",
+    "category": "誤変換",
+    "pattern": "戦線布告",
+    "suggestion": "宣戦布告",
+    "message": "誤変換です。宣戦布告の間違いです。"
+  },
+  {
+    "id": "SENNTAKUSI",
+    "category": "誤変換",
+    "pattern": "選択枝",
+    "suggestion": "選択肢",
+    "message": "誤変換です。選択肢の間違いです。"
+  },
+  {
+    "id": "ZENNMENNTEKI",
+    "category": "誤変換",
+    "pattern": "前面的",
+    "suggestion": "全面的",
+    "message": "誤変換です。全面的の間違いです。"
+  },
+  {
+    "id": "JINNMONN",
+    "category": "誤変換",
+    "pattern": "専問",
+    "suggestion": "専門",
+    "message": "誤変換です。専門の間違いです。"
+  },
+  {
+    "id": "SOUSOUTARUJINNBUTU",
+    "category": "誤変換",
+    "pattern": "蒼蒼たる",
+    "suggestion": "錚錚たる",
+    "message": "誤変換です。錚錚たる人物の間違いです。"
+  },
+  {
+    "id": "SOSSENNSOKKETU",
+    "category": "誤変換",
+    "pattern": "速戦速決",
+    "suggestion": "速戦即決",
+    "message": "誤変換です。速戦即決の間違いです。"
+  },
+  {
+    "id": "SOSSENN",
+    "category": "誤変換",
+    "pattern": "卒先",
+    "suggestion": "率先",
+    "message": "誤変換です。率先の間違いです。"
+  },
+  {
+    "id": "SODEHURIAUMOTASYOUNOENN",
+    "category": "誤変換",
+    "pattern": "袖振り合うも多少の縁",
+    "suggestion": "袖振り合うも多生の縁",
+    "message": "誤変換です。袖振り合うも多生の縁の間違いです。"
+  },
+  {
+    "id": "HANASIWOSORASU",
+    "category": "誤変換",
+    "pattern": "話を反らす",
+    "suggestion": "話を逸らす",
+    "message": "誤変換です。話を逸らすの間違いです。"
+  },
+  {
+    "id": "SONNSYOKU",
+    "category": "誤変換",
+    "pattern": "損色",
+    "suggestion": "遜色",
+    "message": "誤変換です。遜色の間違いです。"
+  },
+  {
+    "id": "TYUUDURI",
+    "category": "誤変換",
+    "pattern": "中吊り",
+    "suggestion": "宙吊り",
+    "message": "誤変換です。宙吊りの間違いです。"
+  },
+  {
+    "id": "TAIKANN",
+    "category": "誤変換",
+    "pattern": "載冠",
+    "suggestion": "戴冠",
+    "message": "誤変換です。戴冠の間違いです。"
+  },
+  {
+    "id": "TAIGIMEIBUNN",
+    "category": "誤変換",
+    "pattern": "大義名文",
+    "suggestion": "大義名分",
+    "message": "誤変換です。大義名分の間違いです。"
+  },
+  {
+    "id": "TAIHUUIKKA",
+    "category": "誤変換",
+    "pattern": "台風一家",
+    "suggestion": "台風一過",
+    "message": "誤変換です。台風一過の間違いです。"
+  },
+  {
+    "id": "TAKANENOHANA",
+    "category": "誤変換",
+    "pattern": "高値の花",
+    "suggestion": "高嶺の花",
+    "message": "誤変換です。高嶺の花の間違いです。"
+  },
+  {
+    "id": "TAKAMINOKENNBUTU",
+    "category": "誤変換",
+    "pattern": "高見の見物",
+    "suggestion": "高みの見物",
+    "message": "誤変換です。高みの見物の間違いです。"
+  },
+  {
+    "id": "TATAZUMU",
+    "category": "誤変換",
+    "pattern": "立たずむ\\|み",
+    "suggestion": "佇む",
+    "message": "誤変換です。佇むの間違いです。"
+  },
+  {
+    "id": "TATARI",
+    "category": "誤変換",
+    "pattern": "崇り",
+    "suggestion": "祟り",
+    "message": "誤変換です。祟りの間違いです。"
+  },
+  {
+    "id": "TATOEBANASI",
+    "category": "誤変換",
+    "pattern": "例え話",
+    "suggestion": "譬え話",
+    "message": "誤変換です。譬え話の間違いです。"
+  },
+  {
+    "id": "TAMANOKOSI",
+    "category": "誤変換",
+    "pattern": "玉の腰",
+    "suggestion": "玉の輿",
+    "message": "誤変換です。玉の輿の間違いです。"
+  },
+  {
+    "id": "TANNKA",
+    "category": "誤変換",
+    "pattern": "担荷",
+    "suggestion": "担架",
+    "message": "誤変換です。担架の間違いです。"
+  },
+  {
+    "id": "DEBUSYOU",
+    "category": "誤変換",
+    "pattern": "デブ症",
+    "suggestion": "出不精",
+    "message": "誤変換です。出不精の間違いです。"
+  },
+  {
+    "id": "TANNSOKINN",
+    "category": "誤変換",
+    "pattern": "炭素菌",
+    "suggestion": "炭疽菌",
+    "message": "誤変換です。炭疽菌の間違いです。"
+  },
+  {
+    "id": "TANNTEKINI",
+    "category": "誤変換",
+    "pattern": "単的に",
+    "suggestion": "端的に",
+    "message": "誤変換です。端的にの間違いです。"
+  },
+  {
+    "id": "TANNTOUTYOKUNYUU",
+    "category": "誤変換",
+    "pattern": "短刀直入",
+    "suggestion": "単刀直入",
+    "message": "誤変換です。単刀直入の間違いです。"
+  },
+  {
+    "id": "TANNPAKUSITU",
+    "category": "誤変換",
+    "pattern": "淡白質",
+    "suggestion": "蛋白質",
+    "message": "誤変換です。蛋白質の間違いです。"
+  },
+  {
+    "id": "TYAKUHUKU",
+    "category": "誤変換",
+    "pattern": "着腹",
+    "suggestion": "着服",
+    "message": "誤変換です。着服の間違いです。"
+  },
+  {
+    "id": "TYOUAI",
+    "category": "誤変換",
+    "pattern": "籠愛",
+    "suggestion": "寵愛",
+    "message": "誤変換です。寵愛の間違いです。"
+  },
+  {
+    "id": "TYOUKANNZU",
+    "category": "誤変換",
+    "pattern": "鳥観図",
+    "suggestion": "鳥瞰図",
+    "message": "誤変換です。鳥瞰図の間違いです。"
+  },
+  {
+    "id": "TYOSUITI",
+    "category": "誤変換",
+    "pattern": "貯水地",
+    "suggestion": "貯水池",
+    "message": "誤変換です。貯水池の間違いです。"
+  },
+  {
+    "id": "TIRIBAMERU",
+    "category": "誤変換",
+    "pattern": "散りばめる",
+    "suggestion": "鏤める",
+    "message": "誤変換です。鏤めるの間違いです。"
+  },
+  {
+    "id": "TINAMAGUSAI",
+    "category": "誤変換",
+    "pattern": "血生臭い",
+    "suggestion": "血腥い",
+    "message": "誤変換です。血腥いの間違いです。"
+  },
+  {
+    "id": "DEKUNOBOU",
+    "category": "誤変換",
+    "pattern": "木偶\\|でくの棒",
+    "suggestion": "木偶の坊",
+    "message": "誤変換です。木偶の坊の間違いです。"
+  },
+  {
+    "id": "TEMIJIKA",
+    "category": "誤変換",
+    "pattern": "手短か",
+    "suggestion": "手短",
+    "message": "誤変換です。手短の間違いです。"
+  },
+  {
+    "id": "TERAKOYA",
+    "category": "誤変換",
+    "pattern": "寺小屋",
+    "suggestion": "寺子屋",
+    "message": "誤変換です。寺子屋の間違いです。"
+  },
+  {
+    "id": "TENNGAIKODOKU",
+    "category": "誤変換",
+    "pattern": "天外孤独",
+    "suggestion": "天涯孤独",
+    "message": "誤変換です。天涯孤独の間違いです。"
+  },
+  {
+    "id": "TENNSYUKAKU",
+    "category": "誤変換",
+    "pattern": "天主閣",
+    "suggestion": "天守閣",
+    "message": "誤変換です。天守閣の間違いです。"
+  },
+  {
+    "id": "DOKAESI",
+    "category": "誤変換",
+    "pattern": "度返し",
+    "suggestion": "度外視",
+    "message": "誤変換です。度外視の間違いです。"
+  },
+  {
+    "id": "DOKUDANNJOU",
+    "category": "誤変換",
+    "pattern": "独壇場",
+    "suggestion": "独擅場",
+    "message": "誤変換です。独擅場の間違いです。"
+  },
+  {
+    "id": "TORIDADASARERU",
+    "category": "誤変換",
+    "pattern": "取り出さ\\|とり出される",
+    "suggestion": "取り沙汰される",
+    "message": "誤変換です。取り沙汰されるの間違いです。"
+  },
+  {
+    "id": "HINNYOKU",
+    "category": "誤変換",
+    "pattern": "貧欲",
+    "suggestion": "貪欲",
+    "message": "誤変換です。貪欲の間違いです。"
+  },
+  {
+    "id": "TOITADASU",
+    "category": "誤変換",
+    "pattern": "問い正す",
+    "suggestion": "問い質す",
+    "message": "誤変換です。問い質すの間違いです。"
+  },
+  {
+    "id": "HUJIISU",
+    "category": "誤変換",
+    "pattern": "藤椅子",
+    "suggestion": "籐椅子",
+    "message": "誤変換です。籐椅子の間違いです。"
+  },
+  {
+    "id": "TOUJISYA",
+    "category": "誤変換",
+    "pattern": "当時者",
+    "suggestion": "当事者",
+    "message": "誤変換です。当事者の間違いです。"
+  },
+  {
+    "id": "TOORIIPPENN",
+    "category": "誤変換",
+    "pattern": "通り一辺",
+    "suggestion": "通り一遍",
+    "message": "誤変換です。通り一遍の間違いです。"
+  },
+  {
+    "id": "TOTIKANN",
+    "category": "誤変換",
+    "pattern": "土地感",
+    "suggestion": "土地鑑",
+    "message": "誤変換です。土地鑑の間違いです。"
+  },
+  {
+    "id": "DOYOUNOUSINOHI",
+    "category": "誤変換",
+    "pattern": "土曜の丑の日",
+    "suggestion": "土用の丑の日",
+    "message": "誤変換です。土用の丑の日の間違いです。"
+  },
+  {
+    "id": "DOROJIAI",
+    "category": "誤変換",
+    "pattern": "泥試合",
+    "suggestion": "泥仕合",
+    "message": "誤変換です。泥仕合の間違いです。"
+  },
+  {
+    "id": "TONKYOU",
+    "category": "誤変換",
+    "pattern": "頓狂",
+    "suggestion": "頓興",
+    "message": "誤変換です。頓興の間違いです。"
+  },
+  {
+    "id": "TONNBOGAERI",
+    "category": "誤変換",
+    "pattern": "とんぼ帰り",
+    "suggestion": "蜻蛉返り",
+    "message": "誤変換です。蜻蛉返りの間違いです。"
+  },
+  {
+    "id": "TOOZAKERU",
+    "category": "誤変換",
+    "pattern": "遠避ける",
+    "suggestion": "遠ざける",
+    "message": "誤変換です。遠ざけるの間違いです。"
+  },
+  {
+    "id": "TUGI",
+    "category": "誤変換",
+    "pattern": "次ぎ",
+    "suggestion": "次",
+    "message": "誤変換です。次の間違いです。"
+  },
+  {
+    "id": "TUMAYOUJI",
+    "category": "誤変換",
+    "pattern": "妻楊枝",
+    "suggestion": "爪楊枝",
+    "message": "誤変換です。爪楊枝の間違いです。"
+  },
+  {
+    "id": "TEITARAKU",
+    "category": "誤変換",
+    "pattern": "低たらく",
+    "suggestion": "体たらく",
+    "message": "誤変換です。体たらくの間違いです。"
+  },
+  {
+    "id": "SEKINNNTUIKYUU",
+    "category": "誤変換",
+    "pattern": "責任追求",
+    "suggestion": "責任追及",
+    "message": "誤変換です。責任追及の間違いです。"
+  },
+  {
+    "id": "DETTIAGERU",
+    "category": "誤変換",
+    "pattern": "丁稚上げる",
+    "suggestion": "捏上げる",
+    "message": "誤変換です。捏上げるの間違いです。"
+  },
+  {
+    "id": "TEBANASIDEHOMERU",
+    "category": "誤変換",
+    "pattern": "手離しでほめる",
+    "suggestion": "手放でほめる",
+    "message": "誤変換です。手放でほめるの間違いです。"
+  },
+  {
+    "id": "TOIEDOMO",
+    "category": "誤変換",
+    "pattern": "と言えども",
+    "suggestion": "と雖も",
+    "message": "誤変換です。と雖もの間違いです。"
+  },
+  {
+    "id": "TOUSENNBANNGOU",
+    "category": "誤変換",
+    "pattern": "当選番号",
+    "suggestion": "当籤番号",
+    "message": "誤変換です。当籤番号の間違いです。"
+  },
+  {
+    "id": "NAKAZUTOBAZU",
+    "category": "誤変換",
+    "pattern": "泣かず跳ばず",
+    "suggestion": "鳴かず飛ばず",
+    "message": "誤変換です。鳴かず飛ばずの間違いです。"
+  },
+  {
+    "id": "NAKABA",
+    "category": "誤変換",
+    "pattern": "中ば",
+    "suggestion": "半ば",
+    "message": "誤変換です。半ばの間違いです。"
+  },
+  {
+    "id": "NASINOTUBUTE",
+    "category": "誤変換",
+    "pattern": "無しの礫\\|つぶて",
+    "suggestion": "梨の礫",
+    "message": "誤変換です。梨の礫の間違いです。"
+  },
+  {
+    "id": "NIKUHAKU",
+    "category": "誤変換",
+    "pattern": "肉迫",
+    "suggestion": "肉薄",
+    "message": "誤変換です。肉薄の間違いです。"
+  },
+  {
+    "id": "NASEBANARU",
+    "category": "誤変換",
+    "pattern": "成せば成る",
+    "suggestion": "為せば成る",
+    "message": "誤変換です。為せば成るの間違いです。"
+  },
+  {
+    "id": "NAMABYOHOU",
+    "category": "誤変換",
+    "pattern": "なまへいほう",
+    "suggestion": "生兵法",
+    "message": "誤変換です。生兵法の間違いです。"
+  },
+  {
+    "id": "NARENARESII",
+    "category": "誤変換",
+    "pattern": "慣れ慣れしい\\|しく",
+    "suggestion": "馴れ馴れしい",
+    "message": "誤変換です。馴れ馴れしいの間違いです。"
+  },
+  {
+    "id": "NENNGARANENNJYUU",
+    "category": "誤変換",
+    "pattern": "年柄年中",
+    "suggestion": "年がら年中",
+    "message": "誤変換です。年がら年中の間違いです。"
+  },
+  {
+    "id": "NENNPOU",
+    "category": "誤変換",
+    "pattern": "年棒",
+    "suggestion": "年俸",
+    "message": "誤変換です。年俸の間違いです。"
+  },
+  {
+    "id": "NOUKIGU",
+    "category": "誤変換",
+    "pattern": "農器具",
+    "suggestion": "農機具",
+    "message": "誤変換です。農機具の間違いです。"
+  },
+  {
+    "id": "NOUKOUSOKU",
+    "category": "誤変換",
+    "pattern": "脳硬塞",
+    "suggestion": "脳梗塞",
+    "message": "誤変換です。脳梗塞の間違いです。"
+  },
+  {
+    "id": "NURETEDEAWA",
+    "category": "誤変換",
+    "pattern": "濡れ手で泡",
+    "suggestion": "濡れ手で粟",
+    "message": "誤変換です。濡れ手で粟の間違いです。"
+  },
+  {
+    "id": "BAKUSINN",
+    "category": "誤変換",
+    "pattern": "爆進",
+    "suggestion": "驀進",
+    "message": "誤変換です。驀進の間違いです。"
+  },
+  {
+    "id": "BAKUDAI",
+    "category": "誤変換",
+    "pattern": "漠大",
+    "suggestion": "莫大",
+    "message": "誤変換です。莫大の間違いです。"
+  },
+  {
+    "id": "HATYOU",
+    "category": "誤変換",
+    "pattern": "波調",
+    "suggestion": "波長",
+    "message": "誤変換です。波長の間違いです。"
+  },
+  {
+    "id": "HAPPOUSUTIRO-RU",
+    "category": "誤変換",
+    "pattern": "発砲スチロール",
+    "suggestion": "発泡スチロール",
+    "message": "誤変換です。発泡スチロールの間違いです。"
+  },
+  {
+    "id": "HANAMUKE",
+    "category": "誤変換",
+    "pattern": "花向け",
+    "suggestion": "餞",
+    "message": "誤変換です。餞の間違いです。"
+  },
+  {
+    "id": "BANNJIKYUUSU",
+    "category": "誤変換",
+    "pattern": "万事窮す",
+    "suggestion": "万事休す",
+    "message": "誤変換です。万事休すの間違いです。"
+  },
+  {
+    "id": "BIMYOU",
+    "category": "誤変換",
+    "pattern": "徴妙",
+    "suggestion": "微妙",
+    "message": "誤変換です。微妙の間違いです。"
+  },
+  {
+    "id": "HURI-NOKYAKU",
+    "category": "誤変換",
+    "pattern": "フリーの客",
+    "suggestion": "振りの客",
+    "message": "誤変換です。振りの客の間違いです。"
+  },
+  {
+    "id": "HUNNSYOKUKESSAI",
+    "category": "誤変換",
+    "pattern": "粉飾決済",
+    "suggestion": "粉飾決算",
+    "message": "誤変換です。粉飾決算の間違いです。"
+  },
+  {
+    "id": "HUKAKETU",
+    "category": "誤変換",
+    "pattern": "不可決",
+    "suggestion": "不可欠",
+    "message": "誤変換です。不可欠の間違いです。"
+  },
+  {
+    "id": "HUKYOUWAWONN",
+    "category": "誤変換",
+    "pattern": "不響和音",
+    "suggestion": "不協和音",
+    "message": "誤変換です。不協和音の間違いです。"
+  },
+  {
+    "id": "HUKUZOU",
+    "category": "誤変換",
+    "pattern": "腹臓",
+    "suggestion": "腹蔵",
+    "message": "誤変換です。腹蔵の間違いです。"
+  },
+  {
+    "id": "BUSYOUHIGE",
+    "category": "誤変換",
+    "pattern": "武将髭",
+    "suggestion": "無精髭",
+    "message": "誤変換です。無精髭の間違いです。"
+  },
+  {
+    "id": "HURYOUSAIKENN",
+    "category": "誤変換",
+    "pattern": "不良債券",
+    "suggestion": "不良債権",
+    "message": "誤変換です。不良債権の間違いです。"
+  },
+  {
+    "id": "HUWARAIDOU",
+    "category": "誤変換",
+    "pattern": "不和雷同",
+    "suggestion": "附和雷同",
+    "message": "誤変換です。附和雷同の間違いです。"
+  },
+  {
+    "id": "BUNNMEIKAIKA",
+    "category": "誤変換",
+    "pattern": "文明開花",
+    "suggestion": "文明開化",
+    "message": "誤変換です。文明開化の間違いです。"
+  },
+  {
+    "id": "HEIKOUKANNKAKU",
+    "category": "誤変換",
+    "pattern": "平行感覚",
+    "suggestion": "平衡感覚",
+    "message": "誤変換です。平衡感覚の間違いです。"
+  },
+  {
+    "id": "HERIKUDARU",
+    "category": "誤変換",
+    "pattern": "へり下る\\|くだる",
+    "suggestion": "遜る",
+    "message": "誤変換です。遜るの間違いです。"
+  },
+  {
+    "id": "BOINN",
+    "category": "誤変換",
+    "pattern": "母印",
+    "suggestion": "拇印",
+    "message": "誤変換です。拇印の間違いです。"
+  },
+  {
+    "id": "HOUKI",
+    "category": "誤変換",
+    "pattern": "峰起",
+    "suggestion": "蜂起",
+    "message": "誤変換です。蜂起の間違いです。"
+  },
+  {
+    "id": "HOUTUI",
+    "category": "誤変換",
+    "pattern": "放遂",
+    "suggestion": "放逐",
+    "message": "誤変換です。放逐の間違いです。"
+  },
+  {
+    "id": "HOUDOU",
+    "category": "誤変換",
+    "pattern": "報導",
+    "suggestion": "報道",
+    "message": "誤変換です。報道の間違いです。"
+  },
+  {
+    "id": "HOHUKUZETTOU",
+    "category": "誤変換",
+    "pattern": "抱腹絶倒",
+    "suggestion": "捧腹絶倒",
+    "message": "誤変換です。捧腹絶倒の間違いです。"
+  },
+  {
+    "id": "HOUBENN",
+    "category": "誤変換",
+    "pattern": "方弁",
+    "suggestion": "方便",
+    "message": "誤変換です。方便の間違いです。"
+  },
+  {
+    "id": "HOUMONN",
+    "category": "誤変換",
+    "pattern": "訪門",
+    "suggestion": "訪問",
+    "message": "誤変換です。訪問の間違いです。"
+  },
+  {
+    "id": "HOUYOURYOKU",
+    "category": "誤変換",
+    "pattern": "抱擁力",
+    "suggestion": "包容力",
+    "message": "誤変換です。包容力の間違いです。"
+  },
+  {
+    "id": "HOSYOUKINN",
+    "category": "誤変換",
+    "pattern": "保障金",
+    "suggestion": "保証金",
+    "message": "誤変換です。保証金の間違いです。"
+  },
+  {
+    "id": "MORITATERU",
+    "category": "誤変換",
+    "pattern": "盛り立てる\\|たてる",
+    "suggestion": "守り立てる",
+    "message": "誤変換です。守り立てるの間違いです。"
+  },
+  {
+    "id": "MAGASASU",
+    "category": "誤変換",
+    "pattern": "魔が刺す",
+    "suggestion": "魔が差す",
+    "message": "誤変換です。魔が差すの間違いです。"
+  },
+  {
+    "id": "MAKAHUSIGI",
+    "category": "誤変換",
+    "pattern": "摩可不思議",
+    "suggestion": "摩訶不思議",
+    "message": "誤変換です。摩訶不思議の間違いです。"
+  },
+  {
+    "id": "MAHOUJINN",
+    "category": "誤変換",
+    "pattern": "魔法陣",
+    "suggestion": "魔方陣",
+    "message": "誤変換です。魔方陣の間違いです。"
+  },
+  {
+    "id": "MIGAWARI",
+    "category": "誤変換",
+    "pattern": "身変わり",
+    "suggestion": "見代わり",
+    "message": "誤変換です。見代わりの間違いです。"
+  },
+  {
+    "id": "MIKIWAMERU",
+    "category": "誤変換",
+    "pattern": "見究める",
+    "suggestion": "見極める",
+    "message": "誤変換です。見極めるの間違いです。"
+  },
+  {
+    "id": "MIZUMIZUSII",
+    "category": "誤変換",
+    "pattern": "水水しい",
+    "suggestion": "瑞瑞しい",
+    "message": "誤変換です。瑞瑞しいの間違いです。"
+  },
+  {
+    "id": "MISEINENN",
+    "category": "誤変換",
+    "pattern": "未青年",
+    "suggestion": "未成年",
+    "message": "誤変換です。未成年の間違いです。"
+  },
+  {
+    "id": "MISERU",
+    "category": "誤変換",
+    "pattern": "魅せる",
+    "suggestion": "見せる",
+    "message": "誤変換です。見せるの間違いです。"
+  },
+  {
+    "id": "MITUMATA",
+    "category": "誤変換",
+    "pattern": "三つ又",
+    "suggestion": "三叉",
+    "message": "誤変換です。三叉の間違いです。"
+  },
+  {
+    "id": "MITORERU",
+    "category": "誤変換",
+    "pattern": "見取れる",
+    "suggestion": "見蕩れる",
+    "message": "誤変換です。見蕩れるの間違いです。"
+  },
+  {
+    "id": "MUGAMUTYUU",
+    "category": "誤変換",
+    "pattern": "無我無中",
+    "suggestion": "無我夢中",
+    "message": "誤変換です。無我夢中の間違いです。"
+  },
+  {
+    "id": "MEISI",
+    "category": "誤変換",
+    "pattern": "名剌",
+    "suggestion": "名刺",
+    "message": "誤変換です。名刺の間違いです。"
+  },
+  {
+    "id": "MEGURUMEKU",
+    "category": "誤変換",
+    "pattern": "巡るめく",
+    "suggestion": "目眩く",
+    "message": "誤変換です。目眩くの間違いです。"
+  },
+  {
+    "id": "MOKUDOKU",
+    "category": "誤変換",
+    "pattern": "目読",
+    "suggestion": "黙読",
+    "message": "誤変換です。黙読の間違いです。"
+  },
+  {
+    "id": "MOKUHIKENN",
+    "category": "誤変換",
+    "pattern": "黙否権",
+    "suggestion": "黙秘権",
+    "message": "誤変換です。黙秘権の間違いです。"
+  },
+  {
+    "id": "MONUKENOKARA",
+    "category": "誤変換",
+    "pattern": "もぬけの空",
+    "suggestion": "蛻けの殻",
+    "message": "誤変換です。蛻けの殻の間違いです。"
+  },
+  {
+    "id": "MANNJOUITTI",
+    "category": "誤変換",
+    "pattern": "万場一致",
+    "suggestion": "満場一致",
+    "message": "誤変換です。満場一致の間違いです。"
+  },
+  {
+    "id": "YAWARAGU",
+    "category": "誤変換",
+    "pattern": "柔らぐ",
+    "suggestion": "和らぐ",
+    "message": "誤変換です。和らぐの間違いです。"
+  },
+  {
+    "id": "YUUSYUNOBI",
+    "category": "誤変換",
+    "pattern": "優秀の美",
+    "suggestion": "有終の美",
+    "message": "誤変換です。有終の美の間違いです。"
+  },
+  {
+    "id": "YOKOURENNSYUU",
+    "category": "誤変換",
+    "pattern": "予行練習",
+    "suggestion": "予行演習",
+    "message": "誤変換です。予行演習の間違いです。"
+  },
+  {
+    "id": "YOMIGAERU",
+    "category": "誤変換",
+    "pattern": "黄泉返る\\|がえる",
+    "suggestion": "蘇る",
+    "message": "誤変換です。蘇るの間違いです。"
+  },
+  {
+    "id": "YOYUUSYAKUSYAKU",
+    "category": "誤変換",
+    "pattern": "余裕釈釈",
+    "suggestion": "余裕綽綽",
+    "message": "誤変換です。余裕綽綽の間違いです。"
+  },
+  {
+    "id": "YAKIMOTIYAKI",
+    "category": "誤変換",
+    "pattern": "焼き餅妬き",
+    "suggestion": "焼き餅焼き",
+    "message": "誤変換です。焼き餅焼きの間違いです。"
+  },
+  {
+    "id": "YAKUBYOUGAMI",
+    "category": "誤変換",
+    "pattern": "厄病神",
+    "suggestion": "疫病神",
+    "message": "誤変換です。疫病神の間違いです。"
+  },
+  {
+    "id": "RAKKASEI",
+    "category": "誤変換",
+    "pattern": "落下生",
+    "suggestion": "落花生",
+    "message": "誤変換です。落花生の間違いです。"
+  },
+  {
+    "id": "RISOUKYOU",
+    "category": "誤変換",
+    "pattern": "理想境",
+    "suggestion": "理想郷",
+    "message": "誤変換です。理想郷の間違いです。"
+  },
+  {
+    "id": "RYUUGENNHIGO",
+    "category": "誤変換",
+    "pattern": "流言非語",
+    "suggestion": "流言蜚語",
+    "message": "誤変換です。流言蜚語の間違いです。"
+  },
+  {
+    "id": "RENNKINNJYUTU",
+    "category": "誤変換",
+    "pattern": "練金術",
+    "suggestion": "錬金術",
+    "message": "誤変換です。錬金術の間違いです。"
+  },
+  {
+    "id": "ROTENSYOU",
+    "category": "誤変換",
+    "pattern": "露店商",
+    "suggestion": "露天商",
+    "message": "誤変換です。露天商の間違いです。"
+  },
+  {
+    "id": "ROKEHANN",
+    "category": "誤変換",
+    "pattern": "ロケ班",
+    "suggestion": "ロケハン",
+    "message": "誤変換です。ロケハンの間違いです。"
+  },
+  {
+    "id": "WAZAMONO",
+    "category": "誤変換",
+    "pattern": "技物",
+    "suggestion": "業物",
+    "message": "誤変換です。業物の間違いです。"
+  },
+  {
+    "id": "WAIRO",
+    "category": "誤変換",
+    "pattern": "賄路",
+    "suggestion": "賄賂",
+    "message": "誤変換です。賄賂の間違いです。"
+  },
+  {
+    "id": "WAKIAIAI",
+    "category": "誤変換",
+    "pattern": "和気愛愛",
+    "suggestion": "和気藹藹",
+    "message": "誤変換です。和気藹藹の間違いです。"
+  },
+  {
+    "id": "WAKOU",
+    "category": "誤変換",
+    "pattern": "倭冠",
+    "suggestion": "倭寇",
+    "message": "誤変換です。倭寇の間違いです。"
+  },
+  {
+    "id": "AINOTE",
+    "category": "連語関係",
+    "pattern": "合いの手を打つ\\|うつ",
+    "suggestion": "合いの手を入れる",
+    "message": "連合関係がおかしいです。合いの手を入れるの間違いです。"
+  },
+  {
+    "id": "ITIDOU",
+    "category": "連語関係",
+    "pattern": "一同に会",
+    "suggestion": "一堂に会",
+    "message": "連合関係がおかしいです。一堂に会するの間違いです。"
+  },
+  {
+    "id": "ISSI",
+    "category": "連語関係",
+    "pattern": "一矢を返す\\|かえす",
+    "suggestion": "一矢を報いる",
+    "message": "連合関係がおかしいです。一矢を報いるの間違いです。"
+  },
+  {
+    "id": "ASIMOTO",
+    "category": "連語関係",
+    "pattern": "足元をすくう",
+    "suggestion": "足をすくう",
+    "message": "連合関係がおかしいです。足をすくうの間違いです。"
+  },
+  {
+    "id": "AKARUMI",
+    "category": "連語関係",
+    "pattern": "明るみになる",
+    "suggestion": "明るみに出る",
+    "message": "連合関係がおかしいです。明るみに出るの間違いです。"
+  },
+  {
+    "id": "IGO",
+    "category": "連語関係",
+    "pattern": "囲碁を指す\\|さす",
+    "suggestion": "囲碁を打つ",
+    "message": "連合関係がおかしいです。囲碁を打つの間違いです。"
+  },
+  {
+    "id": "IKARISINTOUNITASSURU",
+    "category": "連語関係",
+    "pattern": "怒り心頭に達する\\|たっする",
+    "suggestion": "怒り心頭に発する",
+    "message": "連合関係がおかしいです。怒り心頭に発するの間違いです。"
+  },
+  {
+    "id": "HIKKENNOKATIARI",
+    "category": "連語関係",
+    "pattern": "必見の価値",
+    "suggestion": "一見の価値",
+    "message": "連合関係がおかしいです。一見の価値有りの間違いです。"
+  },
+  {
+    "id": "ISSYUNSAKIHAYAMI",
+    "category": "連語関係",
+    "pattern": "一瞬先は闇",
+    "suggestion": "一寸先は闇",
+    "message": "連合関係がおかしいです。一寸先は闇の間違いです。"
+  },
+  {
+    "id": "INROUWOWATASU",
+    "category": "連語関係",
+    "pattern": "印籠を渡す\\|わたす",
+    "suggestion": "引導を渡す",
+    "message": "連合関係がおかしいです。引導を渡すの間違いです。"
+  },
+  {
+    "id": "UNTIKUWOTARERU",
+    "category": "連語関係",
+    "pattern": "薀蓄を垂れる\\|たれる",
+    "suggestion": "薀蓄を傾ける",
+    "message": "連合関係がおかしいです。薀蓄を傾けるの間違いです。"
+  },
+  {
+    "id": "ESAWOAGERU",
+    "category": "連語関係",
+    "pattern": "餌\\|えさをあげる",
+    "suggestion": "餌をやる",
+    "message": "連合関係がおかしいです。餌をやるの間違いです。"
+  },
+  {
+    "id": "ERIMOTOWOTADASU",
+    "category": "連語関係",
+    "pattern": "襟元を正す\\|ただす",
+    "suggestion": "襟を正す",
+    "message": "連合関係がおかしいです。襟を正すの間違いです。"
+  },
+  {
+    "id": "AKANOTANINN",
+    "category": "連語関係",
+    "pattern": "垢の他人",
+    "suggestion": "赤の他人",
+    "message": "連合関係がおかしいです。赤の他人の間違いです。"
+  },
+  {
+    "id": "ENHAKINAMONO",
+    "category": "連語関係",
+    "pattern": "縁は奇",
+    "suggestion": "縁は異",
+    "message": "連合関係がおかしいです。縁は異なものの間違いです。"
+  },
+  {
+    "id": "ONWOKISERU",
+    "category": "連語関係",
+    "pattern": "恩を着せる\\|きせる",
+    "suggestion": "恩に着せる",
+    "message": "連合関係がおかしいです。恩に着せるの間違いです。"
+  },
+  {
+    "id": "UEHESITAHENOOOSAWAGI",
+    "category": "連語関係",
+    "pattern": "上へ下への大騒ぎ",
+    "suggestion": "上を下への大騒ぎ",
+    "message": "連合関係がおかしいです。上を下への大騒ぎの間違いです。"
+  },
+  {
+    "id": "KAOWOUKAGAU",
+    "category": "連語関係",
+    "pattern": "顔を窺う\\|うかがう",
+    "suggestion": "顔色を窺う",
+    "message": "連合関係がおかしいです。顔色を窺うの間違いです。"
+  },
+  {
+    "id": "GISINANKIWOIDAKU",
+    "category": "連語関係",
+    "pattern": "疑心暗鬼を抱く\\|いだく",
+    "suggestion": "疑心暗鬼を生ず",
+    "message": "連合関係がおかしいです。疑心暗鬼を生ずの間違いです。"
+  },
+  {
+    "id": "KIZUNAGAHUKAI",
+    "category": "連語関係",
+    "pattern": "絆\\|きずなが深い",
+    "suggestion": "絆が強い",
+    "message": "連合関係がおかしいです。絆が強いの間違いです。"
+  },
+  {
+    "id": "KUJYUUWOAJIWAU",
+    "category": "連語関係",
+    "pattern": "苦汁を味わう\\|あじわう",
+    "suggestion": "苦汁を嘗める",
+    "message": "連合関係がおかしいです。苦汁を嘗めるの間違いです。"
+  },
+  {
+    "id": "KUTIGURUMAWOAWASERU",
+    "category": "連語関係",
+    "pattern": "口車を合わせる\\|あわせる",
+    "suggestion": "口車に乗る",
+    "message": "連合関係がおかしいです。口車に乗るの間違いです。"
+  },
+  {
+    "id": "KOUBEWOKAIGERU",
+    "category": "連語関係",
+    "pattern": "頭を傾げる\\|かしげる",
+    "suggestion": "首を傾げる",
+    "message": "連合関係がおかしいです。首を傾げるの間違いです。"
+  },
+  {
+    "id": "HISSINOKAKUGO",
+    "category": "連語関係",
+    "pattern": "必死の覚悟",
+    "suggestion": "決死の覚悟",
+    "message": "連合関係がおかしいです。決死の覚悟の間違いです。"
+  },
+  {
+    "id": "SIROKUROWOTUKERU",
+    "category": "連語関係",
+    "pattern": "白黒をつける",
+    "suggestion": "黒白をつける",
+    "message": "連合関係がおかしいです。黒白をつけるの間違いです。"
+  },
+  {
+    "id": "KUSINOHAGANUKETAYOU",
+    "category": "連語関係",
+    "pattern": "櫛\\|くしの歯が抜ける",
+    "suggestion": "櫛の歯が欠ける",
+    "message": "連合関係がおかしいです。櫛の歯が欠けるの間違いです"
+  },
+  {
+    "id": "KENRYOKUNIOMONETTE",
+    "category": "連語関係",
+    "pattern": "権力におもねて",
+    "suggestion": "権力におもねって",
+    "message": "権力におもねっての間違いです"
+  },
+  {
+    "id": "KASSAIWOSAKEBU",
+    "category": "連語関係",
+    "pattern": "喝采を叫ぶ\\|さけぶ",
+    "suggestion": "快哉を叫ぶ",
+    "message": "連合関係がおかしいです。快哉を叫ぶの間違いです。"
+  },
+  {
+    "id": "KASANIKAKARU",
+    "category": "連語関係",
+    "pattern": "嵩に懸かる\\|かかる",
+    "suggestion": "傘に懸かる",
+    "message": "連合関係がおかしいです。傘に懸かるの間違いです。"
+  },
+  {
+    "id": "KATUWOIRERU",
+    "category": "連語関係",
+    "pattern": "喝を入れる\\|いれる",
+    "suggestion": "活を入れる",
+    "message": "連合関係がおかしいです。活を入れるの間違いです。"
+  },
+  {
+    "id": "KAHOUHANETEMATE",
+    "category": "連語関係",
+    "pattern": "家宝は寝\\|ねてて待つ",
+    "suggestion": "果報は寝て待て",
+    "message": "連合関係がおかしいです。果報は寝て待ての間違いです。"
+  },
+  {
+    "id": "KIMONIMEIJIRU",
+    "category": "連語関係",
+    "pattern": "肝\\|きもに命じる",
+    "suggestion": "肝に銘じる",
+    "message": "連合関係がおかしいです。肝に銘じるの間違いです。"
+  },
+  {
+    "id": "KIGAHURERU",
+    "category": "連語関係",
+    "pattern": "気が狂れる",
+    "suggestion": "気が触れる",
+    "message": "連合関係がおかしいです。気が触れるの間違いです。"
+  },
+  {
+    "id": "KERIWOTUKERU",
+    "category": "連語関係",
+    "pattern": "蹴りをつける",
+    "suggestion": "けりをつける",
+    "message": "連合関係がおかしいです。けりをつけるの間違いで"
+  },
+  {
+    "id": "KUTIWONIGOSU",
+    "category": "連語関係",
+    "pattern": "口を濁す\\|にごす",
+    "suggestion": "言葉を濁す",
+    "message": "連合関係がおかしいです。言葉を濁すの間違いです。"
+  },
+  {
+    "id": "MIWOTAWAWA",
+    "category": "連語関係",
+    "pattern": "実もたわわ",
+    "suggestion": "枝も撓",
+    "message": "連合関係がおかしいです。枝も撓の間違いです。"
+  },
+  {
+    "id": "TEKIWOSIRIONOREWOSIREBAHYAKUSENNAYAUKARAZU",
+    "category": "連語関係",
+    "pattern": "敵を知り己を知れば百戦殆からず",
+    "suggestion": "彼を知り己を知れば百戦殆からず",
+    "message": "連合関係がおかしいです。彼を知り己を知れば百戦殆からずの間違いです。"
+  },
+  {
+    "id": "KYAKKOUWOATUMERU",
+    "category": "連語関係",
+    "pattern": "脚光を集める",
+    "suggestion": "脚光を浴びる",
+    "message": "連合関係がおかしいです。脚光を浴びるの間違いです。"
+  },
+  {
+    "id": "SYOKUSYUGAUGOKU",
+    "category": "連語関係",
+    "pattern": "触手が動く\\|うごく",
+    "suggestion": "食指が動く",
+    "message": "連合関係がおかしいです。食指が動くの間違いです。"
+  },
+  {
+    "id": "SIRAHANOYAWOATERU",
+    "category": "連語関係",
+    "pattern": "白羽の矢を当てる\\|あてる",
+    "suggestion": "白羽の矢が立つ",
+    "message": "連合関係がおかしいです。白羽の矢が立つの間違いです。"
+  },
+  {
+    "id": "SENNKENNNOME",
+    "category": "連語関係",
+    "pattern": "先見の目",
+    "suggestion": "先見の明",
+    "message": "連合関係がおかしいです。先見の明の間違いです。"
+  },
+  {
+    "id": "SAIHAIWOHURUU",
+    "category": "連語関係",
+    "pattern": "采配をふるう\\|揮う",
+    "suggestion": "采配を振る",
+    "message": "連合関係がおかしいです。采配を振るの間違いです。"
+  },
+  {
+    "id": "SYOUGI",
+    "category": "連語関係",
+    "pattern": "将棋を打つ\\|うつ",
+    "suggestion": "将棋を指す",
+    "message": "連合関係がおかしいです。将棋を指すの間違いです。"
+  },
+  {
+    "id": "HYOUJUNNWOAWASERU",
+    "category": "連語関係",
+    "pattern": "標準を合わせる\\|あわせる",
+    "suggestion": "照準を合わせる",
+    "message": "連合関係がおかしいです。照準を合わせるの間違いです。"
+  },
+  {
+    "id": "SITYUUNIKATUWOERU",
+    "category": "連語関係",
+    "pattern": "死中に活を得る\\|える",
+    "suggestion": "死中に活を求める",
+    "message": "連合関係がおかしいです。死中に活を求めるの間違いです。"
+  },
+  {
+    "id": "SINOGIWOKEZURU",
+    "category": "連語関係",
+    "pattern": "凌ぎを削る",
+    "suggestion": "鎬を削る",
+    "message": "連合関係がおかしいです。鎬を削るの間違いです。"
+  },
+  {
+    "id": "NANAMENIKAMAERU",
+    "category": "連語関係",
+    "pattern": "斜めに構える",
+    "suggestion": "斜に構える",
+    "message": "連合関係がおかしいです。斜に構えるの間違いです。"
+  },
+  {
+    "id": "OSIMOOSARENU",
+    "category": "連語関係",
+    "pattern": "押しも押されぬ",
+    "suggestion": "押しも押されもせぬ",
+    "message": "連合関係がおかしいです。押しも押されもせぬの間違いです。"
+  },
+  {
+    "id": "TAITYOUWOKOWASU",
+    "category": "連語関係",
+    "pattern": "体調を壊す",
+    "suggestion": "体調を崩す",
+    "message": "連合関係がおかしいです。体調を崩すの間違いです。"
+  },
+  {
+    "id": "NINOTETUWOHUMU",
+    "category": "連語関係",
+    "pattern": "二の轍を踏む",
+    "suggestion": "轍を踏む",
+    "message": "連合関係がおかしいです。轍を踏むの間違いです。"
+  },
+  {
+    "id": "DOJIWOSURU",
+    "category": "連語関係",
+    "pattern": "どじをする",
+    "suggestion": "どじを踏む",
+    "message": "連合関係がおかしいです。どじを踏むの間違いです。"
+  },
+  {
+    "id": "KIRYOUGAOOKII",
+    "category": "連語関係",
+    "pattern": "器量が大きい\\|おおきい",
+    "suggestion": "度量が大きい",
+    "message": "連合関係がおかしいです。度量が大きいの間違いです。"
+  },
+  {
+    "id": "TENNKANOHOUTOU",
+    "category": "連語関係",
+    "pattern": "天下の宝刀",
+    "suggestion": "伝家の宝刀",
+    "message": "連合関係がおかしいです。伝家の宝刀の間違いです。"
+  },
+  {
+    "id": "TIDETIWOARASOU",
+    "category": "連語関係",
+    "pattern": "血で血を争う\\|あらそう",
+    "suggestion": "血で血を洗う",
+    "message": "連合関係がおかしいです。血で血を洗うの間違いです。"
+  },
+  {
+    "id": "HARAWATAGAYOJIRERU",
+    "category": "連語関係",
+    "pattern": "腸が捩れる\\|よじれる",
+    "suggestion": "腹の皮が捩れる",
+    "message": "連合関係がおかしいです。腹の皮が捩れるの間違いです。"
+  },
+  {
+    "id": "TADEKUUMUSIMOSUKIZUKI",
+    "category": "連語関係",
+    "pattern": "田で食う虫も好き好き",
+    "suggestion": "蓼食う虫も好き好き",
+    "message": "連合関係がおかしいです。蓼食う虫も好き好きの間違いです。"
+  },
+  {
+    "id": "NORUKASORUKA",
+    "category": "連語関係",
+    "pattern": "乗るか反る",
+    "suggestion": "伸るか反る",
+    "message": "連合関係がおかしいです。伸るか反るかの間違いです。"
+  },
+  {
+    "id": "NINOKUGADENAI",
+    "category": "連語関係",
+    "pattern": "二の句が出る\\|でる",
+    "suggestion": "二の句が継げない",
+    "message": "連合関係がおかしいです。二の句が継げないの間違いです。"
+  },
+  {
+    "id": "NENNTOUNIIRERU",
+    "category": "連語関係",
+    "pattern": "念頭に入れる\\|いれる",
+    "suggestion": "念頭に置く",
+    "message": "連合関係がおかしいです。念頭に置くの間違いです。"
+  },
+  {
+    "id": "NETUNIUNASARERU",
+    "category": "連語関係",
+    "pattern": "熱に魘される",
+    "suggestion": "熱に浮かされる",
+    "message": "連合関係がおかしいです。熱に浮かされるの間違いです。"
+  },
+  {
+    "id": "NODOGAKAWAKU",
+    "category": "連語関係",
+    "pattern": "喉が乾く",
+    "suggestion": "喉が渇く",
+    "message": "連合関係がおかしいです。喉が渇くの間違いです。"
+  },
+  {
+    "id": "HANAMIGASAKU",
+    "category": "連語関係",
+    "pattern": "花見が咲く\\|さく",
+    "suggestion": "花実が咲く",
+    "message": "連合関係がおかしいです。花実が咲くの間違いです。"
+  },
+  {
+    "id": "HARAGANIEKURIKAERU",
+    "category": "連語関係",
+    "pattern": "腹が煮え繰り返る",
+    "suggestion": "腸が煮え繰り返る",
+    "message": "連合関係がおかしいです。腸が煮え繰り返るの間違いです。"
+  },
+  {
+    "id": "HARAWOKUKURU",
+    "category": "連語関係",
+    "pattern": "腹を括る\\|くくる",
+    "suggestion": "腹を据える",
+    "message": "連合関係がおかしいです。腹を据えるの間違いです。"
+  },
+  {
+    "id": "BAKYAKUWODASU",
+    "category": "連語関係",
+    "pattern": "馬脚を出す\\|だす",
+    "suggestion": "馬脚を露わす",
+    "message": "連合関係がおかしいです。馬脚を露わすの間違いです。"
+  },
+  {
+    "id": "KONNSENNTOWONUKU",
+    "category": "連語関係",
+    "pattern": "コンセントを抜く\\|ぬく",
+    "suggestion": "プラグを抜く",
+    "message": "連合関係がおかしいです。プラグを抜くの間違いです。"
+  },
+  {
+    "id": "HIMAWOMOTEASOBU",
+    "category": "連語関係",
+    "pattern": "暇をもてあそぶ",
+    "suggestion": "暇を持て余す",
+    "message": "連合関係がおかしいです。暇を持て余すの間違いです。"
+  },
+  {
+    "id": "HYOUTANNKARAKOMAGADERU",
+    "category": "連語関係",
+    "pattern": "瓢箪から独楽が出る\\|でる",
+    "suggestion": "瓢箪から駒が出る",
+    "message": "連合関係がおかしいです。瓢箪から駒が出るの間違いです。"
+  },
+  {
+    "id": "HIBUTAWOKITTEOTOSU",
+    "category": "連語関係",
+    "pattern": "火蓋を切って落とす\\|おとす",
+    "suggestion": "火蓋を切る",
+    "message": "連合関係がおかしいです。火蓋を切るの間違いです。"
+  },
+  {
+    "id": "MUSHI",
+    "category": "連語関係",
+    "pattern": "虫の予感",
+    "suggestion": "虫の知らせ",
+    "message": "連合関係がおかしいです。虫の知らせの間違いです。"
+  },
+  {
+    "id": "MATOWOIRU",
+    "category": "連語関係",
+    "pattern": "的を得る\\|える",
+    "suggestion": "的を射る",
+    "message": "連合関係がおかしいです。的を射るの間違いです。"
+  },
+  {
+    "id": "MEHASIGAKIKU",
+    "category": "連語関係",
+    "pattern": "目鼻が利く\\|きく",
+    "suggestion": "目端が利く",
+    "message": "連合関係がおかしいです。目端が利くの間違いです。"
+  },
+  {
+    "id": "MOZUKUTONARU",
+    "category": "連語関係",
+    "pattern": "水雲となる",
+    "suggestion": "藻屑となる",
+    "message": "連合関係がおかしいです。藻屑となるの間違いです。"
+  },
+  {
+    "id": "YAKEBOKKURINIHIGATUKU",
+    "category": "連語関係",
+    "pattern": "焼け\\|やけぼっくりに火が付く\\|つく",
+    "suggestion": "焼けぼっくいに火が付く",
+    "message": "連合関係がおかしいです。焼けぼっくいに火が付くの間違いです。"
+  },
+  {
+    "id": "ROUTAINIMUTIUTU",
+    "category": "連語関係",
+    "pattern": "老体に鞭打つ",
+    "suggestion": "老骨に鞭打つ",
+    "message": "連合関係がおかしいです。老骨に鞭打つの間違いです。"
+  },
+  {
+    "id": "RIKANIKANNMURIWOTADASU",
+    "category": "連語関係",
+    "pattern": "李下に冠を正す\\|ただす",
+    "suggestion": "李下に冠をたたさず",
+    "message": "連合関係がおかしいです。李下に冠をたたさずの間違いです。"
+  },
+  {
+    "id": "RUINHARUIWOYOBU",
+    "category": "連語関係",
+    "pattern": "類は類を呼ぶ",
+    "suggestion": "類は友を呼ぶ",
+    "message": "連合関係がおかしいです。類は友を呼ぶの間違いです。"
+  },
+  {
+    "id": "RINKUWOHARU",
+    "category": "連語関係",
+    "pattern": "リンクを貼る",
+    "suggestion": "リンクを張る",
+    "message": "連合関係がおかしいです。リンクを張るの間違いです。"
+  },
+  {
+    "id": "WARUTAKURAMI",
+    "category": "連語関係",
+    "pattern": "渡る世間は鬼ばかり",
+    "suggestion": "渡る世間は鬼はない",
+    "message": "連合関係がおかしいです。渡る世間は鬼はないの間違いです。"
+  },
+  {
+    "id": "SUBETEITIINN",
+    "category": "重複",
+    "pattern": "全て\\|すべて一任",
+    "suggestion": "一任",
+    "message": "重複しています。一任の間違いです。"
+  },
+  {
+    "id": "INISIENOMUKASI",
+    "category": "重複",
+    "pattern": "古の昔",
+    "suggestion": "古",
+    "message": "重複しています。古の間違いです。"
+  },
+  {
+    "id": "SINNNENNAKEMASITEOMEDETOUGOZAIMASU",
+    "category": "重複",
+    "pattern": "新年明けましておめでとうございます",
+    "suggestion": "明けましておめでとうございます",
+    "message": "重複しています。明けましておめでとうございますの間違いです。"
+  },
+  {
+    "id": "ENTENKANOMOTO",
+    "category": "重複",
+    "pattern": "炎天下の下",
+    "suggestion": "炎天下",
+    "message": "重複しています。炎天下の間違いです。"
+  },
+  {
+    "id": "OSSYARARERU",
+    "category": "重複",
+    "pattern": "おっしゃられる",
+    "suggestion": "仰る",
+    "message": "重複しています。仰るの間違いです。"
+  },
+  {
+    "id": "KAKUISAMA",
+    "category": "重複",
+    "pattern": "各位様",
+    "suggestion": "各位",
+    "message": "重複しています。各位の間違いです。"
+  },
+  {
+    "id": "GANNNTANNNOASA",
+    "category": "重複",
+    "pattern": "元旦の朝",
+    "suggestion": "元旦",
+    "message": "重複しています。元旦の間違いです。"
+  },
+  {
+    "id": "KYOSIKIWOAGERU",
+    "category": "重複",
+    "pattern": "挙式を挙げる\\|あげる",
+    "suggestion": "挙式する",
+    "message": "重複しています。挙式するの間違いです。"
+  },
+  {
+    "id": "GAISENNKIKOKU",
+    "category": "重複",
+    "pattern": "凱旋帰国",
+    "suggestion": "凱旋",
+    "message": "重複しています。凱旋の間違いです。"
+  },
+  {
+    "id": "KETTANNNOATO",
+    "category": "重複",
+    "pattern": "血痕の跡",
+    "suggestion": "血痕",
+    "message": "重複しています。血痕の間違いです。"
+  },
+  {
+    "id": "KANETEKARANOKENNANN",
+    "category": "重複",
+    "pattern": "予かねてからの懸案",
+    "suggestion": "懸案",
+    "message": "重複しています。懸案の間違いです。"
+  },
+  {
+    "id": "IMANOGENNJOU",
+    "category": "重複",
+    "pattern": "今の現状",
+    "suggestion": "現状",
+    "message": "重複しています。現状の間違いです。"
+  },
+  {
+    "id": "OKARADAGOJIAIKUDASAI",
+    "category": "重複",
+    "pattern": "お体御自愛下さい",
+    "suggestion": "御自愛下さい",
+    "message": "重複しています。御自愛下さいの間違いです。"
+  },
+  {
+    "id": "KOSYOUTYUU",
+    "category": "重複",
+    "pattern": "故障中",
+    "suggestion": "故障",
+    "message": "重複しています。故障の間違いです。"
+  },
+  {
+    "id": "ITIBANNSAIGO",
+    "category": "重複",
+    "pattern": "一番最後",
+    "suggestion": "最後",
+    "message": "重複しています。最後の間違いです。"
+  },
+  {
+    "id": "MAZUSAISYONI",
+    "category": "重複",
+    "pattern": "まず最初",
+    "suggestion": "最初",
+    "message": "重複しています。最初の間違いです。"
+  },
+  {
+    "id": "JINNRYOKUWOTUKUSU",
+    "category": "重複",
+    "pattern": "尽力を尽くす\\|つくす",
+    "suggestion": "尽力する",
+    "message": "重複しています。尽力するの間違いです。"
+  },
+  {
+    "id": "SAKENOSAKANA",
+    "category": "重複",
+    "pattern": "酒の肴",
+    "suggestion": "肴",
+    "message": "重複しています。肴の間違いです。"
+  },
+  {
+    "id": "SYATEIKYORI",
+    "category": "重複",
+    "pattern": "射程距離",
+    "suggestion": "射程",
+    "message": "重複しています。射程の間違いです。"
+  },
+  {
+    "id": "SINNTOUNIJYUKURYOSURU",
+    "category": "重複",
+    "pattern": "慎重に熟慮",
+    "suggestion": "熟慮",
+    "message": "重複しています。熟慮の間違いです。"
+  },
+  {
+    "id": "JYUUSEIONN",
+    "category": "重複",
+    "pattern": "銃声音",
+    "suggestion": "銃声",
+    "message": "重複しています。銃声の間違いです。"
+  },
+  {
+    "id": "SEIZOUME-KA-",
+    "category": "重複",
+    "pattern": "製造メーカー",
+    "suggestion": "製造業者",
+    "message": "重複しています。製造業者の間違いです。"
+  },
+  {
+    "id": "YOBUNNNAZEINIKU",
+    "category": "重複",
+    "pattern": "余分な贅肉",
+    "suggestion": "贅肉",
+    "message": "重複しています。贅肉の間違いです。"
+  },
+  {
+    "id": "SETUJOKUWOHARASU",
+    "category": "重複",
+    "pattern": "雪辱を晴らす",
+    "suggestion": "雪辱する",
+    "message": "重複しています。雪辱するの間違いです。"
+  },
+  {
+    "id": "ZONNBOUNOKIKI",
+    "category": "重複",
+    "pattern": "存亡の危機",
+    "suggestion": "存亡の機",
+    "message": "重複しています。存亡の機の間違いです。"
+  },
+  {
+    "id": "HAKKIRIDANNGENN",
+    "category": "重複",
+    "pattern": "はっきり断言",
+    "suggestion": "断言",
+    "message": "重複しています。断言の間違いです。"
+  },
+  {
+    "id": "HANNZAIWOOKASU",
+    "category": "重複",
+    "pattern": "犯罪を犯す\\|おかす",
+    "suggestion": "罪を犯す",
+    "message": "重複しています。罪を犯すの間違いです。"
+  },
+  {
+    "id": "DANNTOTUNOITII",
+    "category": "重複",
+    "pattern": "断トツの一位",
+    "suggestion": "断トツ",
+    "message": "重複しています。断トツの間違いです。"
+  },
+  {
+    "id": "ISINOTUBUTE",
+    "category": "重複",
+    "pattern": "石の礫",
+    "suggestion": "礫",
+    "message": "重複しています。礫の間違いです。"
+  },
+  {
+    "id": "NAITEIGAKIMARU",
+    "category": "重複",
+    "pattern": "内定が決まる\\|きまる",
+    "suggestion": "内定する",
+    "message": "重複しています。内定するの間違いです。"
+  },
+  {
+    "id": "HATUDEBYU-",
+    "category": "重複",
+    "pattern": "初デビュー",
+    "suggestion": "デビュー",
+    "message": "重複しています。デビューの間違いです。"
+  },
+  {
+    "id": "HIGAIWOKOUMURU",
+    "category": "重複",
+    "pattern": "被害を被る\\|こうむる",
+    "suggestion": "被害を受ける",
+    "message": "重複しています。被害を受けるの間違いです。"
+  },
+  {
+    "id": "IROGAHENNSYOKUSURU",
+    "category": "重複",
+    "pattern": "色が変色",
+    "suggestion": "変色する",
+    "message": "重複しています。変色するの間違いです。"
+  },
+  {
+    "id": "HONNRAIKARA",
+    "category": "重複",
+    "pattern": "本来から",
+    "suggestion": "本来",
+    "message": "重複しています。本来の間違いです。"
+  },
+  {
+    "id": "HANNKOWOOSU",
+    "category": "重複",
+    "pattern": "捺印を押す",
+    "suggestion": "捺印する",
+    "message": "重複しています。捺印するの間違いです。"
+  },
+  {
+    "id": "KAHANNSUUWOKOERU",
+    "category": "重複",
+    "pattern": "過半数を超える",
+    "suggestion": "半数を超える",
+    "message": "重複しています。半数を超えるの間違いです。"
+  },
+  {
+    "id": "OMOIGAKENAIHAPUNINNGU",
+    "category": "重複",
+    "pattern": "思いがけないハプニング",
+    "suggestion": "ハプニング",
+    "message": "重複しています。ハプニングの間違いです。"
+  },
+  {
+    "id": "HEIKINNABERE-JI",
+    "category": "重複",
+    "pattern": "平均アベレージ",
+    "suggestion": "平均",
+    "message": "重複しています。平均の間違いです。"
+  },
+  {
+    "id": "KIRISUTOKYOUNOBOKUSI",
+    "category": "重複",
+    "pattern": "キリスト教の牧師",
+    "suggestion": "牧師",
+    "message": "重複しています。牧師の間違いです。"
+  },
+  {
+    "id": "POTA-JYUSU-PU",
+    "category": "重複",
+    "pattern": "ポタージュスープ",
+    "suggestion": "ポタージュ",
+    "message": "重複しています。ポタージュの間違いです。"
+  },
+  {
+    "id": "MANNTENNNOHOSIZORA",
+    "category": "重複",
+    "pattern": "満天の星空",
+    "suggestion": "満天の星",
+    "message": "重複しています。満天の星の間違いです。"
+  },
+  {
+    "id": "MADAMIKAIKETU",
+    "category": "重複",
+    "pattern": "まだ未解決",
+    "suggestion": "未解決",
+    "message": "重複しています。未解決の間違いです。"
+  },
+  {
+    "id": "MIZOREMAJIRI",
+    "category": "重複",
+    "pattern": "霙交じり",
+    "suggestion": "霙",
+    "message": "重複しています。霙の間違いです。"
+  },
+  {
+    "id": "OMESIAGARININARU",
+    "category": "重複",
+    "pattern": "お召し上がりになる",
+    "suggestion": "召し上がる",
+    "message": "重複しています。召し上がるの間違いです。"
+  },
+  {
+    "id": "NIHONNNIRAINITISURU",
+    "category": "重複",
+    "pattern": "日本に来日",
+    "suggestion": "来日する",
+    "message": "重複しています。来日するの間違いです。"
+  },
+  {
+    "id": "REKKYOUSYOKOKU",
+    "category": "重複",
+    "pattern": "列強諸国",
+    "suggestion": "列強",
+    "message": "重複しています。列強の間違いです。"
+  },
+  {
+    "id": "WADATINOATO",
+    "category": "重複",
+    "pattern": "轍の跡",
+    "suggestion": "轍",
+    "message": "重複しています。轍の間違いです。"
+  },
+  {
+    "id": "ZUTUUGAITAI",
+    "category": "重複",
+    "pattern": "頭痛が痛い",
+    "suggestion": "頭が痛い",
+    "message": "文法ミスがあります。頭が痛いの間違いです。"
+  },
+  {
+    "id": "OMONEZU",
+    "category": "ら抜き言葉",
+    "pattern": "阿\\|おもねず",
+    "suggestion": "阿らず",
+    "message": "ら抜き言葉があります。阿らずの間違いです。"
+  },
+  {
+    "id": "OBOERERU",
+    "category": "ら抜き言葉",
+    "pattern": "覚え\\|おぼえれる",
+    "suggestion": "覚えられる",
+    "message": "ら抜き言葉があります。覚えられるの間違いです。"
+  },
+  {
+    "id": "KURERU",
+    "category": "ら抜き言葉",
+    "pattern": "来\\|これる",
+    "suggestion": "来られる",
+    "message": "ら抜き言葉があります。来られるの間違いです。"
+  },
+  {
+    "id": "KIRERU",
+    "category": "ら抜き言葉",
+    "pattern": "着\\|きれる",
+    "suggestion": "着られる",
+    "message": "ら抜き言葉があります。着られるの間違いです。"
+  },
+  {
+    "id": "KIMERERU",
+    "category": "ら抜き言葉",
+    "pattern": "決め\\|きめれる",
+    "suggestion": "決められる",
+    "message": "ら抜き言葉があります。決められるの間違いです。"
+  },
+  {
+    "id": "TABERERU",
+    "category": "ら抜き言葉",
+    "pattern": "食べ\\|たべれる",
+    "suggestion": "食べられる",
+    "message": "ら抜き言葉があります。食べられるの間違いです。"
+  },
+  {
+    "id": "DERERU",
+    "category": "ら抜き言葉",
+    "pattern": "出\\|でれる",
+    "suggestion": "出られる",
+    "message": "ら抜き言葉があります。出られるの間違いです。"
+  },
+  {
+    "id": "NAGERERU",
+    "category": "ら抜き言葉",
+    "pattern": "投げ\\|なげれる",
+    "suggestion": "投げられる",
+    "message": "ら抜き言葉があります。投げられるの間違いです。"
+  },
+  {
+    "id": "NIGERERU",
+    "category": "ら抜き言葉",
+    "pattern": "逃げ\\|にげれる",
+    "suggestion": "逃げられる",
+    "message": "ら抜き言葉があります。逃げられるの間違いです。"
+  },
+  {
+    "id": "NERERU",
+    "category": "ら抜き言葉",
+    "pattern": "寝\\|ねれる",
+    "suggestion": "寝られる",
+    "message": "ら抜き言葉があります。寝られるの間違いです。"
+  },
+  {
+    "id": "MEKERERU",
+    "category": "ら抜き言葉",
+    "pattern": "負け\\|まけれる",
+    "suggestion": "負けられる",
+    "message": "ら抜き言葉があります。負けられるの間違いです。"
+  },
+  {
+    "id": "YOKERARERU",
+    "category": "ら抜き言葉",
+    "pattern": "避け\\|よけれる",
+    "suggestion": "避けられる",
+    "message": "ら抜き言葉があります。避けられるの間違いです。"
+  },
+  {
+    "id": "MIRERU",
+    "category": "ら抜き言葉",
+    "pattern": "見れる\\|みれる",
+    "suggestion": "見られる",
+    "message": "ら抜き言葉があります。見られるの間違いです。"
+  },
+  {
+    "id": "TOJIRERU",
+    "category": "ら抜き言葉",
+    "pattern": "閉じ\\|とじれる",
+    "suggestion": "閉じられる",
+    "message": "ら抜き言葉があります。閉じられるの間違いです。"
+  },
+  {
+    "id": "NIRERU",
+    "category": "ら抜き言葉",
+    "pattern": "煮\\|にれる",
+    "suggestion": "煮られる",
+    "message": "ら抜き言葉があります。煮られるの間違いです。"
+  },
+  {
+    "id": "ABIRERU",
+    "category": "ら抜き言葉",
+    "pattern": "浴び\\|あびれる",
+    "suggestion": "浴びられる",
+    "message": "ら抜き言葉があります。浴びられるの間違いです。"
+  },
+  {
+    "id": "ORIRERU",
+    "category": "ら抜き言葉",
+    "pattern": "降り\\|おりれる",
+    "suggestion": "降りられる",
+    "message": "ら抜き言葉があります。降りられるの間違いです。"
+  },
+  {
+    "id": "UKERERU",
+    "category": "ら抜き言葉",
+    "pattern": "受け\\|うけれる",
+    "suggestion": "受けられる",
+    "message": "ら抜き言葉があります。受けられるの間違いです。"
+  },
+  {
+    "id": "TUGERERU",
+    "category": "ら抜き言葉",
+    "pattern": "告げ\\|つげれる",
+    "suggestion": "告げられる",
+    "message": "ら抜き言葉があります。告げられるの間違いです。"
+  },
+  {
+    "id": "MAZERERU",
+    "category": "ら抜き言葉",
+    "pattern": "混ぜ\\|まぜれる",
+    "suggestion": "混ぜられる",
+    "message": "ら抜き言葉があります。混ぜられるの間違いです。"
+  },
+  {
+    "id": "SUTERERU",
+    "category": "ら抜き言葉",
+    "pattern": "捨て\\|すてれる",
+    "suggestion": "捨てられる",
+    "message": "ら抜き言葉があります。捨てられるの間違いです。"
+  },
+  {
+    "id": "YUDERERU",
+    "category": "ら抜き言葉",
+    "pattern": "茹で\\|ゆでれる",
+    "suggestion": "茹でられる",
+    "message": "ら抜き言葉があります。茹でられるの間違いです。"
+  },
+  {
+    "id": "MOTOMERERU",
+    "category": "ら抜き言葉",
+    "pattern": "求め\\|もとめれる",
+    "suggestion": "求められる",
+    "message": "ら抜き言葉があります。求められるの間違いです。"
+  },
+  {
+    "id": "IKERERU",
+    "category": "レタス言葉",
+    "pattern": "行け\\|いけれる",
+    "suggestion": "行ける",
+    "message": "レタス言葉があります。行けるの間違いです。"
+  },
+  {
+    "id": "KAKERERU",
+    "category": "レタス言葉",
+    "pattern": "書け\\|かけれる",
+    "suggestion": "書ける",
+    "message": "レタス言葉があります。書けるの間違いです。"
+  },
+  {
+    "id": "KIKERERU",
+    "category": "レタス言葉",
+    "pattern": "聞け\\|きけれる",
+    "suggestion": "聞ける",
+    "message": "レタス言葉があります。聞けるの間違いです。"
+  },
+  {
+    "id": "TURERERU",
+    "category": "レタス言葉",
+    "pattern": "釣れ\\|つれれる",
+    "suggestion": "釣れる",
+    "message": "レタス言葉があります。釣れるの間違いです。"
+  },
+  {
+    "id": "NOMERERU",
+    "category": "レタス言葉",
+    "pattern": "飲め\\|のめれる",
+    "suggestion": "飲める",
+    "message": "レタス言葉があります。飲めるの間違いです。"
+  },
+  {
+    "id": "YOMERERU",
+    "category": "レタス言葉",
+    "pattern": "読め\\|よめれる",
+    "suggestion": "読める",
+    "message": "レタス言葉があります。読めるの間違いです。"
+  },
+  {
+    "id": "SUERERU",
+    "category": "レタス言葉",
+    "pattern": "吸え\\|すえれる",
+    "suggestion": "吸える",
+    "message": "レタス言葉があります。吸えるの間違いです。"
+  },
+  {
+    "id": "KASERERU",
+    "category": "レタス言葉",
+    "pattern": "貸せ\\|かせれる",
+    "suggestion": "貸せる",
+    "message": "レタス言葉があります。貸せるの間違いです。"
+  },
+  {
+    "id": "KESERERU",
+    "category": "レタス言葉",
+    "pattern": "消せ\\|けせれる",
+    "suggestion": "消せる",
+    "message": "レタス言葉があります。消せるの間違いです。"
+  },
+  {
+    "id": "TORERERU",
+    "category": "レタス言葉",
+    "pattern": "取れ\\|とれれる",
+    "suggestion": "取れる",
+    "message": "レタス言葉があります。取れるの間違いです。"
+  },
+  {
+    "id": "YOBERERU",
+    "category": "レタス言葉",
+    "pattern": "呼べ\\|よべれる",
+    "suggestion": "呼べる",
+    "message": "レタス言葉があります。呼べるの間違いです。"
+  },
+  {
+    "id": "OKERERU",
+    "category": "レタス言葉",
+    "pattern": "置け\\|おけれる",
+    "suggestion": "置ける",
+    "message": "レタス言葉があります。置けるの間違いです。"
+  },
+  {
+    "id": "URERERU",
+    "category": "レタス言葉",
+    "pattern": "売れ\\|うれれる",
+    "suggestion": "売れる",
+    "message": "レタス言葉があります。売れるの間違いです。"
+  },
+  {
+    "id": "UTAWASETE",
+    "category": "さ入れ言葉",
+    "pattern": "歌わ\\|うたわせて",
+    "suggestion": "歌わさせて",
+    "message": "文法ミスがあります。歌わさせての間違いです。"
+  },
+  {
+    "id": "OKASASERU",
+    "category": "さ入れ言葉",
+    "pattern": "置か\\|おかさせる",
+    "suggestion": "置かせる",
+    "message": "さ入れ言葉があります。置かせるの間違いです。"
+  },
+  {
+    "id": "ARUKASASERU",
+    "category": "さ入れ言葉",
+    "pattern": "歩か\\|あるかさせる",
+    "suggestion": "歩かせる",
+    "message": "さ入れ言葉があります。歩かせるの間違いです。"
+  },
+  {
+    "id": "TORASASERU",
+    "category": "さ入れ言葉",
+    "pattern": "取ら\\|とらさせる",
+    "suggestion": "取らせる",
+    "message": "さ入れ言葉があります。取らせるの間違いです。"
+  },
+  {
+    "id": "YASUMASASERU",
+    "category": "さ入れ言葉",
+    "pattern": "休ま\\|やすまさせる",
+    "suggestion": "休ませる",
+    "message": "さ入れ言葉があります。休ませるの間違いです。"
+  },
+  {
+    "id": "KIRARERU",
+    "category": "ら入れ言葉",
+    "pattern": "切ら\\|きられる",
+    "suggestion": "切れる",
+    "message": "ら入れ言葉があります。切れるの間違いです。"
+  },
+  {
+    "id": "KATARARERU",
+    "category": "ら入れ言葉",
+    "pattern": "語ら\\|かたられる",
+    "suggestion": "語れる",
+    "message": "ら入れ言葉があります。語れるの間違いです。"
+  },
+  {
+    "id": "KAWARARERU",
+    "category": "ら入れ言葉",
+    "pattern": "変わら\\|かわられる",
+    "suggestion": "変われる",
+    "message": "ら入れ言葉があります。変われるの間違いです。"
+  },
+  {
+    "id": "SYABERARERU",
+    "category": "ら入れ言葉",
+    "pattern": "喋ら\\|しゃべられる",
+    "suggestion": "喋れる",
+    "message": "ら入れ言葉があります。喋れるの間違いです。"
+  },
+  {
+    "id": "SUBERARERU",
+    "category": "ら入れ言葉",
+    "pattern": "滑ら\\|すべられる",
+    "suggestion": "滑れる",
+    "message": "ら入れ言葉があります。滑れるの間違いです。"
+  },
+  {
+    "id": "HASIRARERU",
+    "category": "ら入れ言葉",
+    "pattern": "走ら\\|はしられる",
+    "suggestion": "走れる",
+    "message": "ら入れ言葉があります。走れるの間違いです。"
+  }
+]

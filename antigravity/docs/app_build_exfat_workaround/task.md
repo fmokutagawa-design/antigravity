@@ -1,0 +1,5 @@
+- [x] ローカルドライブ（APFS）に `/tmp/Nexus_Build_Staging` を作成
+- [x] ソースコード（`src`, `electron`, `dist`, `package.json` 等）をコピー
+- [x] ローカル環境で `npm run electron:build` を実行
+- [x] 生成された DMG ファイルを外部ドライブにコピー
+- [x] タイムスタンプを確認し、完了を報告

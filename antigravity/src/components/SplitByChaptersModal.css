@@ -1,0 +1,191 @@
+.split-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.split-modal {
+    background: var(--bg-paper, #fff);
+    color: var(--text-color, #333);
+    border-radius: 8px;
+    width: 90vw;
+    max-width: 900px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.split-modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color, #ddd);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.split-modal-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.split-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.3rem;
+    cursor: pointer;
+    color: var(--text-color, #666);
+}
+
+.split-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+}
+
+.split-summary {
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 6px;
+    margin-bottom: 16px;
+    font-size: 0.9rem;
+}
+
+.split-empty {
+    padding: 40px;
+    text-align: center;
+    color: #888;
+}
+
+.split-segments {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.split-segment-card {
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 6px;
+    padding: 12px;
+    background: #fafafa;
+}
+
+.split-segment-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.seg-index {
+    font-weight: bold;
+    color: var(--accent-color, #8e44ad);
+    min-width: 30px;
+}
+
+.seg-title {
+    flex: 1;
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.95rem;
+}
+
+.seg-charcount {
+    font-size: 0.8rem;
+    color: #666;
+    white-space: nowrap;
+}
+
+.seg-remove {
+    padding: 4px 10px;
+    background: #eee;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.seg-remove:hover {
+    background: #fdd;
+}
+
+.seg-context {
+    margin-top: 6px;
+}
+
+.seg-context-label {
+    font-size: 0.75rem;
+    color: #888;
+    margin-bottom: 2px;
+}
+
+.seg-context-text {
+    font-size: 0.85rem;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 8px;
+    margin: 0;
+    max-height: 120px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    font-family: inherit;
+}
+
+.seg-context-text.before {
+    border-left: 3px solid #ffa;
+}
+
+.seg-context-text.after {
+    border-left: 3px solid #afa;
+}
+
+.seg-filename {
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: #555;
+}
+
+.seg-filename code {
+    background: #f0f0f0;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: ui-monospace, monospace;
+}
+
+.split-modal-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border-color, #ddd);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.btn-cancel, .btn-execute {
+    padding: 8px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    border: 1px solid #ccc;
+}
+
+.btn-cancel {
+    background: #f0f0f0;
+}
+
+.btn-execute {
+    background: var(--accent-color, #8e44ad);
+    color: white;
+    border-color: var(--accent-color, #8e44ad);
+}
+
+.btn-execute:disabled {
+    background: #aaa;
+    border-color: #aaa;
+    cursor: not-allowed;
+}
