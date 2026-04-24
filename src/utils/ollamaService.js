@@ -254,5 +254,77 @@ export const ollamaService = {
             console.error("RAG chat failed:", error);
             throw error;
         }
+    },
+
+    // --- Knowledge Base Management ---
+
+    // Get list of all files in DB
+    async listDBItems() {
+        try {
+            const response = await fetch(`${this.ragServerUrl}/db/items`);
+            if (!response.ok) throw new Error('Failed to fetch DB items');
+            return await response.json();
+        } catch (error) {
+            console.error("Error listing DB items:", error);
+            return [];
+        }
+    },
+
+    // Delete a file from DB
+    async deleteDBItem(fullPath) {
+        try {
+            const response = await fetch(`${this.ragServerUrl}/db/items?full_path=${encodeURIComponent(fullPath)}`, {
+                method: 'DELETE'
+            });
+            return response.ok;
+        } catch (error) {
+            console.error("Error deleting DB item:", error);
+            return false;
+        }
+    },
+
+    // Update tags for a file
+    async updateDBItemTags(fullPath, tags) {
+        try {
+            const response = await fetch(`${this.ragServerUrl}/db/update_tags`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ full_path: fullPath, tags: tags })
+            });
+            return response.ok;
+        } catch (error) {
+            console.error("Error updating DB tags:", error);
+            return false;
+        }
+    },
+
+    // Suggest tags using AI
+    async suggestTags(fullPath, preview) {
+        try {
+            const response = await fetch(`${this.ragServerUrl}/db/suggest_tags`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ full_path: fullPath, preview: preview })
+            });
+            if (!response.ok) return [];
+            const data = await response.json();
+            return data.tags || [];
+        } catch (error) {
+            console.error("Error suggesting tags:", error);
+            return [];
+        }
+    },
+
+    // Trigger ingestion script
+    async triggerIngest() {
+        try {
+            const response = await fetch(`${this.ragServerUrl}/db/ingest`, {
+                method: 'POST'
+            });
+            return response.ok;
+        } catch (error) {
+            console.error("Error triggering ingest:", error);
+            return false;
+        }
     }
 };

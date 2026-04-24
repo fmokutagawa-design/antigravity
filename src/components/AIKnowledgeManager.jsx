@@ -44,6 +44,40 @@ const AIKnowledgeManager = () => {
         }
     };
 
+    const handleAddTag = async (item) => {
+        const newTag = window.prompt('追加するタグを入力してください (例: 設定資料, プロット, ボツ案)');
+        if (newTag) {
+            const updatedTags = [...(item.tags || []), newTag];
+            const success = await ollamaService.updateDBItemTags(item.full_path, updatedTags);
+            if (success) loadItems();
+        }
+    };
+
+    const handleRemoveTag = async (item, tagToRemove) => {
+        const updatedTags = (item.tags || []).filter(t => t !== tagToRemove);
+        const success = await ollamaService.updateDBItemTags(item.full_path, updatedTags);
+        if (success) loadItems();
+    };
+
+    const handleSuggestTags = async (item) => {
+        setMessage(`AIが「${item.file}」の内容を分析中...`);
+        const suggested = await ollamaService.suggestTags(item.full_path, item.preview);
+        if (suggested && suggested.length > 0) {
+            if (window.confirm(`AIが以下のタグを提案しました。追加しますか？\n${suggested.join(', ')}`)) {
+                const updatedTags = Array.from(new Set([...(item.tags || []), ...suggested]));
+                const success = await ollamaService.updateDBItemTags(item.full_path, updatedTags);
+                if (success) {
+                    setMessage('AIタグを適用しました');
+                    loadItems();
+                }
+            } else {
+                setMessage('');
+            }
+        } else {
+            setMessage('AIによる提案に失敗しました。Ollamaが起動しているか確認してください。');
+        }
+    };
+
     const isKnowledgeWindow = new URLSearchParams(window.location.search).get('mode') === 'knowledge';
 
     const handlePopOut = () => {
@@ -107,17 +141,39 @@ const AIKnowledgeManager = () => {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                         <thead style={{ position: 'sticky', top: 0, backgroundColor: '#f8f9fa', borderBottom: '2px solid #eee' }}>
                             <tr>
-                                <th style={{ textAlign: 'left', padding: '10px' }}>ファイル名</th>
+                                <th style={{ textAlign: 'left', padding: '10px' }}>ファイル名 / タグ</th>
                                 <th style={{ textAlign: 'center', padding: '10px', width: '60px' }}>断片数</th>
-                                <th style={{ textAlign: 'right', padding: '10px', width: '50px' }}>操作</th>
+                                <th style={{ textAlign: 'right', padding: '10px', width: '80px' }}>操作</th>
                             </tr>
                         </thead>
                         <tbody>
                             {items.map((item, index) => (
                                 <tr key={index} style={{ borderBottom: '1px solid #f0f0f0' }}>
                                     <td style={{ padding: '8px 10px' }}>
-                                        <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#333' }}>{item.file}</div>
-                                        <div style={{ fontSize: '10px', color: '#aaa', marginBottom: '4px', wordBreak: 'break-all' }}>{item.path}</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+                                            <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#333' }}>{item.file}</div>
+                                            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                                {(item.tags || []).map((tag, i) => (
+                                                    <span key={i} style={{ 
+                                                        fontSize: '10px', 
+                                                        backgroundColor: tag === 'ボツ' || tag === 'ボツ案' ? '#ffebee' : '#e8f5e9', 
+                                                        color: tag === 'ボツ' || tag === 'ボツ案' ? '#c62828' : '#2e7d32',
+                                                        padding: '1px 6px',
+                                                        borderRadius: '10px',
+                                                        border: '1px solid currentColor',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px'
+                                                    }}>
+                                                        {tag}
+                                                        <span onClick={() => handleRemoveTag(item, tag)} style={{ cursor: 'pointer', fontWeight: 'bold' }}>×</span>
+                                                    </span>
+                                                ))}
+                                                <button onClick={() => handleAddTag(item)} style={{ border: '1px dashed #ccc', background: 'none', borderRadius: '10px', fontSize: '10px', padding: '0 6px', cursor: 'pointer', color: '#888' }}>＋タグ</button>
+                                                <button onClick={() => handleSuggestTags(item)} style={{ border: '1px solid #ddd', background: '#fff', borderRadius: '10px', fontSize: '10px', padding: '0 6px', cursor: 'pointer' }} title="AIにタグを提案させる">🪄 AI提案</button>
+                                            </div>
+                                        </div>
+                                        <div style={{ fontSize: '10px', color: '#aaa', marginBottom: '6px', wordBreak: 'break-all' }}>{item.path}</div>
                                         <div style={{ 
                                             fontSize: '11px', 
                                             color: '#666', 
