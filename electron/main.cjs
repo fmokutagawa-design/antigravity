@@ -13,7 +13,7 @@ const isDev = !app.isPackaged;
 let bridgeProcess = null;
 
 function startBridgeServer() {
-    const pythonPath = 'python3';
+    const pythonPath = '/usr/bin/python3';
     const scriptPath = '/Users/mokutagawa/Documents/nexus_projects/mem0/bridge_server.py';
 
     if (!fs.existsSync(scriptPath)) {
