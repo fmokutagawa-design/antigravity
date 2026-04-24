@@ -172,8 +172,31 @@ async function runStartupCleanup() {
 }
 
 app.whenReady().then(() => {
+    console.log('--- NEXUS Main Process Ready ---');
     startBridgeServer();
     createWindow();
+
+    // 知識管理ウィンドウのハンドラ
+    ipcMain.handle('window:openKnowledge', async () => {
+        console.log('IPC Request: window:openKnowledge');
+        const win = new BrowserWindow({
+            width: 1000,
+            height: 800,
+            webPreferences: {
+                nodeIntegration: false,
+                contextIsolation: true,
+                preload: path.join(__dirname, 'preload.cjs'),
+            },
+            title: 'AI 知識ベース管理',
+        });
+
+        if (isDev) {
+            win.loadURL('http://localhost:5173?mode=knowledge');
+        } else {
+            const indexPath = path.join(__dirname, '../dist/index.html');
+            win.loadURL(`file://${indexPath}?mode=knowledge`);
+        }
+    });
 
     // ★ 起動時クリーンアップ：前回クラッシュで残った .tmp.* 残骸を削除
     //    fire-and-forget。UI 表示を止めない
@@ -198,26 +221,6 @@ app.on('will-quit', () => {
     if (bridgeProcess) {
         bridgeProcess.kill();
         bridgeProcess = null;
-    }
-});
-
-ipcMain.handle('window:openKnowledge', async () => {
-    const win = new BrowserWindow({
-        width: 1000,
-        height: 800,
-        webPreferences: {
-            nodeIntegration: false,
-            contextIsolation: true,
-            preload: path.join(__dirname, 'preload.cjs'),
-        },
-        title: 'AI 知識ベース管理',
-    });
-
-    if (isDev) {
-        win.loadURL('http://localhost:5173?mode=knowledge');
-    } else {
-        const indexPath = path.join(__dirname, '../dist/index.html');
-        win.loadURL(`file://${indexPath}?mode=knowledge`);
     }
 });
 
