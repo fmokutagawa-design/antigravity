@@ -97,8 +97,23 @@ const AIKnowledgeManager = () => {
                             {items.map((item, index) => (
                                 <tr key={index} style={{ borderBottom: '1px solid #f0f0f0' }}>
                                     <td style={{ padding: '8px 10px' }}>
-                                        <div style={{ fontWeight: 'bold' }}>{item.file}</div>
-                                        <div style={{ fontSize: '10px', color: '#888', wordBreak: 'break-all' }}>{item.path}</div>
+                                        <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#333' }}>{item.file}</div>
+                                        <div style={{ fontSize: '10px', color: '#aaa', marginBottom: '4px', wordBreak: 'break-all' }}>{item.path}</div>
+                                        <div style={{ 
+                                            fontSize: '11px', 
+                                            color: '#666', 
+                                            backgroundColor: '#f9f9f9', 
+                                            padding: '4px 8px', 
+                                            borderRadius: '4px',
+                                            borderLeft: '3px solid #ddd',
+                                            display: '-webkit-box',
+                                            WebkitLineClamp: 2,
+                                            WebkitBoxOrient: 'vertical',
+                                            overflow: 'hidden',
+                                            lineHeight: '1.4'
+                                        }}>
+                                            {item.preview}
+                                        </div>
                                     </td>
                                     <td style={{ textAlign: 'center', padding: '8px 10px', color: '#666' }}>{item.chunks}</td>
                                     <td style={{ textAlign: 'right', padding: '8px 10px' }}>
