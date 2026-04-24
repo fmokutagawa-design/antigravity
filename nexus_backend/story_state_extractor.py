@@ -7,7 +7,11 @@ class StoryStateExtractor:
     """
     設定資料（Materials）から物語の「不変の事実」を抽出するクラス
     """
-    def __init__(self, db_path="/Users/mokutagawa/Documents/nexus_projects/mem0/nexus_db"):
+    def __init__(self, db_path=None):
+        if db_path is None:
+            import os
+            db_path = os.path.join(os.path.dirname(__file__), "nexus_db")
+        self.db_path = db_path
         self.client = chromadb.PersistentClient(path=db_path)
         self.collection = self.client.get_or_create_collection(name="nexus_novels")
 

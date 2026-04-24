@@ -20,7 +20,7 @@ app.add_middleware(
 )
 
 # --- 設定 ---
-DB_PATH = "/Users/mokutagawa/Documents/nexus_projects/mem0/nexus_db"
+DB_PATH = os.path.join(os.path.dirname(__file__), "nexus_db")
 COLLECTION_NAME = "nexus_novels"
 
 # ChromaDBのセットアップ
