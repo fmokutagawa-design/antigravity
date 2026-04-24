@@ -17,18 +17,37 @@ function startBridgeServer() {
     const scriptPath = '/Users/mokutagawa/Documents/nexus_projects/mem0/bridge_server.py';
 
     if (!fs.existsSync(scriptPath)) {
-        console.warn('AI Bridge Server script not found at:', scriptPath);
+        console.error('❌ AI Bridge Server script not found at:', scriptPath);
         return;
     }
 
-    console.log('Starting AI Bridge Server...');
+    console.log('🚀 Attempting to start AI Bridge Server...');
+    console.log('   Script:', scriptPath);
+    console.log('   Python:', pythonPath);
+
     // 子プロセスとしてPythonサーバーを起動
     bridgeProcess = require('child_process').spawn(pythonPath, [scriptPath], {
-        stdio: 'inherit'
+        stdio: ['ignore', 'pipe', 'pipe'], // 標準出力をキャプチャ
+        env: { ...process.env, PYTHONUNBUFFERED: '1' }
+    });
+
+    bridgeProcess.stdout.on('data', (data) => {
+        console.log(`[Python STDOUT] ${data}`);
+    });
+
+    bridgeProcess.stderr.on('data', (data) => {
+        console.error(`[Python STDERR] ${data}`);
     });
 
     bridgeProcess.on('error', (err) => {
-        console.error('Failed to start AI Bridge Server:', err);
+        console.error('❌ Failed to start AI Bridge Server process:', err.message);
+        if (err.code === 'ENOENT') {
+            console.error('   Hint: "python3" command not found in PATH.');
+        }
+    });
+
+    bridgeProcess.on('close', (code) => {
+        console.log(`[Python] Server process exited with code ${code}`);
     });
 
     process.on('exit', () => {
