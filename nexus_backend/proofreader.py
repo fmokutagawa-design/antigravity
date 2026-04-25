@@ -8,7 +8,10 @@ class Proofreader:
     LanguageTool (700+ルール), textlint, Tomarigi の知見を統合
     """
     
-    def __init__(self, rules_path="/Volumes/Black6T/Nexus_Dev/nexus_proof_rules.json"):
+    def __init__(self, rules_path=None):
+        if rules_path is None:
+            from config_loader import get_rules_path
+            rules_path = get_rules_path()
         self.rules = []
         self.compiled_rules = []
         

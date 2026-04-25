@@ -11,11 +11,8 @@ class AuditBatchProcessor:
     def __init__(self, target_dirs=None):
         self.pr = Proofreader()
         self.extractor = StoryStateExtractor()
-        self.base_path = "/Users/mokutagawa/Library/CloudStorage/OneDrive-個人用"
-        self.target_dirs = target_dirs or [
-            os.path.join(self.base_path, "ドキュメント/原稿"),
-            os.path.join(self.base_path, "NEXUS　プロジェクトフォルダ")
-        ]
+        from config_loader import get_manuscript_dirs
+        self.target_dirs = target_dirs or get_manuscript_dirs()
         self.report_path = os.path.join(os.path.dirname(__file__), "homework_list.json")
 
     def run_full_audit(self):
