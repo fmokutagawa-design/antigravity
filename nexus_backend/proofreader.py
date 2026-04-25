@@ -103,23 +103,32 @@ class Proofreader:
         if not materials_context:
             return audit_results
 
+        # エイリアスの読み込み
+        aliases_path = os.path.join(os.path.dirname(__file__), "nexus_aliases.json")
+        aliases = {}
+        if os.path.exists(aliases_path):
+            try:
+                with open(aliases_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                aliases = data.get("aliases", {})
+            except:
+                pass
+
         # 1. キャラクターの生存チェック
-        # materials_context['characters'] = {'ガトー': {'status': 'dead', 'source': '史実'}, ...}
         for char_name, info in materials_context.get('characters', {}).items():
             if info.get('status') == 'dead':
-                # 死亡しているはずのキャラが登場していないかスキャン
-                # ただし「回想」「墓」「死んだ」などの文脈は除外したい（簡易版）
-                pattern = re.compile(rf'{char_name}(?!.*(回想|死|遺影|墓|供養))')
-                for m in pattern.finditer(text):
-                    audit_results.append({
-                        "original": m.group(0),
-                        "suggested": "登場の整合性確認",
-                        "reason": f"設定資料では【{char_name}】は死亡していますが、このシーンに登場しています。回想等の意図的な描写ですか？（ソース: {info.get('source', '不明')}）"
-                    })
+                # 正式名 + 全エイリアスで検索
+                search_names = [char_name] + aliases.get(char_name, [])
+                for name in search_names:
+                    # 回想シーンや死に言及している場合は除外
+                    pattern = re.compile(rf'{re.escape(name)}(?!.*(回想|死|遺影|墓|供養))')
+                    for m in pattern.finditer(text):
+                        audit_results.append({
+                            "original": m.group(0),
+                            "suggested": "登場の整合性確認",
+                            "reason": f"設定資料では【{char_name}】は死亡していますが、このシーンに「{name}」として登場しています。回想等の意図的な描写ですか？（ソース: {info.get('source', '不明')}）"
+                        })
 
-        # 2. IF設定の優先適用
-        # 設定資料に「ガトー：生存（IF）」という記述があれば、上記の死者リストから除外される設計にする
-        
         return audit_results
 
     def split_dialogue_and_narration(self, text):

@@ -15,6 +15,21 @@ class StoryStateExtractor:
         self.client = chromadb.PersistentClient(path=db_path)
         self.collection = self.client.get_or_create_collection(name="nexus_novels")
 
+        # エイリアス読み込み
+        self.aliases = {}  # { "正式名": ["別名1", "別名2", ...] }
+        self.reverse_aliases = {}  # { "別名": "正式名" }
+        aliases_path = os.path.join(os.path.dirname(__file__), "nexus_aliases.json")
+        if os.path.exists(aliases_path):
+            try:
+                with open(aliases_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                self.aliases = data.get("aliases", {})
+                for canonical, names in self.aliases.items():
+                    for name in names:
+                        self.reverse_aliases[name] = canonical
+            except Exception:
+                pass
+
     def extract_all_states(self, project_name="Unknown"):
         """
         特定のプロジェクトに関連するすべての設定資料から状態を抽出する
@@ -59,8 +74,10 @@ class StoryStateExtractor:
 
                     # キャラクター名らしいものを判定 (KnowledgeProcessorのエンティティを利用)
                     if name in meta.get("entities", "").split(","):
-                        if name not in states["characters"]:
-                            states["characters"][name] = []
+                        # 名前を正式名に統一
+                        canonical_name = self.reverse_aliases.get(name, name)
+                        if canonical_name not in states["characters"]:
+                            states["characters"][canonical_name] = []
 
                         current_entry = {
                             "status": "alive",
@@ -81,7 +98,7 @@ class StoryStateExtractor:
                             if is_dead: current_entry["status"] = "dead"
                             elif is_alive: current_entry["status"] = "alive"
                         
-                        states["characters"][name].append(current_entry)
+                        states["characters"][canonical_name].append(current_entry)
 
         self.all_states = states
         return states
