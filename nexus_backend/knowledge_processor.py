@@ -67,12 +67,15 @@ class KnowledgeProcessor:
         return "OTHER"
 
     def _extract_entities(self, file_name, content):
+        MAX_SCAN_LINES = 5000
+        MAX_ENTITIES = 200
+        
         entities = set()
         clean_name = re.sub(r'[◤◢#\.txt|\.md|（[^）]+）]', '', file_name).strip()
         if len(clean_name) >= 2: entities.add(clean_name)
         
         lines = content.split('\n')
-        for line in lines[:100]:
+        for line in lines[:MAX_SCAN_LINES]:
             # キャラクター
             char_match = self.CHAR_PATTERN.match(line)
             if char_match: entities.add((char_match.group(1) or char_match.group(2)).strip())
@@ -85,7 +88,14 @@ class KnowledgeProcessor:
             head_match = self.HEADER_PATTERN.match(line)
             if head_match: entities.add((head_match.group(2) or head_match.group(3)).strip())
             
-        return {e for e in entities if len(e) >= 2 and len(e) <= 15}
+        # サイズ制限とフィルタリング
+        entities = {e for e in entities if len(e) >= 2 and len(e) <= 15}
+        
+        if len(entities) > MAX_ENTITIES:
+            # 文字数が長い（＝より具体的な）エンティティを優先
+            entities = set(sorted(list(entities), key=lambda x: -len(x))[:MAX_ENTITIES])
+            
+        return entities
 
     def _extract_relationships(self, content):
         relationships = []
