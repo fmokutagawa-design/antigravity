@@ -8,13 +8,25 @@ class Proofreader:
     LanguageTool (700+ルール), textlint, Tomarigi の知見を統合
     """
     
-    def __init__(self, rules_path=None):
+    def __init__(self, rules_path=None, whitelist_path=None):
         if rules_path is None:
             from config_loader import get_rules_path
             rules_path = get_rules_path()
         self.rules = []
         self.compiled_rules = []
         
+        # ホワイトリスト読み込み
+        self.whitelist = set()
+        if whitelist_path is None:
+            whitelist_path = os.path.join(os.path.dirname(__file__), "nexus_whitelist.json")
+        if os.path.exists(whitelist_path):
+            try:
+                with open(whitelist_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                self.whitelist = set(data.get("whitelist", []))
+            except Exception as e:
+                print(f"Warning: failed to load whitelist: {e}")
+
         # 1. 外部辞書の読み込み (LanguageTool 700+項目)
         if os.path.exists(rules_path):
             try:
@@ -149,6 +161,13 @@ class Proofreader:
         narration_text = ''.join(result)
         return narration_text, dialogue_ranges
 
+    def _is_whitelisted(self, matched_text):
+        """マッチしたテキストにホワイトリストの語が含まれていたら True"""
+        for word in self.whitelist:
+            if word in matched_text:
+                return True
+        return False
+
     def calculate_kanji_ratio(self, text):
         """漢字の含有率を計算"""
         if not text: return 0
@@ -213,7 +232,7 @@ class Proofreader:
             # 外部辞書スキャン（地の文のみ）
             for rule in self.compiled_rules:
                 for m in rule["pattern"].finditer(text):
-                    if not is_in_dialogue(m.start()):
+                    if not is_in_dialogue(m.start()) and not self._is_whitelisted(m.group(0)):
                         corrections.append({
                             "original": m.group(0),
                             "suggested": rule["suggestion"],
