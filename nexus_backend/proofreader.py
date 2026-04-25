@@ -107,65 +107,137 @@ class Proofreader:
         
         return audit_results
 
+    def split_dialogue_and_narration(self, text):
+        """
+        テキストを会話文と地の文に分離する。
+        
+        会話文: 「」『』で囲まれた部分
+        地の文: それ以外
+        
+        戻り値: (narration_text, dialogue_ranges)
+          narration_text: 会話文を空白で置換した地の文テキスト
+          dialogue_ranges: [(start, end), ...] 会話文の位置リスト
+        """
+        dialogue_ranges = []
+        # ネストも考慮: 「台詞の中に『引用』がある」パターン
+        # 最外側の括弧ペアを探す
+        result = list(text)
+        i = 0
+        while i < len(text):
+            if text[i] in '「『':
+                # 対応する閉じ括弧を探す
+                close_char = '」' if text[i] == '「' else '』'
+                depth = 1
+                j = i + 1
+                while j < len(text) and depth > 0:
+                    if text[j] == text[i]:
+                        depth += 1
+                    elif text[j] == close_char:
+                        depth -= 1
+                    j += 1
+                dialogue_ranges.append((i, j))
+                # 地の文テキストでは会話文部分をスペースで埋める（位置をずらさないため）
+                for k in range(i, min(j, len(text))):
+                    result[k] = ' '
+                i = j
+            else:
+                i += 1
+        
+        narration_text = ''.join(result)
+        return narration_text, dialogue_ranges
+
+    def calculate_kanji_ratio(self, text):
+        """漢字の含有率を計算"""
+        if not text: return 0
+        kanji_count = len(re.findall(r'[一-龠々]', text))
+        return (kanji_count / len(text)) * 100
+
     def proofread(self, text, mode='all', materials_context=None):
         """
         校正監査を実行
         mode: 'proof' (校正のみ), 'audit' (監査のみ), 'all' (両方)
         """
         corrections = []
-        sentences = re.split(r'(?<=[。？！])\s*', text)
+        
+        # 会話文と地の文を分離
+        narration_text, dialogue_ranges = self.split_dialogue_and_narration(text)
+        
+        def is_in_dialogue(pos):
+            """指定位置が会話文内かどうか"""
+            for start, end in dialogue_ranges:
+                if start <= pos < end:
+                    return True
+            return False
         
         # --- Layer 1: 校正 (瞬時) ---
         if mode in ['proof', 'all']:
-            # 漢字含有率
+            # 1. 地の文のみに適用するルール
+            
+            # 文体チェック（地の文のみ）
+            narration_sentences = re.split(r'(?<=[。？！])\s*', narration_text)
+            narration_sentences = [s for s in narration_sentences if s.strip()]
+            style_issue = self.check_stylistic_consistency(narration_sentences)
+            if style_issue:
+                corrections.append(style_issue)
+            
+            # 小説特化ルール（地の文のみ）
+            for pattern, suggestion, message in self.novel_specific_rules:
+                for m in pattern.finditer(narration_text):
+                    # すでに narration_text 上でマッチしているが、念のためチェック
+                    corrections.append({
+                        "original": m.group(0),
+                        "suggested": suggestion,
+                        "reason": message + "（地の文）"
+                    })
+
+            # 一文長すぎ、指示詞多用（地の文のみ）
+            for s in narration_sentences:
+                if len(s) > 100:
+                    corrections.append({"original": s[:15]+"...", "suggested": "分割", "reason": "一文が長すぎます（地の文）。"})
+                
+                kosoado = len(re.findall(r'これ|それ|あれ|この|その|あの', s))
+                if kosoado >= 3:
+                    corrections.append({"original": s[:20]+"...", "suggested": "名詞化", "reason": "指示詞が多用されています（地の文）。"})
+
+            # 文末重複（地の文のみ）
+            for i in range(len(narration_sentences) - 2):
+                s1_end = re.sub(r'[。？！]', '', narration_sentences[i].strip())[-2:]
+                s2_end = re.sub(r'[。？！]', '', narration_sentences[i+1].strip())[-2:]
+                s3_end = re.sub(r'[。？！]', '', narration_sentences[i+2].strip())[-2:]
+                if len(s1_end) >= 2 and s1_end == s2_end == s3_end:
+                    corrections.append({"original": f"「{s1_end}」の連続", "suggested": "変更", "reason": "地の文で文末表現が3回連続しています。"})
+
+            # 外部辞書スキャン（地の文のみ）
+            for rule in self.compiled_rules:
+                for m in rule["pattern"].finditer(text):
+                    if not is_in_dialogue(m.start()):
+                        corrections.append({
+                            "original": m.group(0),
+                            "suggested": rule["suggestion"],
+                            "reason": rule["message"]
+                        })
+
+            # 2. 全文に適用するルール（会話文内でも有効）
+
+            # 漢字含有率（全文で見る）
             ratio = self.calculate_kanji_ratio(text)
             if ratio > 40:
                 corrections.append({"original": "全体", "suggested": "ひらがな増", "reason": f"漢字率 {ratio:.1f}%: 小説としては堅苦しすぎます。"})
             elif ratio < 15:
                 corrections.append({"original": "全体", "suggested": "漢字増", "reason": f"漢字率 {ratio:.1f}%: 小説としては幼すぎます。"})
 
-            # 文体チェック
-            style_issue = self.check_stylistic_consistency(sentences)
-            if style_issue: corrections.append(style_issue)
-
-            # タイポ・連続単語
+            # タイポ・連続助詞（全文で有効、タイポは会話文でも問題）
             corrections.extend(self.check_successive_words(text))
 
-            # 個別文診断
-            for s in sentences:
-                if len(s) > 100:
-                    corrections.append({"original": s[:15]+"...", "suggested": "分割", "reason": "一文が長すぎます。"})
-                
-                kosoado = len(re.findall(r'これ|それ|あれ|この|その|あの', s))
-                if kosoado >= 3:
-                    corrections.append({"original": s[:20]+"...", "suggested": "名詞化", "reason": "指示詞が多用されています。"})
-
-            # 文末重複
-            for i in range(len(sentences) - 2):
-                s1_end = re.sub(r'[。？！]', '', sentences[i].strip())[-2:]
-                s2_end = re.sub(r'[。？！]', '', sentences[i+1].strip())[-2:]
-                s3_end = re.sub(r'[。？！]', '', sentences[i+2].strip())[-2:]
-                if len(s1_end) >= 2 and s1_end == s2_end == s3_end:
-                    corrections.append({"original": f"「{s1_end}」の連続", "suggested": "変更", "reason": "文末表現が3回連続しています。"})
-
-            # 外部辞書スキャン
-            for rule in self.compiled_rules:
-                for m in rule["pattern"].finditer(text):
-                    corrections.append({
-                        "original": m.group(0),
-                        "suggested": rule["suggestion"],
-                        "reason": rule["message"]
-                    })
+            # カッコの整合性（全文で有効）
+            for ob, cb in {'「': '」', '（': '）', '『': '』'}.items():
+                if text.count(ob) != text.count(cb):
+                    corrections.append({"original": f"{ob}{cb}", "suggested": "修正", "reason": "カッコの対応が取れていません。"})
 
         # --- Layer 2: 監査 (物語整合性) ---
         if mode in ['audit', 'all']:
             audit_results = self.audit_narrative(text, materials_context)
             corrections.extend(audit_results)
-
-        # カッコの整合性 (最後)
-        for ob, cb in {'「': '」', '（': '）', '『': '』'}.items():
-            if text.count(ob) != text.count(cb):
-                corrections.append({"original": f"{ob}{cb}", "suggested": "修正", "reason": "カッコの対応が取れていません。"})
 
         return corrections
 
