@@ -1,11 +1,12 @@
 import os
 import json
 import asyncio
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import chromadb
 import ollama
+import threading
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="NEXUS RAG Bridge Server")
@@ -26,6 +27,22 @@ COLLECTION_NAME = "nexus_novels"
 # ChromaDBのセットアップ
 client = chromadb.PersistentClient(path=DB_PATH)
 collection = client.get_or_create_collection(name=COLLECTION_NAME)
+
+# グローバルな監査状態
+audit_status = {"running": False, "progress": "", "completed": False}
+
+def run_audit_background():
+    global audit_status
+    try:
+        from audit_batch_processor import AuditBatchProcessor
+        processor = AuditBatchProcessor()
+        audit_status["progress"] = "データベース同期中..."
+        processor.run_full_audit()
+        audit_status = {"running": False, "progress": "完了", "completed": True}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        audit_status = {"running": False, "progress": f"エラー: {e}", "completed": False}
 
 class AskRequest(BaseModel):
     query: str
@@ -307,20 +324,24 @@ async def combined_proofread(request: AskRequest):
     return {"corrections": static_xml + ai_xml}
 
 @app.post("/analyze/audit/start")
-async def start_full_audit():
+async def start_full_audit(background_tasks: BackgroundTasks):
     """
-    全原稿の校正監査（バッチ処理）を開始する
+    全原稿の校正監査（バッチ処理）を非同期で開始する
     """
-    try:
-        from audit_batch_processor import AuditBatchProcessor
-        processor = AuditBatchProcessor()
-        # 本来はBackgroundTasksでやるべきだが、まずは直接実行して結果を待つ
-        # (42万字でもプログラム監査なら数分なのでまずは同期的に実装)
-        processor.run_full_audit()
-        return {"status": "completed", "message": "全原稿の監査が完了しました。"}
-    except Exception as e:
-        print(f"❌ Audit Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    global audit_status
+    if audit_status["running"]:
+        return {"status": "already_running", "message": "監査は既に実行中です。"}
+    
+    audit_status = {"running": True, "progress": "開始準備中...", "completed": False}
+    background_tasks.add_task(run_audit_background)
+    return {"status": "started", "message": "監査を開始しました。"}
+
+@app.get("/analyze/audit/status")
+async def get_audit_status():
+    """
+    現在の監査進捗を取得する
+    """
+    return audit_status
 
 @app.get("/analyze/audit/report")
 async def get_audit_report():

@@ -375,5 +375,17 @@ export const ollamaService = {
             console.error("Error fetching audit report:", error);
             return [];
         }
+    },
+
+    // Check progress of current audit
+    async getAuditStatus() {
+        try {
+            const response = await fetch(`${this.ragServerUrl}/analyze/audit/status`);
+            if (!response.ok) throw new Error('Status check failed');
+            return await response.json();
+        } catch (error) {
+            console.error("Audit status check failed:", error);
+            return { running: false, progress: "接続エラー", completed: false };
+        }
     }
 };

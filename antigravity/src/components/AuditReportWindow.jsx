@@ -5,6 +5,8 @@ import './AuditReportWindow.css';
 const AuditReportWindow = ({ isOpen, onClose }) => {
   const [report, setReport] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
+  const [progress, setProgress] = useState("");
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [fileFilter, setFileFilter] = useState('all');
 
@@ -20,11 +22,56 @@ const AuditReportWindow = ({ isOpen, onClose }) => {
     }
   };
 
+  const startAudit = async () => {
+    if (isRunning) return;
+    try {
+      const result = await ollamaService.startFullAudit();
+      if (result.status === 'started' || result.status === 'already_running') {
+        setIsRunning(true);
+        setProgress("監査を開始しました...");
+      }
+    } catch (error) {
+      console.error('Failed to start audit:', error);
+      alert("監査の開始に失敗しました。");
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
+      // 開いた時に一度レポートを取得
       fetchReport();
+      // 実行中かどうかのステータスも確認
+      const checkInitialStatus = async () => {
+        const status = await ollamaService.getAuditStatus();
+        if (status.running) {
+          setIsRunning(true);
+          setProgress(status.progress);
+        }
+      };
+      checkInitialStatus();
     }
   }, [isOpen]);
+
+  // ポーリング
+  useEffect(() => {
+    if (!isRunning) return;
+    const interval = setInterval(async () => {
+      try {
+        const status = await ollamaService.getAuditStatus();
+        setProgress(status.progress);
+        if (!status.running) {
+          clearInterval(interval);
+          setIsRunning(false);
+          if (status.completed) {
+            fetchReport();
+          }
+        }
+      } catch (e) {
+        console.error("Polling error:", e);
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [isRunning]);
 
   // カテゴリ判定
   const classifyCorrection = (item) => {
@@ -79,10 +126,23 @@ const AuditReportWindow = ({ isOpen, onClose }) => {
       <div className="audit-header">
         <h3>📋 校正監査：宿題リスト</h3>
         <div className="header-actions">
-          <button onClick={fetchReport} className="refresh-btn">更新</button>
+          <button 
+            onClick={startAudit} 
+            className="refresh-btn" 
+            disabled={isRunning}
+          >
+            {isRunning ? "実行中..." : "監査実行"}
+          </button>
           <button onClick={onClose} className="close-btn">×</button>
         </div>
       </div>
+
+      {isRunning && (
+        <div className="audit-progress-banner">
+          <div className="spinner"></div>
+          <span>{progress}</span>
+        </div>
+      )}
 
       <div className="audit-filter-bar">
         <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>

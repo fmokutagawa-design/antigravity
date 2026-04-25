@@ -162,6 +162,30 @@
 .homework-item.category-文法 { border-left: 4px solid #34c759; }
 .homework-item.category-文体 { border-left: 4px solid #5856d6; }
 
+.audit-progress-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #e1f5fe;
+  color: #01579b;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(1, 87, 155, 0.1);
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(1, 87, 155, 0.2);
+  border-top-color: #01579b;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .loading, .no-items {
   padding: 40px;
   text-align: center;
