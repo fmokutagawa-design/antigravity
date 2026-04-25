@@ -33,12 +33,17 @@ class StoryStateExtractor:
         }
 
         if not results["ids"]:
+            self.all_states = states
             return states
 
         for doc, meta in zip(results["documents"], results["metadatas"]):
-            # キャラクター情報の抽出 (簡易的な正規表現パース)
-            # 例: 「ガトー：戦死したはずだが生存（IF）」
-            
+            file_name = meta.get("file", "")
+            # 章番号を推測 (effective_from)
+            chapter_num = 0
+            match = re.search(r'(?:第|chapter_?)(\d+)', file_name, re.IGNORECASE)
+            if match:
+                chapter_num = int(match.group(1))
+
             # 生死チェック
             death_keywords = ["死亡", "戦死", "亡くなった", "故人", "殺された"]
             alive_keywords = ["生存", "生きている", "健在"]
@@ -55,7 +60,13 @@ class StoryStateExtractor:
                     # キャラクター名らしいものを判定 (KnowledgeProcessorのエンティティを利用)
                     if name in meta.get("entities", "").split(","):
                         if name not in states["characters"]:
-                            states["characters"][name] = {"status": "alive", "source": meta.get("file")}
+                            states["characters"][name] = []
+
+                        current_entry = {
+                            "status": "alive",
+                            "effective_from": chapter_num,
+                            "source": file_name
+                        }
 
                         # 状態判定
                         is_dead = any(k in desc for k in death_keywords)
@@ -63,16 +74,36 @@ class StoryStateExtractor:
                         is_if = any(k in desc for k in if_keywords)
 
                         if is_if:
-                            # IF設定がある場合は最優先
-                            if is_alive: states["characters"][name]["status"] = "alive"
-                            elif is_dead: states["characters"][name]["status"] = "dead"
-                            states["characters"][name]["is_if"] = True
+                            if is_alive: current_entry["status"] = "alive"
+                            elif is_dead: current_entry["status"] = "dead"
+                            current_entry["is_if"] = True
                         else:
-                            # 通常設定
-                            if is_dead: states["characters"][name]["status"] = "dead"
-                            elif is_alive: states["characters"][name]["status"] = "alive"
+                            if is_dead: current_entry["status"] = "dead"
+                            elif is_alive: current_entry["status"] = "alive"
+                        
+                        states["characters"][name].append(current_entry)
 
+        self.all_states = states
         return states
+
+    def get_state_at_chapter(self, entity_name, category, chapter_num):
+        """
+        指定された章時点でのエンティティの状態を取得する
+        """
+        # all_states が未ロードの場合はロードする
+        if not hasattr(self, 'all_states'):
+            self.extract_all_states()
+            
+        states = self.all_states.get(category, {}).get(entity_name, [])
+        # effective_from が chapter_num 以下のもののうち、最大のものを探す
+        current_state = None
+        max_from = -1
+        for s in states:
+            eff = s.get("effective_from", 0)
+            if eff <= chapter_num and eff > max_from:
+                max_from = eff
+                current_state = s
+        return current_state
 
 if __name__ == "__main__":
     extractor = StoryStateExtractor()

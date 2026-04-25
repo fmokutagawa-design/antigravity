@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import re
 from proofreader import Proofreader
 from story_state_extractor import StoryStateExtractor
 
@@ -15,6 +16,17 @@ class AuditBatchProcessor:
         self.target_dirs = target_dirs or get_manuscript_dirs()
         self.report_path = os.path.join(os.path.dirname(__file__), "homework_list.json")
 
+    def _guess_chapter_num(self, file_name):
+        """
+        ファイル名から章番号（整数）を抽出する
+        例: "第05章_遭遇.txt" -> 5
+        例: "chapter_12.md" -> 12
+        """
+        match = re.search(r'(?:第|chapter_?)(\d+)', file_name, re.IGNORECASE)
+        if match:
+            return int(match.group(1))
+        return 999 # 不明な場合は最新（終盤）とみなす
+
     def run_full_audit(self):
         print("🚀 【校正監査モード】大規模監査を開始します...")
         
@@ -23,7 +35,7 @@ class AuditBatchProcessor:
         from ingest_novels import ingest_novels
         ingest_novels()
         
-        # 1. 最新の物語状態を抽出
+        # 1. 最新の物語状態を抽出 (内部で all_states が保持される)
         states = self.extractor.extract_all_states()
         print(f"✅ 設定資料から {len(states['characters'])} 名のキャラクター状態を把握しました。")
 
@@ -47,9 +59,18 @@ class AuditBatchProcessor:
                         with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
                             content = f.read()
                         
+                        # 章番号を推測し、その時点でのコンテキストを作成
+                        chapter_num = self._guess_chapter_num(file)
+                        current_materials_context = {
+                            "characters": {
+                                name: self.extractor.get_state_at_chapter(name, "characters", chapter_num)
+                                for name in states["characters"]
+                            }
+                        }
+
                         # 校正・監査の実行
-                        # 42万字あっても、Layer 1+2のプログラム監査なら数秒で終わる
-                        results = self.pr.proofread(content, mode='all', materials_context=states)
+                        # chapter_aware なコンテキストを渡すことで誤検出を防ぐ
+                        results = self.pr.proofread(content, mode='all', materials_context=current_materials_context)
                         
                         if results:
                             for res in results:
@@ -64,7 +85,9 @@ class AuditBatchProcessor:
                         
                         file_count += 1
                     except Exception as e:
+                        import traceback
                         print(f"❌ エラー ({file}): {e}")
+                        traceback.print_exc()
 
         # 3. 結果の保存
         with open(self.report_path, "w", encoding="utf-8") as f:
