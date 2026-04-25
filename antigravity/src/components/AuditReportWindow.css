@@ -114,6 +114,54 @@
   line-height: 1.4;
 }
 
+.audit-filter-bar {
+  display: flex;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  align-items: center;
+  flex-wrap: wrap;
+  background: #fff;
+}
+
+.audit-filter-bar select {
+  padding: 4px 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  font-size: 12px;
+  background: #fff;
+  color: #333;
+  outline: none;
+}
+
+.audit-filter-bar select:focus {
+  border-color: #007aff;
+}
+
+.audit-count {
+  font-size: 11px;
+  color: #999;
+  margin-left: auto;
+}
+
+.category-tag {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+.category-監査 { background: #ff3b30; color: #fff; }
+.category-誤字 { background: #ff9500; color: #fff; }
+.category-文法 { background: #34c759; color: #fff; }
+.category-文体 { background: #5856d6; color: #fff; }
+
+.homework-item.category-監査 { border-left: 4px solid #ff3b30; }
+.homework-item.category-誤字 { border-left: 4px solid #ff9500; }
+.homework-item.category-文法 { border-left: 4px solid #34c759; }
+.homework-item.category-文体 { border-left: 4px solid #5856d6; }
+
 .loading, .no-items {
   padding: 40px;
   text-align: center;
