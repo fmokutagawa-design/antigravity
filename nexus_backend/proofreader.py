@@ -94,39 +94,63 @@ class Proofreader:
                 })
         return results
 
-    def audit_narrative(self, text, materials_context=None):
+    def _get_aliases(self, char_name):
+        """エイリアスリストを取得"""
+        aliases_path = os.path.join(os.path.dirname(__file__), "nexus_aliases.json")
+        if os.path.exists(aliases_path):
+            try:
+                with open(aliases_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                return data.get("aliases", {}).get(char_name, [])
+            except:
+                pass
+        return []
+
+    def audit_narrative(self, text, materials_context=None, chapter_number=None):
         """
         物語の整合性を監査する (Layer 2)
-        materials_context: 設定資料から抽出された状態データ (dict)
         """
         audit_results = []
         if not materials_context:
             return audit_results
 
-        # エイリアスの読み込み
-        aliases_path = os.path.join(os.path.dirname(__file__), "nexus_aliases.json")
-        aliases = {}
-        if os.path.exists(aliases_path):
-            try:
-                with open(aliases_path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                aliases = data.get("aliases", {})
-            except:
-                pass
-
         # 1. キャラクターの生存チェック
-        for char_name, info in materials_context.get('characters', {}).items():
-            if info.get('status') == 'dead':
+        for char_name, info_list in materials_context.get('characters', {}).items():
+            # materials_context['characters'][char_name] はイベントのリスト
+            
+            # 現在の章の状態を取得
+            if chapter_number is not None:
+                # リストから最適な状態を探す（extractorのロジックと同様のものをここで再現するか、contextに単一状態が入っていることを期待するか）
+                # extractor.get_state_at_chapter が返す形式を想定
+                # もし info_list が単一の dict だった場合のフォールバックも考慮
+                if isinstance(info_list, list):
+                    state = {"status": "alive", "chapter": 0}
+                    for event in info_list:
+                        eff = event.get("chapter", event.get("effective_from", 0))
+                        if eff <= chapter_number:
+                            state = event
+                        else:
+                            break
+                else:
+                    state = info_list
+            else:
+                # 章指定がない場合は最新（リストの最後）または単一状態
+                state = info_list[-1] if isinstance(info_list, list) else info_list
+
+            if state.get('status') == 'dead':
                 # 正式名 + 全エイリアスで検索
-                search_names = [char_name] + aliases.get(char_name, [])
+                search_names = [char_name] + self._get_aliases(char_name)
                 for name in search_names:
-                    # 回想シーンや死に言及している場合は除外
                     pattern = re.compile(rf'{re.escape(name)}(?!.*(回想|死|遺影|墓|供養))')
                     for m in pattern.finditer(text):
+                        reason = f"設定資料では【{char_name}】は死亡していますが、このシーンに「{name}」として登場しています。"
+                        if chapter_number is not None:
+                            reason = f"第{chapter_number}章の時点では【{char_name}】は死亡しているはずです。（第{state.get('chapter', '?')}章で死亡）"
+                        
                         audit_results.append({
                             "original": m.group(0),
-                            "suggested": "登場の整合性確認",
-                            "reason": f"設定資料では【{char_name}】は死亡していますが、このシーンに「{name}」として登場しています。回想等の意図的な描写ですか？（ソース: {info.get('source', '不明')}）"
+                            "suggested": "時系列の確認",
+                            "reason": reason + f"（ソース: {state.get('source', '不明')}）"
                         })
 
         return audit_results
@@ -134,22 +158,12 @@ class Proofreader:
     def split_dialogue_and_narration(self, text):
         """
         テキストを会話文と地の文に分離する。
-        
-        会話文: 「」『』で囲まれた部分
-        地の文: それ以外
-        
-        戻り値: (narration_text, dialogue_ranges)
-          narration_text: 会話文を空白で置換した地の文テキスト
-          dialogue_ranges: [(start, end), ...] 会話文の位置リスト
         """
         dialogue_ranges = []
-        # ネストも考慮: 「台詞の中に『引用』がある」パターン
-        # 最外側の括弧ペアを探す
         result = list(text)
         i = 0
         while i < len(text):
             if text[i] in '「『':
-                # 対応する閉じ括弧を探す
                 close_char = '」' if text[i] == '「' else '』'
                 depth = 1
                 j = i + 1
@@ -160,7 +174,6 @@ class Proofreader:
                         depth -= 1
                     j += 1
                 dialogue_ranges.append((i, j))
-                # 地の文テキストでは会話文部分をスペースで埋める（位置をずらさないため）
                 for k in range(i, min(j, len(text))):
                     result[k] = ' '
                 i = j
@@ -183,10 +196,9 @@ class Proofreader:
         kanji_count = len(re.findall(r'[一-龠々]', text))
         return (kanji_count / len(text)) * 100
 
-    def proofread(self, text, mode='all', materials_context=None):
+    def proofread(self, text, mode='all', materials_context=None, chapter_number=None):
         """
         校正監査を実行
-        mode: 'proof' (校正のみ), 'audit' (監査のみ), 'all' (両方)
         """
         corrections = []
         
@@ -194,7 +206,6 @@ class Proofreader:
         narration_text, dialogue_ranges = self.split_dialogue_and_narration(text)
         
         def is_in_dialogue(pos):
-            """指定位置が会話文内かどうか"""
             for start, end in dialogue_ranges:
                 if start <= pos < end:
                     return True
@@ -202,8 +213,6 @@ class Proofreader:
         
         # --- Layer 1: 校正 (瞬時) ---
         if mode in ['proof', 'all']:
-            # 1. 地の文のみに適用するルール
-            
             # 文体チェック（地の文のみ）
             narration_sentences = re.split(r'(?<=[。？！])\s*', narration_text)
             narration_sentences = [s for s in narration_sentences if s.strip()]
@@ -214,7 +223,6 @@ class Proofreader:
             # 小説特化ルール（地の文のみ）
             for pattern, suggestion, message in self.novel_specific_rules:
                 for m in pattern.finditer(narration_text):
-                    # すでに narration_text 上でマッチしているが、念のためチェック
                     corrections.append({
                         "original": m.group(0),
                         "suggested": suggestion,
@@ -248,26 +256,22 @@ class Proofreader:
                             "reason": rule["message"]
                         })
 
-            # 2. 全文に適用するルール（会話文内でも有効）
-
-            # 漢字含有率（全文で見る）
+            # 2. 全文に適用するルール
             ratio = self.calculate_kanji_ratio(text)
             if ratio > 40:
                 corrections.append({"original": "全体", "suggested": "ひらがな増", "reason": f"漢字率 {ratio:.1f}%: 小説としては堅苦しすぎます。"})
             elif ratio < 15:
                 corrections.append({"original": "全体", "suggested": "漢字増", "reason": f"漢字率 {ratio:.1f}%: 小説としては幼すぎます。"})
 
-            # タイポ・連続助詞（全文で有効、タイポは会話文でも問題）
             corrections.extend(self.check_successive_words(text))
 
-            # カッコの整合性（全文で有効）
             for ob, cb in {'「': '」', '（': '）', '『': '』'}.items():
                 if text.count(ob) != text.count(cb):
                     corrections.append({"original": f"{ob}{cb}", "suggested": "修正", "reason": "カッコの対応が取れていません。"})
 
         # --- Layer 2: 監査 (物語整合性) ---
         if mode in ['audit', 'all']:
-            audit_results = self.audit_narrative(text, materials_context)
+            audit_results = self.audit_narrative(text, materials_context, chapter_number)
             corrections.extend(audit_results)
 
         return corrections

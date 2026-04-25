@@ -16,16 +16,20 @@ class AuditBatchProcessor:
         self.target_dirs = target_dirs or get_manuscript_dirs()
         self.report_path = os.path.join(os.path.dirname(__file__), "homework_list.json")
 
-    def _guess_chapter_num(self, file_name):
+    def _extract_chapter_number(self, filename):
         """
         ファイル名から章番号（整数）を抽出する
         例: "第05章_遭遇.txt" -> 5
         例: "chapter_12.md" -> 12
         """
-        match = re.search(r'(?:第|chapter_?)(\d+)', file_name, re.IGNORECASE)
+        match = re.search(r'(?:第|chapter_?)(\d+)', filename, re.IGNORECASE)
         if match:
             return int(match.group(1))
-        return 999 # 不明な場合は最新（終盤）とみなす
+        # 数字のみのパターンも試行
+        m = re.search(r'(\d+)', filename)
+        if m:
+            return int(m.group(1))
+        return None
 
     def run_full_audit(self):
         print("🚀 【校正監査モード】大規模監査を開始します...")
@@ -35,7 +39,7 @@ class AuditBatchProcessor:
         from ingest_novels import ingest_novels
         ingest_novels()
         
-        # 1. 最新の物語状態を抽出 (内部で all_states が保持される)
+        # 1. 最新の物語状態を抽出 (内部で timelines が保持される)
         states = self.extractor.extract_all_states()
         print(f"✅ 設定資料から {len(states['characters'])} 名のキャラクター状態を把握しました。")
 
@@ -60,17 +64,22 @@ class AuditBatchProcessor:
                             content = f.read()
                         
                         # 章番号を推測し、その時点でのコンテキストを作成
-                        chapter_num = self._guess_chapter_num(file)
+                        chapter_num = self._extract_chapter_number(file)
                         current_materials_context = {
                             "characters": {
-                                name: self.extractor.get_state_at_chapter(name, "characters", chapter_num)
+                                name: self.extractor.get_state_at_chapter(name, "characters", chapter_num or 999)
                                 for name in states["characters"]
                             }
                         }
 
                         # 校正・監査の実行
-                        # chapter_aware なコンテキストを渡すことで誤検出を防ぐ
-                        results = self.pr.proofread(content, mode='all', materials_context=current_materials_context)
+                        # chapter_number を明示的に渡すことで時系列チェックを有効化
+                        results = self.pr.proofread(
+                            content, 
+                            mode='all', 
+                            materials_context=current_materials_context,
+                            chapter_number=chapter_num
+                        )
                         
                         if results:
                             for res in results:
