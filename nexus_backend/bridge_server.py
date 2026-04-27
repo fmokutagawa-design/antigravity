@@ -43,6 +43,15 @@ class AskRequest(BaseModel):
     system_prompt: str = ""
     file_path: str = ""
 
+# --- プロセッサーの初期化 (起動時に一度だけ実行) ---
+from proofreader import Proofreader
+from knowledge_processor import KnowledgeProcessor
+from story_state_extractor import StoryStateExtractor
+
+pr_engine = Proofreader()
+kp_engine = KnowledgeProcessor()
+sse_engine = StoryStateExtractor()
+
 @app.post("/ask")
 async def ask_rag(request: AskRequest):
     """
@@ -52,9 +61,7 @@ async def ask_rag(request: AskRequest):
     model_name = request.model
     file_path = request.file_path
 
-    from knowledge_processor import KnowledgeProcessor
-    kp = KnowledgeProcessor()
-    project_id = kp._determine_project(file_path) if file_path else "Unknown"
+    project_id = kp_engine._determine_project(file_path) if file_path else "Unknown"
 
     try:
         print(f"💬 Query: {query} (Project: {project_id})")
@@ -126,9 +133,7 @@ async def propose_metadata(request: Request):
         file_path = data.get("full_path", "") or data.get("file_path", "")
         content = data.get("content", "")
         
-        from knowledge_processor import KnowledgeProcessor
-        kp = KnowledgeProcessor()
-        metadata = kp.process_file(file_path, content)
+        metadata = kp_engine.process_file(file_path, content)
         
         return {
             "project": metadata.get("project", "Unknown"),
@@ -144,9 +149,7 @@ async def propose_metadata(request: Request):
 async def suggest_tags(request: Request):
     data = await request.json()
     content = data.get("content", "")
-    from knowledge_processor import KnowledgeProcessor
-    kp = KnowledgeProcessor()
-    entities = kp._extract_entities("temp.txt", content)
+    entities = kp_engine._extract_entities("temp.txt", content)
     return {"tags": list(entities)[:15]}
 
 @app.post("/db/update_tags")
@@ -183,10 +186,12 @@ async def delete_db_item(full_path: str = ""):
         return {"success": False, "reason": str(e)}
 
 @app.post("/db/ingest")
-async def trigger_ingest():
+async def trigger_ingest(request: Request):
+    data = await request.json()
+    target_path = data.get("target_path")
     from ingest_novels import ingest_novels
-    # 非同期実行が望ましいが、リクエストを受け取って開始
-    threading.Thread(target=ingest_novels).start()
+    # 非同期実行
+    threading.Thread(target=ingest_novels, kwargs={"target_paths": [target_path] if target_path else None}).start()
     return {"status": "started"}
 
 @app.get("/db/items")
@@ -218,9 +223,7 @@ async def generate_reference_sheet(request: AskRequest):
     query = request.query
     file_path = request.file_path
 
-    from knowledge_processor import KnowledgeProcessor
-    kp = KnowledgeProcessor()
-    project_id = kp._determine_project(file_path) if file_path else "Unknown"
+    project_id = kp_engine._determine_project(file_path) if file_path else "Unknown"
 
     try:
         async_client = ollama.AsyncClient()
@@ -261,20 +264,12 @@ async def combined_proofread(request: AskRequest):
     text = request.query
     file_path = request.file_path
     
-    from proofreader import Proofreader
-    from knowledge_processor import KnowledgeProcessor
-    from story_state_extractor import StoryStateExtractor
+    project_id = kp_engine._determine_project(file_path) if file_path else "Unknown"
     
-    pr = Proofreader()
-    kp = KnowledgeProcessor()
-    sse = StoryStateExtractor()
-    
-    project_id = kp._determine_project(file_path) if file_path else "Unknown"
-    
-    # 1. ルールベース校正
-    states = sse.extract_all_states(project_id=project_id)
-    static_corrections = pr.proofread(text, materials_context=states)
-    static_xml = pr.to_xml(static_corrections)
+    # 1. ルールベース校正 (キャッシュされた状態を使用)
+    states = sse_engine.extract_all_states(project_id=project_id, use_cache=True)
+    static_corrections = pr_engine.proofread(text, materials_context=states)
+    static_xml = pr_engine.to_xml(static_corrections)
     
     # 2. AI校正
     async_client = ollama.AsyncClient()

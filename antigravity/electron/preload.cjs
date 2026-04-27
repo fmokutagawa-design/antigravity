@@ -18,7 +18,8 @@ contextBridge.exposeInMainWorld('api', {
         showInExplorer: (path) => ipcRenderer.invoke('fs:showInExplorer', toPath(path)),
     },
     system: {
-        getFonts: () => ipcRenderer.invoke('system:getFonts')
+        getFonts: () => ipcRenderer.invoke('system:getFonts'),
+        launchApp: (appPath) => ipcRenderer.invoke('system:launchApp', appPath)
     },
     textlint: {
         proofread: (text) => ipcRenderer.invoke('textlint:proofread', text)

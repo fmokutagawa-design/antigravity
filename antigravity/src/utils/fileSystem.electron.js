@@ -70,17 +70,31 @@ export const electronFileSystem = {
   },
 
   async readFile(fileHandle, options = {}) {
-    const maxRetries = 3;
+    const maxRetries = 2;
     let lastError;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        return await window.api.fs.readFile(toPath(fileHandle), options);
+        // クラウド同期アプリ未起動時のハング対策：5秒でタイムアウト
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('CLOUD_SYNC_TIMEOUT')), 5000)
+        );
+        
+        return await Promise.race([
+          window.api.fs.readFile(toPath(fileHandle), options),
+          timeoutPromise
+        ]);
       } catch (error) {
         lastError = error;
         const isTimeout = error.message?.includes('ETIMEDOUT') || error.toString().includes('ETIMEDOUT');
+        const isCloudTimeout = error.message === 'CLOUD_SYNC_TIMEOUT';
+
+        if (isCloudTimeout) {
+          throw new Error('CLOUD_SYNC_TIMEOUT'); // 呼び出し側で特殊処理するため即座に投げる
+        }
+
         if (isTimeout && attempt < maxRetries) {
-          const delay = Math.pow(2, attempt) * 100; // 100ms, 200ms, 400ms
+          const delay = Math.pow(2, attempt) * 100;
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }

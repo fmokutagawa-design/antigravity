@@ -143,8 +143,13 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   const compositionTextRef = useRef(null); // composition 開始前のテキストを保持
 
   // ★ パフォーマンス根治: ローカルテキスト状態
-  const localDocumentRef = useRef(textToDocument(value));
-  const localTextRef = useRef(documentToText(localDocumentRef.current));
+  // Lazy initialization to avoid expensive parsing on every render
+  const localDocumentRef = useRef(null);
+  if (!localDocumentRef.current) localDocumentRef.current = textToDocument(value);
+
+  const localTextRef = useRef(null);
+  if (!localTextRef.current) localTextRef.current = documentToText(localDocumentRef.current);
+
   const [debouncedDocument, setDebouncedDocument] = useState(localDocumentRef.current);
 
   const appNotifyTimerRef = useRef(null);
@@ -380,6 +385,21 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
     }
   }, [fileId, settings.isVertical]);
 
+
+  // Array.from は大規模文字列で極めて重い（GC負荷が高い）ため、
+  // 配列を生成せずにコードポイント数を数える軽量版を使用する。
+  // upTo が指定された場合はそのインデックスまで数える（substring生成を回避）
+  const countCodePoints = (str, upTo = Infinity) => {
+    if (!str) return 0;
+    let count = 0;
+    const limit = Math.min(str.length, upTo);
+    for (let i = 0; i < limit; i++) {
+      count++;
+      const code = str.charCodeAt(i);
+      if (0xD800 <= code && code <= 0xDBFF) i++; // サロゲートペア
+    }
+    return count;
+  };
 
   const splitString = (str) => Array.from(str || "");
 
@@ -761,8 +781,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   }, [paraPosCache, debouncedDocument, baseMetrics.maxPerLine]);
 
   // --- 2. アンダーレイ（座標マップ）の生成（デバウンス） ---
-  // ★ 大規模テキスト（20000文字超≒原稿用紙100枚超）ではハイライトを自動停止
-  const HIGHLIGHT_CHAR_LIMIT = 100000;
+  // ★ 大規模テキストではハイライトを自動停止（座標キャッシュを作らないため）
   const highlights = useMemo(() => {
     const t0 = perfNow();
     if (settings.editorSyntaxColors === false) {
@@ -773,7 +792,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       perfMeasure('Editor.highlights', t0, { kind: 'skipped (empty)' });
       return [];
     }
-    if (debouncedText.length > HIGHLIGHT_CHAR_LIMIT) {
+    if (isMassiveText) {
       perfMeasure('Editor.highlights', t0, { kind: 'skipped (massive)', len: debouncedText.length });
       return [];
     }
@@ -797,8 +816,9 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       while ((match = regex.exec(debouncedText)) !== null) {
         const matchStart = match.index;
         const matchEnd = match.index + match[0].length;
-        const visualStart = utf16ToCharIdx.get(matchStart) ?? splitString(debouncedText.substring(0, matchStart)).length;
-        const visualLen = splitString(match[0]).length;
+        // substring(0, matchStart) を作らずにカウント
+        const visualStart = utf16ToCharIdx.get(matchStart) ?? countCodePoints(debouncedText, matchStart);
+        const visualLen = countCodePoints(match[0]);
         for (let i = 0; i < visualLen; i++) {
           const p = positions[visualStart + i];
           if (p) {
@@ -874,7 +894,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       while (index !== -1) {
         const len = splitString(corr.original).length;
         // ★ splitString(preStr) は index 文字分の Array.from → utf16ToCharIdx でゼロコスト化
-        const startCharIdx = utf16ToCharIdx.get(index) ?? splitString(debouncedText.slice(0, index)).length;
+        const startCharIdx = utf16ToCharIdx.get(index) ?? countCodePoints(debouncedText.slice(0, index));
  
         for (let i = 0; i < len; i++) {
           const p = positions[startCharIdx + i];

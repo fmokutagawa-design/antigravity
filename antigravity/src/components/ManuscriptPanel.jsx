@@ -14,7 +14,8 @@ const ManuscriptPanel = ({
 }) => {
   const txtFiles = allFiles.filter(f => {
     const name = typeof f === 'string' ? f : (f.name || '');
-    return name.endsWith('.txt');
+    // .txt, .md, または .nexus フォルダを表示対象にする
+    return name.endsWith('.txt') || name.endsWith('.md') || name.endsWith('.nexus');
   });
 
   const activeId = activeFile

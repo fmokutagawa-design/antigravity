@@ -27,7 +27,7 @@ def safe_read(file_path):
     with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
         return f.read()
 
-def ingest_novels():
+def ingest_novels(target_paths=None):
     print("🚀 【住所認識モード】インジェクションを開始します...")
     file_count = 0
     chunk_count = 0
@@ -35,11 +35,19 @@ def ingest_novels():
     from knowledge_processor import KnowledgeProcessor
     kp = KnowledgeProcessor()
 
-    for target_dir in TARGET_DIRS:
-        if not os.path.exists(target_dir):
-            print(f"⚠️ スキップ（未検出）: {target_dir}")
-            continue
+    # スキャン対象の決定
+    current_targets = TARGET_DIRS.copy()
+    if target_paths:
+        if isinstance(target_paths, list):
+            current_targets.extend(target_paths)
+        else:
+            current_targets.append(target_paths)
+    
+    # 重複排除と実在確認
+    current_targets = list(set([os.path.abspath(t) for t in current_targets if os.path.exists(t)]))
 
+    for target_dir in current_targets:
+        print(f"📂 スキャン中: {target_dir}")
         for root, _, files in os.walk(target_dir):
             rel_path = os.path.relpath(root, BASE_PATH)
             

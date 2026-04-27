@@ -569,3 +569,19 @@ ipcMain.handle('system:getFonts', async () => {
         return [];
     }
 });
+ipcMain.handle('system:launchApp', async (event, appPath) => {
+    if (!appPath) return false;
+    try {
+        // macOS: /Applications/OneDrive.app etc.
+        // shell.openPath is better for apps/files
+        const error = await shell.openPath(appPath);
+        if (error) {
+            console.error('Failed to launch app:', appPath, error);
+            return false;
+        }
+        return true;
+    } catch (e) {
+        console.error('Exception in system:launchApp:', appPath, e);
+        return false;
+    }
+});

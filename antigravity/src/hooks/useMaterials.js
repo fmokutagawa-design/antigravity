@@ -44,10 +44,10 @@ export const useMaterials = (projectHandle) => {
             // 1. Read the whole tree structure first
             const tree = await fileSystem.readDirectory(projectHandle);
 
-            // Filter out .nexus folders recursively for the sidebar tree
+            // Filter out internal hidden .nexus folders but keep project .nexus folders
             const filterTree = (items) => {
                 return items
-                    .filter(item => !(item.kind === 'directory' && (item.name === '.nexus' || item.name.endsWith('.nexus'))))
+                    .filter(item => !(item.kind === 'directory' && item.name === '.nexus')) // .nexus のみ(隠し)を除外
                     .map(item => {
                         if (item.kind === 'directory' && item.children) {
                             return { ...item, children: filterTree(item.children) };
@@ -69,16 +69,22 @@ export const useMaterials = (projectHandle) => {
             const fileEntries = [];
             const collectFiles = (items, pathPrefix = '') => {
                 for (const item of items) {
+                    const filePath = pathPrefix ? `${pathPrefix}/${item.name}` : item.name;
                     if (item.kind === 'file') {
-                        const filePath = pathPrefix ? `${pathPrefix}/${item.name}` : item.name;
                         // Only process text files
                         if (item.name.endsWith('.txt') || item.name.endsWith('.md')) {
                             fileEntries.push({ item, filePath });
                         }
                     } else if (item.kind === 'directory') {
-                        if (item.name === '.nexus' || item.name.endsWith('.nexus')) continue;
+                        if (item.name === '.nexus') continue; // 内部隠しフォルダのみスキップ
+                        
+                        // .nexus フォルダ自体もリストに含める (ManuscriptPanelで表示するため)
+                        if (item.name.endsWith('.nexus')) {
+                            fileEntries.push({ item, filePath });
+                        }
+                        
                         if (item.children) {
-                            collectFiles(item.children, pathPrefix ? `${pathPrefix}/${item.name}` : item.name);
+                            collectFiles(item.children, filePath);
                         }
                     }
                 }
@@ -100,8 +106,9 @@ export const useMaterials = (projectHandle) => {
                 const fileData = {
                     ...item,
                     path: filePath,
-                    metadata: {}, // 後で読み込まれる
-                    tags: [],     // 後で読み込まれる
+                    kind: item.kind, // 明示的に保持
+                    metadata: {}, 
+                    tags: [],     
                     lastModified
                 };
 

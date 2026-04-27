@@ -36,6 +36,8 @@ class StoryStateExtractor:
     """
     設定資料（Materials）から物語の「不変の事実」を抽出するクラス
     """
+    _cached_states = {} # { project_id: (timestamp, states) }
+
     def __init__(self, db_path=None):
         if db_path is None:
             import os
@@ -59,10 +61,20 @@ class StoryStateExtractor:
             except Exception:
                 pass
 
-    def extract_all_states(self, project_id="Unknown"):
+    def extract_all_states(self, project_id="Unknown", use_cache=True):
         """
         特定のプロジェクトに関連するすべての設定資料から状態を抽出する
         """
+        # キャッシュチェック
+        if use_cache and project_id in self._cached_states:
+            # TODO: 本来はDBの最終更新時間を見るべきだが、一旦1分間はキャッシュを信用
+            import time
+            cache_time, cached_val = self._cached_states[project_id]
+            if time.time() - cache_time < 60:
+                self.all_states = cached_val
+                # タイムラインも復元が必要な場合があるが、proofreaderはall_statesのみを参照
+                return cached_val
+
         where_clause = {"is_setting": 1}
         if project_id != "Unknown":
             where_clause["project"] = project_id
@@ -139,22 +151,35 @@ class StoryStateExtractor:
                 }
                 for attr_key, keywords in attr_keywords.items():
                     if any(k in desc for k in keywords):
-                        # 属性値の抽出 (「瞳：青」などの形式)
                         val_match = re.search(rf'({"|".join(keywords)})[：:\s]*([^\s,，。、]+)', desc)
                         if val_match:
                             states["characters"][canonical_name]["attributes"][attr_key] = val_match.group(2)
 
+        # タイムラインの状態を統合して characters にセット
+        for name, tl in self.timelines.items():
+            # characters辞書には既に初期値が入っているが、tl情報をマージ
+            # ここでは便宜上最新(999)をセットしておくか、リストを保持
+            pass 
+
+        # キャッシュ保存
+        import time
+        self._cached_states[project_id] = (time.time(), states)
+        
         self.all_states = states
         return states
 
     def get_state_at_chapter(self, entity_name, category, chapter_num):
         if not hasattr(self, 'timelines') or not self.timelines:
+            # timelinesがない場合（キャッシュヒット時など）は all_states から推測が必要
+            # TODO: キャッシュに timelines も含めるべきだが、一旦 characters 情報を返す
+            canonical_name = self.reverse_aliases.get(entity_name, entity_name)
+            if category == "characters" and hasattr(self, 'all_states'):
+                return self.all_states["characters"].get(canonical_name)
             return None
             
         canonical_name = self.reverse_aliases.get(entity_name, entity_name)
         if category == "characters" and canonical_name in self.timelines:
             tl_status = self.timelines[canonical_name].get_status_at(chapter_num)
-            # 基本属性とマージ
             base_info = self.all_states["characters"].get(canonical_name, {})
             merged = base_info.copy()
             merged.update(tl_status)

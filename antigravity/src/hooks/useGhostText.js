@@ -17,7 +17,11 @@ export function useGhostText(text, debouncedText, enableGhostText, selectedLocal
   useEffect(() => {
     if (text !== prevTextForGhostRef.current) {
       prevTextForGhostRef.current = text;
-      setGhostText(prev => prev === '' ? prev : '');
+      // すでに空なら setState しない（Appの再レンダリングを誘発しないため）
+      setGhostText(prev => {
+        if (prev === '') return prev;
+        return '';
+      });
     }
   }, [text]);
 

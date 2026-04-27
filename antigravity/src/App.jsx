@@ -477,6 +477,33 @@ function App() {
         return;
       }
 
+      // デバッグログ: 開こうとしている項目の詳細
+      const name = fileName || (typeof targetHandle === 'string' ? targetHandle : targetHandle.name);
+      console.log('[handleOpenFile] Opening:', { name, type: typeof targetHandle, targetHandle });
+
+      // .nexus フォルダ（プロジェクト）の場合はプロジェクトを切り替える
+      // 文字列パス（Electron）またはオブジェクト名から判定
+      const cleanPath = typeof targetHandle === 'string' ? targetHandle.replace(/[/\\]$/, '') : '';
+      const isNexusFolder = (cleanPath.toLowerCase().endsWith('.nexus')) || 
+                            (name && name.toLowerCase().endsWith('.nexus'));
+
+      if (isNexusFolder) {
+          console.log('[handleOpenFile] Recognized as .nexus folder. Switching project...');
+          try {
+              setProjectHandle(targetHandle);
+              saveProjectHandle(targetHandle);
+              setIsProjectMode(true);
+              const folderName = typeof targetHandle === 'string' ? targetHandle.split(/[/\\]/).pop() : targetHandle.name;
+              showToast(`プロジェクト "${folderName}" を開きました。`);
+              return;
+          } catch (e) {
+              console.error('[handleOpenFile] Failed to switch project:', e);
+              // プロジェクト切り替え失敗時は続行せずエラー表示
+              throw e; 
+          }
+      }
+
+      // 通常のファイル読み込み
       const content = await fileSystem.readFile(targetHandle);
       setText(content);
       setDebouncedText(content);
@@ -515,7 +542,17 @@ function App() {
       }
     } catch (error) {
       console.error('Failed to open file:', error);
-      showToast('ファイルを開けませんでした。');
+      if (error.message === 'CLOUD_SYNC_TIMEOUT') {
+        const launch = await requestConfirm(
+          '同期タイムアウト',
+          'OneDrive 等のクラウド同期が遅延している可能性があります。OneDrive を起動しますか？'
+        );
+        if (launch) {
+          handleLaunchOneDrive();
+        }
+      } else {
+        showToast(`ファイルを開けませんでした: ${error.message || error}`);
+      }
     }
   }, [allMaterialFiles, projectHandle, showToast]); // Removed usageStats to fix infinite loop
 
@@ -1029,6 +1066,19 @@ function App() {
 
 
   // --- Extracted Hooks ---
+  const handleLaunchOneDrive = React.useCallback(async () => {
+    if (!window.api?.system?.launchApp) {
+      showToast('デスクトップ版でのみ利用可能です。', 'error');
+      return;
+    }
+    const path = '/Applications/OneDrive.app';
+    const success = await window.api.system.launchApp(path);
+    if (success) {
+      showToast('OneDriveを起動しています...');
+    } else {
+      showToast('OneDriveの起動に失敗しました。手動で起動してください。', 'error');
+    }
+  }, [showToast]);
 
   const {
     saveProjectSettings,
@@ -1476,8 +1526,17 @@ function App() {
     const pages = Math.ceil(len / 400);
     const todoMatches = debouncedText.match(/\[TODO:/g);
     const todoCount = todoMatches ? todoMatches.length : 0;
-    return { len, pages, todoCount };
-  }, [debouncedText]);
+    
+    // 全原稿ファイルの合計文字数（サイドバー等で使用。重いのでここに統合）
+    let totalManuscript = 0;
+    if (allMaterialFiles) {
+      totalManuscript = allMaterialFiles
+        .filter(f => f.path && f.path.startsWith('manuscript/'))
+        .reduce((sum, f) => sum + (f.content?.length || 0), 0);
+    }
+    
+    return { len, pages, todoCount, totalManuscript };
+  }, [debouncedText, allMaterialFiles]);
 
   // Keyboard shortcuts (Cmd/Ctrl + F: search, Cmd+Shift+R: rapid mode, Cmd+S: save, Cmd+T: TODO)
 
@@ -2299,6 +2358,36 @@ function App() {
                         isLocalConnected={isLocalConnected}
                         checkLocalConnection={checkLocalConnection}
                       />
+                      {/* クラウド同期サポートセクション */}
+                      <div style={{ padding: '15px', borderTop: '1px solid #eee' }}>
+                        <h4 style={{ margin: '0 0 10px', fontSize: '0.85rem', color: '#666', fontWeight: 'bold' }}>クラウド同期サポート</h4>
+                        <button
+                          onClick={handleLaunchOneDrive}
+                          style={{
+                            width: '100%',
+                            padding: '10px',
+                            backgroundColor: '#0078d4',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            fontSize: '0.9rem',
+                            fontWeight: '500',
+                            transition: 'background-color 0.2s'
+                          }}
+                          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#005a9e'}
+                          onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#0078d4'}
+                        >
+                          ☁️ OneDrive を起動
+                        </button>
+                        <p style={{ margin: '10px 0 0', fontSize: '0.7rem', color: '#888', lineHeight: '1.5' }}>
+                          ファイルが開けない、同期待ちが発生している場合にクリックしてください。
+                        </p>
+                      </div>
                     </div>
                   ) : null}
                 </div> {/* sidebar-content */}
@@ -2312,7 +2401,7 @@ function App() {
           <main className={`main-content ${showReference && activeTab !== 'reference' ? 'split-view' : ''}`} style={{ flex: 1, display: 'flex', overflow: 'hidden', flexDirection: 'column' }}>
             <KnowledgeSuggestionBanner 
               activeFile={activeFileHandle}
-              currentText={text}
+              currentText={debouncedText}
               onConfirm={handleConfirmKnowledge}
             />
             <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
@@ -2466,14 +2555,9 @@ function App() {
                 )}
                 <span style={{ opacity: 0.6 }}>
                   {footerStats.len} 文字
-                  {(() => {
-                    const manuscriptFiles = allMaterialFiles.filter(f => f.path && f.path.startsWith('manuscript/'));
-                    if (manuscriptFiles.length > 0) {
-                      const total = manuscriptFiles.reduce((sum, f) => sum + (f.content?.length || 0), 0);
-                      return <span style={{ color: 'var(--accent-color)', fontWeight: 'bold' }}> (全体: {total.toLocaleString()}字)</span>;
-                    }
-                    return null;
-                  })()}
+                  {footerStats.totalManuscript > 0 && (
+                    <span style={{ color: 'var(--accent-color)', fontWeight: 'bold' }}> (全体: {footerStats.totalManuscript.toLocaleString()}字)</span>
+                  )}
                 </span>
                 <span style={{ margin: '0 8px', opacity: 0.2 }}>|</span>
                 <span style={{ opacity: 0.6 }}>原稿用紙 {footerStats.pages} 枚</span>

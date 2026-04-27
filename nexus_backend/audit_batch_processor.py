@@ -35,7 +35,7 @@ class AuditBatchProcessor:
         print("🚀 【校正監査モード】大規模監査を開始します...")
         
         from ingest_novels import ingest_novels
-        ingest_novels()
+        ingest_novels(target_paths=self.target_dirs)
         
         homework_list = []
         start_time = time.time()
