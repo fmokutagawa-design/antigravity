@@ -1,0 +1,1143 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html lang="ja" xml:lang="ja" xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta content="text/html; charset=UTF-8" http-equiv="Content-Type" />
+<meta content="text/css" http-equiv="Content-Style-Type" />
+<link href="base.css" rel="stylesheet" type="text/css" />
+<script src="syntaxhighlighter/shCore.js" type="text/javascript"></script>
+<script src="syntaxhighlighter/shBrushCSharp.js" type="text/javascript"></script>
+<link href="syntaxhighlighter/shCore.css" rel="stylesheet" type="text/css" />
+<link href="syntaxhighlighter/shThemeDefault.css" rel="stylesheet" type="text/css" />
+<title>Tomarigi & saezuri HELP</title>
+<style type="text/css">
+.auto-style1 {
+	color: #800000;
+}
+</style>
+</head>
+
+<body>
+
+<div id="top">
+	<div id="header">
+		<div style="height: 60px; font-weight: bold;">
+			<br />
+			Tomarigi &amp; saezuri HELP<br />
+		</div>
+	</div>
+	<!-- header end -->
+	<div id="menu">
+		<ul>
+			<li class="home"><a href="index.html">ホーム</a></li>
+			<li><a href="tomarigi.html">Tomarigi</a></li>
+			<li><a class="active" href="saezuri.html">saezuri(言語解析)</a></li>
+			<li><a href="check.html">saezuri(校正推敲)</a></li>
+			<li><a href="about.html">利用にあたって</a></li>
+		</ul>
+	</div>
+	<!-- menu end -->
+	<div id="contents">
+		<div id="main">
+			<a name="Tomarigi"></a>
+			<h2>概要</h2>
+			<p>　本ライブラリは，既存の形態素解析や係り受け解析ツールをC#から利用するための支援ライブラリです．Tomarigi向けの校正・推敲プラグインを作成する場合にも使用します．</p>
+			<p>　対応している自然言語解析ツールは，以下の通りです．本ライブラリを使用することで，解析結果を得るだけであれば，数行のプログラムで書くことができます．また，解析結果を形態素・文節など，扱いやすい形式に変換します．また，係り受けの可視化も支援します．</p>
+			<ul>
+				<li>形態素解析ツール： Mecab v0.996</li>
+				<li>形態素解析ツール： Juman v6.0</li>
+				<li>形態素解析ツール： Yahoo日本語形態素解析 v1</li>
+				<li>係り受け解析ツール： Cabocha 0.68</li>
+				<li>係り受け解析ツール： KNP 3.01</li>
+				<li>係り受け解析ツール：Yahoo日本語係り受け解析 v1</li>
+			</ul>
+			<p>&nbsp;</p>
+			<a name="env"></a>
+			<h2>解析ツールの利用支援</h2>
+			<p>　各解析ツールは，以下のプロパティ・メソッドを備えています．各ツール用のクラスのコンストラクタを呼び出すと，自動的にAvailableCheck()が呼び出され，staticなプロパティが更新されます．その後は，Analyzeメソッドを呼び出し，解析に成功すると，ResultTextに結果が格納されます．</p>
+			<table id="simple1" cellspacing="1" class="simple" style="width: 100%; font-size: smaller;">
+				<tr>
+					<td colspan="2"><strong class="auto-style1">static</strong></td>
+				</tr>
+				<tr>
+					<td>Enabled</td>
+					<td>このツールが使用できるかどうか</td>
+				</tr>
+				<tr>
+					<td>ExePath</td>
+					<td>ツールの実行ファイルのパス</td>
+				</tr>
+				<tr>
+					<td>Version</td>
+					<td>ツールのバージョン情報</td>
+				</tr>
+				<tr>
+					<td>AvailableCheck()</td>
+					<td>ツールが使用可能かのチェック</td>
+				</tr>
+				<tr>
+					<td colspan="2"><strong class="auto-style1">プロパティ</strong></td>
+				</tr>
+				<tr>
+					<td>Error</td>
+					<td>エラー時のメッセージ</td>
+				</tr>
+				<tr>
+					<td>OriginalSentence</td>
+					<td>解析の元の文</td>
+				</tr>
+				<tr>
+					<td>ResultText</td>
+					<td>解析結果の文字列</td>
+				</tr>
+				<tr>
+					<td colspan="2"><strong class="auto-style1">メソッド</strong></td>
+				</tr>
+				<tr>
+					<td>bool Analyze(string) </td>
+					<td>引数に解析対象の文を与える</td>
+				</tr>
+			</table>
+			<br />
+			<a name="cmecab"></a>
+			<h3>CMecabの例</h3>
+			<p>CMecabは，Mecabを使用した解析を行います．</p>
+			<pre class="brush: csharp" style="font-size: xx-small;">
+CMecab mecab = new CMecab();
+if (mecab.Analyze(&quot;赤い柿を食べたそうに見ている子猫を抱きしめたい．&quot;) == true)
+{
+    textBox1.Text = mecab.ResultText;
+}
+</pre>
+			<a name="cjuman"></a>
+			<h3>CJumanの例</h3>
+			<p>CJumanは，Jumanを使用した解析を行います．</p>
+			<pre class="brush: csharp" style="font-size: xx-small;">
+CJuman juman = new CJuman();
+if (juman.Analyze(&quot;赤い柿を食べたそうに見ている子猫を抱きしめたい．&quot;) == true)
+{
+    textBox1.Text = juman.ResultText;
+}
+</pre>
+			<a name="cyahooma"></a>
+			<h3>CYahooMAの例</h3>
+			<p>CYahooMAは，Yahoo日本語形態素解析サービスを使用した解析を行います．</p>
+			<pre class="brush: csharp" style="font-size: xx-small;">
+CYahooMA yma = new CYahooMA(&quot;取得済みのアプリケーションIDをここに指定&quot;);
+if (yma.Analyze(&quot;赤い柿を食べたそうに見ている子猫を抱きしめたい．&quot;) == true)
+{
+    textBox1.Text = yma.ResultText;
+}
+</pre>
+			<a name="ccabocha"></a>
+			<h3>CCabochaの例</h3>
+			<p>CCabochaは，Cabochaを使用した解析を行います．</p>
+			<pre class="brush: csharp" style="font-size: xx-small;">
+CCabocha cabocha = new CCabocha();
+if (cabocha.Analyze(&quot;赤い柿を食べたそうに見ている子猫を抱きしめたい．&quot;) == true)
+{
+    textBox1.Text = cabocha.ResultText;
+}
+</pre>
+			<a name="cknp"></a>
+			<h3>CKNPの例</h3>
+			<p>CKNPは，KNPを使用した解析を行います．</p>
+			<pre class="brush: csharp" style="font-size: xx-small;">
+CKNP knp = new CKNP();
+if (knp.Analyze(&quot;赤い柿を食べたそうに見ている子猫を抱きしめたい．&quot;) == true)
+{
+    textBox1.Text = knp.ResultText;
+}
+</pre>
+			<a name="cyahooda"></a>
+			<h3>CYahooDAの例</h3>
+			<p>CYahooDAは，Yahoo日本語係り受け解析サービスを使用した解析を行います．</p>
+			<pre class="brush: csharp" style="font-size: xx-small;">
+CYahooDA yda = new CYahooDA(&quot;取得済みのアプリケーションIDをここに指定&quot;);
+if (yda.Analyze(&quot;赤い柿を食べたそうに見ている子猫を抱きしめたい．&quot;) == true)
+{
+    textBox1.Text = yda.ResultText;
+}
+</pre>
+			<p></p>
+			<a name="cmorpheme"></a>
+			<h2>形態素：CMorpheme</h2>
+			<p>　CMorphemeクラスは，形態素を表します．これは，形態素解析ツールの結果から，そのまま取得されます．以下のプロパティを持ちます．</p>
+			<table id="simple2" cellspacing="1" class="simple" style="width: 100%; font-size: smaller;">
+				<tr>
+					<td colspan="2"><strong class="auto-style1">プロパティ</strong></td>
+				</tr>
+				<tr>
+					<td>Text</td>
+					<td>表記</td>
+				</tr>
+				<tr>
+					<td>Read</td>
+					<td>ヨミ</td>
+				</tr>
+				<tr>
+					<td>Basis</td>
+					<td>基本形</td>
+				</tr>
+				<tr>
+					<td>Pronunciation</td>
+					<td>発音(Mecab使用時のみ)</td>
+				</tr>
+				<tr>
+					<td>Pos,Pos1,Pos2,Pos3</td>
+					<td>品詞，細分類1，細分類2，細分類3</td>
+				</tr>
+				<tr>
+					<td>PosString</td>
+					<td>品詞，細分類1，細分類2，細分類3をつなげた品詞表記</td>
+				</tr>
+				<tr>
+					<td>InflectedForms</td>
+					<td>活用形</td>
+				</tr>
+				<tr>
+					<td>InflectedType</td>
+					<td>活用型</td>
+				</tr>
+				<tr>
+					<td>Supplement</td>
+					<td>補足情報(Juman使用時のみ)</td>
+				</tr>
+				<tr>
+					<td>Tag</td>
+					<td>汎用</td>
+				</tr>
+				<tr>
+					<td>Parent</td>
+					<td>この形態素を持つ文節</td>
+				</tr>
+				<tr>
+					<td>Next</td>
+					<td>次の形態素</td>
+				</tr>
+				<tr>
+					<td>Prev</td>
+					<td>前の形態素</td>
+				</tr>
+				<tr>
+					<td>Position</td>
+					<td>この形態素の文中の位置</td>
+				</tr>
+			</table>
+			<p></p>
+			<a name="cword"></a>
+			<h2>単語：CWord</h2>
+			<p>　CWordクラスは，単語を表します．これは，係り受け解析ツールの結果から，文節ごとに単語情報を切りだして生成されます．ただし，この単語情報は，本ライブラリによって，独自に推定したものです．また，これは，Cabochaを使用した場合のみ，使用することができます．</p>
+			<table id="simple3" cellspacing="1" class="simple" style="width: 100%; font-size: smaller;">
+				<tr>
+					<td colspan="2"><strong class="auto-style1">プロパティ</strong></td>
+				</tr>
+				<tr>
+					<td>Index</td>
+					<td>文節番号</td>
+				</tr>
+				<tr>
+					<td>MorphemeList</td>
+					<td>単語を構成する形態素リスト</td>
+				</tr>
+				<tr>
+					<td>Text</td>
+					<td>単語の表記</td>
+				</tr>
+				<tr>
+					<td>Read</td>
+					<td>単語のヨミ</td>
+				</tr>
+				<tr>
+					<td>TextBasis</td>
+					<td>単語の基本形</td>
+				</tr>
+				<tr>
+					<td>Type</td>
+					<td>単語の種別を表すWORDTYPE型</td>
+				</tr>
+				<tr>
+					<td>TypeString</td>
+					<td>Typeの文字表記</td>
+				</tr>
+				</table>
+			<p></p>
+			<a name="csegment"></a>
+			<h2>文節：CSegment</h2>
+			<p>　CSegmentクラスは，文節を表します．これは，係り受け解析ツールの結果から，そのまま取得されます．以下のプロパティを持ちます．</p>
+			<table id="simple4" cellspacing="1" class="simple" style="width: 100%; font-size: smaller;">
+				<tr>
+					<td colspan="2"><strong class="auto-style1">プロパティ</strong></td>
+				</tr>
+				<tr>
+					<td>Index</td>
+					<td>文節番号</td>
+				</tr>
+				<tr>
+					<td>Information</td>
+					<td>文節区切り情報(ツール解析結果からの情報)</td>
+				</tr>
+				<tr>
+					<td>Modify</td>
+					<td>係り受け先文節</td>
+				</tr>
+				<tr>
+					<td>ModifyIndex</td>
+					<td>係り受け先文節の文節番号</td>
+				</tr>
+				<tr>
+					<td>ModifiedList</td>
+					<td>係り受け元文節リスト</td>
+				</tr>
+				<tr>
+					<td>ModifiedIndexList</td>
+					<td>係り受け元文節の番号リスト</td>
+				</tr>
+				<tr>
+					<td>ModifyLength</td>
+					<td>係り受け先までの文節間数</td>
+				</tr>
+				<tr>
+					<td>MorphemeList</td>
+					<td>文節を構成する形態素リスト</td>
+				</tr>
+				<tr>
+					<td>MorphemeFirst</td>
+					<td>文節を構成する形態素リストの最初の要素</td>
+				</tr>
+				<tr>
+					<td>MorphemeLast</td>
+					<td>文節を構成する形態素リストの最後のの要素</td>
+				</tr>
+				<tr>
+					<td>WordList</td>
+					<td>文節を構成する単語リスト</td>
+				</tr>
+				<tr>
+					<td>Text</td>
+					<td>文節の表記</td>
+				</tr>
+				<tr>
+					<td>Read</td>
+					<td>文節のヨミ</td>
+				</tr>
+				<tr>
+					<td>Pronunciation</td>
+					<td>文節の発音(Cabocha使用時のみ)</td>
+				</tr>
+				<tr>
+					<td>PosString</td>
+					<td>文節を構成する形態素の品詞の羅列</td>
+				</tr>
+				<tr>
+					<td>Tag</td>
+					<td>汎用</td>
+				</tr>
+				<tr>
+					<td>Next</td>
+					<td>次の文節</td>
+				</tr>
+				<tr>
+					<td>Prev</td>
+					<td>前の文節</td>
+				</tr>
+				<tr>
+					<td>Position</td>
+					<td>この文節の文中の位置</td>
+				</tr>
+			</table>
+			<p></p>
+			<a name="csentence"></a>
+			<h2>文：CSentence</h2>
+			<p>　CSentenceクラスは，文を表します．これは，形態素解析ツールや係り受け解析ツールの結果から，そのまま取得されます．解析に使用される文は，前後に空白が含まれていたり，文の途中に改行が含まれていると，それらを除外してから解析されます．したがって，解析に使用された文と，解析時に引き渡された生の文の両方をプロパティに保持しています．以下のプロパティを持ちます．</p>
+			<table id="simple5" cellspacing="1" class="simple" style="width: 100%; font-size: smaller;">
+				<tr>
+					<td colspan="2"><strong class="auto-style1">プロパティ</strong></td>
+				</tr>
+				<tr>
+					<td>ResultText</td>
+					<td>形態素/係り受けオリジナル解析結果</td>
+				</tr>
+				<tr>
+					<td>Text</td>
+					<td>解析に使用された文</td>
+				</tr>
+				<tr>
+					<td>TextRaw</td>
+					<td>解析に使用された生の文</td>
+				</tr>
+				<tr>
+					<td>Read</td>
+					<td>文のヨミ</td>
+				</tr>
+				<tr>
+					<td>Pronunciation</td>
+					<td>文の発音(Mecab，Cabocha使用時のみ)</td>
+				</tr>
+				<tr>
+					<td>SegmentList</td>
+					<td>文を構成する文節リスト</td>
+				</tr>
+				<tr>
+					<td>SegmentFirst</td>
+					<td>文を構成する文節リストの最初の要素</td>
+				</tr>
+				<tr>
+					<td>SegmentLast</td>
+					<td>文を構成する文節リストの最後のの要素</td>
+				</tr>
+				<tr>
+					<td>MorphemeList</td>
+					<td>文を構成する形態素リスト</td>
+				</tr>
+				<tr>
+					<td>MorphemeFirst</td>
+					<td>文を構成する形態素リストの最初の要素</td>
+				</tr>
+				<tr>
+					<td>MorphemeLast</td>
+					<td>文を構成する形態素リストの最後のの要素</td>
+				</tr>
+				<tr>
+					<td>WordList</td>
+					<td>文節を構成する単語リスト</td>
+				</tr>
+				<tr>
+					<td>Clause</td>
+					<td>文を構成する節の親ノード</td>
+				</tr>
+				<tr>
+					<td>Tree</td>
+					<td>文末をルートとした木構造</td>
+				</tr>
+				<tr>
+					<td>Tag</td>
+					<td>汎用</td>
+				</tr>
+				<tr>
+					<td>CheckList</td>
+					<td>文を対象とした指摘リスト</td>
+				</tr>
+			</table>
+			<p></p>
+			<a name="cclause"></a>
+			<h2>節：CClause</h2>
+			<p>　CClauseクラスは，節を表します．これは，係り受け解析ツールの結果から，本ライブラリが独自に推定したものです．CClauseは，ある文節を中心に見た時の節を表します．以下のプロパティを持ちます．</p>
+			<table id="simple6" cellspacing="1" class="simple" style="width: 100%; font-size: smaller;">
+				<tr>
+					<td colspan="2"><strong class="auto-style1">プロパティ</strong></td>
+				</tr>
+				<tr>
+					<td>ContainCount</td>
+					<td>節の中にある節の数</td>
+				</tr>
+				<tr>
+					<td>Modify</td>
+					<td>係り受け先の節</td>
+				</tr>
+				<tr>
+					<td>ModifiedList</td>
+					<td>係り受け元の節リスト解析に使用された生の文</td>
+				</tr>
+				<tr>
+					<td>Type, TypeString</td>
+					<td>連体節，副詞節，補足節</td>
+				</tr>
+				<tr>
+					<td>ClauseList</td>
+					<td>節を構成する節リスト</td>
+				</tr>
+				<tr>
+					<td>SegmentList</td>
+					<td>節を構成する文節リスト</td>
+				</tr>
+				<tr>
+					<td>ParentSegment</td>
+					<td>節の基準となる文節</td>
+				</tr>
+				<tr>
+					<td>Text</td>
+					<td>節表記(最後の要素のみ形態素)</td>
+				</tr>
+				<tr>
+					<td>TextModified</td>
+					<td>節表記(文節レベル)</td>
+				</tr>
+				<tr>
+					<td>Tag</td>
+					<td>汎用</td>
+				</tr>
+			</table>
+			<p></p>
+			<a name="cparagraph"></a>
+			<h2>段落：CParagraph</h2>
+			<p>　CParagraphクラスは，段落を表します．「段落は，複数の文(CSentence)を保持する」という考え方をしてします．以下のプロパティを持ちます．</p>
+			<table id="simple7" cellspacing="1" class="simple" style="width: 100%; font-size: smaller;">
+				<tr>
+					<td colspan="2"><strong class="auto-style1">プロパティ</strong></td>
+				</tr>
+				<tr>
+					<td>Title</td>
+					<td>段落タイトル</td>
+				</tr>
+				<tr>
+					<td>SentenceList</td>
+					<td>構成する文リスト</td>
+				</tr>
+				<tr>
+					<td>Text</td>
+					<td>段落を構成する(解析に使用された)文章</td>
+				</tr>
+				<tr>
+					<td>TextRaw</td>
+					<td>段落を構成する生の文章</td>
+				</tr>
+				<tr>
+					<td>CheckList</td>
+					<td>段落を対象とした指摘リスト</td>
+				</tr>
+			</table>
+			<p></p>
+			<a name="cdocument"></a>
+			<h2>文書：CDocument</h2>
+			<p>　CDocumentクラスは，文書を表します．「文書は，複数の段落(CParagraph)を保持する」という考え方をしてします．以下のプロパティを持ちます．</p>
+			<table id="simple8" cellspacing="1" class="simple" style="width: 100%; font-size: smaller;">
+				<tr>
+					<td colspan="2"><strong class="auto-style1">static</strong></td>
+				</tr>
+				<tr>
+					<td>PeriodChar</td>
+					<td>句点判定文字リスト(default： ．。！？)</td>
+				</tr>
+				<tr>
+					<td>ParagraphChar</td>
+					<td>段落判定文字列リスト(default： 改行2個，改行+全角空白，改行+半角空白，改行+Tab)</td>
+				</tr>
+				<tr>
+					<td>BracketsChars1</td>
+					<td>括弧対応チェック文字リスト(全角・半角を同列解釈default：(){}「」)</td>
+				</tr>
+				<tr>
+					<td>BracketsChars2</td>
+					<td>括弧対応チェック文字リスト(default：『』【】)</td>
+				</tr>
+				<tr>
+					<td colspan="2"><strong class="auto-style1">プロパティ</strong></td>
+				</tr>
+				<tr>
+					<td>FileName</td>
+					<td>編集中のファイル名</td>
+				</tr>
+				<tr>
+					<td>FileNamePath</td>
+					<td>編集中のファイル名パス</td>
+				</tr>
+				<tr>
+					<td>ID</td>
+					<td>ID用プロパティ</td>
+				</tr>
+				<tr>
+					<td>Date</td>
+					<td>日付用プロパティ</td>
+				</tr>
+				<tr>
+					<td>Title</td>
+					<td>タイトル用プロパティ</td>
+				</tr>
+				<tr>
+					<td>Tag</td>
+					<td>汎用</td>
+				</tr>
+				<tr>
+					<td>ParagraphList</td>
+					<td>段落リスト</td>
+				</tr>
+				<tr>
+					<td>CheckList</td>
+					<td>文書全体を対象とした指摘リスト</td>
+				</tr>
+				<tr>
+					<td>ExceptedCheckList</td>
+					<td>過去の対象外指摘リスト</td>
+				</tr>
+				<tr>
+					<td>Attribute</td>
+					<td>この文書の属性情報(CEvaluationGeneral)</td>
+				</tr>
+				<tr>
+					<td>Text</td>
+					<td>(解析に使用された)文章</td>
+				</tr>
+				<tr>
+					<td>TextRaw</td>
+					<td>生の文章</td>
+				</tr>
+				<tr>
+					<td colspan="2"><strong class="auto-style1">メソッド</strong></td>
+				</tr>
+				<tr>
+					<td style="white-space: nowrap;">List&lt;string&gt; GetALLSentenceTextList()</td>
+					<td>文書に含まれる文リスト</td>
+				</tr>
+				<tr>
+					<td style="white-space: nowrap;">List&lt;CSentence&gt; GetALLSentenceList()</td>
+					<td>文書に含まれる文リスト</td>
+				</tr>
+				<tr>
+					<td>void ConvertShortEssay(string)</td>
+					<td>与えられた文字列を段落および文に分割する</td>
+				</tr>
+			</table>
+			<p></p>
+			<a name="cevaluationgeneral"></a>
+			<h2>属性：CEvaluationGeneral</h2>
+			<p>　CEvaluationGeneralクラスは，文書のいくつかの属性値を表します．以下のプロパティを持ちます．</p>
+			<table id="simple8" cellspacing="1" class="simple" style="width: 100%; font-size: smaller;">
+				<tr>
+					<td colspan="2"><strong class="auto-style1">プロパティ</strong></td>
+				</tr>
+				<tr>
+					<td>TotalCharCount</td>
+					<td>総文字数</td>
+				</tr>
+				<tr>
+					<td>TotalCharCountNonSpace</td>
+					<td>総文字数（空白等を除いた）</td>
+				</tr>
+				<tr>
+					<td>ParagraphCount</td>
+					<td>段落数</td>
+				</tr>
+				<tr>
+					<td>TotalSentenceCount</td>
+					<td>総文数</td>
+				</tr>
+				<tr>
+					<td>KanjiContentPercentage</td>
+					<td>漢字含有率</td>
+				</tr>
+				<tr>
+					<td>AverageOfSentenceInParagraph</td>
+					<td>段落の平均文数</td>
+				</tr>
+				<tr>
+					<td>AverageSentenceLength</td>
+					<td>文長平均値</td>
+				</tr>
+				<tr>
+					<td>MedianSentenceLength</td>
+					<td>文長中央値</td>
+				</tr>
+				<tr>
+					<td>MaxSentenceLength</td>
+					<td>文長最大値</td>
+				</tr>
+				<tr>
+					<td>MinSentenceLength</td>
+					<td>文長最小値</td>
+				</tr>
+				<tr>
+					<td>TotalMorphemeCount</td>
+					<td>形態素数</td>
+				</tr>
+				<tr>
+					<td>MorphemeList</td>
+					<td>形態素リスト</td>
+				</tr>
+				<tr>
+					<td>TotalWordCount</td>
+					<td>単語リスト数(記号は除く)</td>
+				</tr>
+				<tr>
+					<td>WordList</td>
+					<td>単語リスト(記号は除く)</td>
+				</tr>
+				<tr>
+					<td>TotalUniqueWordCount</td>
+					<td>異なり語数</td>
+				</tr>
+				<tr>
+					<td>UniqueWordList</td>
+					<td>異なり語リスト</td>
+				</tr>
+				<tr>
+					<td>FleschReadingEase</td>
+					<td>Flesch Reading Ease</td>
+				</tr>
+				<tr>
+					<td>FleschKincaidGradeLevel</td>
+					<td>Flesch-Kincaid Grade Level</td>
+				</tr>
+				<tr>
+					<td>VarietyRateVocabulary</td>
+					<td>Variety Rate of Vocabulary</td>
+				</tr>
+				<tr>
+					<td>YuleK</td>
+					<td>ユールK</td>
+				</tr>
+			</table>
+			<p>&nbsp;</p>
+			<a name="view1"></a>
+			<h2>可視化：CSentenceView</h2>
+			<p>　CSentenceViewは，文の係り受け関係を可視化します．</p>
+			<table id="simple1" cellspacing="1" class="simple" style="width: 100%; font-size: smaller;">
+				<tr>
+					<td colspan="2"><strong class="auto-style1">static</strong></td>
+				</tr>
+				<tr>
+					<td>Bitmap DrawImage(CSentence,Color)</td>
+					<td>文と背景色を指定して，画像を生成</td>
+				</tr>
+				<tr>
+					<td colspan="2"><strong class="auto-style1">プロパティ</strong></td>
+				</tr>
+				<tr>
+					<td>Canvas </td>
+					<td>描画対象のPanel</td>
+				</tr>
+				<tr>
+					<td>EnabledDragDrop </td>
+					<td>ノードのドラッグ＆ドロップ可否</td>
+				</tr>
+				<tr>
+					<td>EnabledDragDropMove </td>
+					<td>Panelのドラッグ＆ドロップ可否</td>
+				</tr>
+				<tr>
+					<td>IsLineCurve </td>
+					<td>係り受け線を曲線にするか</td>
+				</tr>
+				<tr>
+					<td>LineColor </td>
+					<td>線の色</td>
+				</tr>
+				<tr>
+					<td>LineWidth </td>
+					<td>線の幅</td>
+				</tr>
+				<tr>
+					<td>NodeColor </td>
+					<td>ノードの色</td>
+				</tr>
+				<tr>
+					<td>NodeForeColor </td>
+					<td>ノードの文字色</td>
+				</tr>
+				<tr>
+					<td>NodeSize </td>
+					<td>ノードのサイズ</td>
+				</tr>
+				<tr>
+					<td>PreviewSentence </td>
+					<td>文節位置操作後の文表記</td>
+				</tr>
+				<tr>
+					<td>PreviewVisible </td>
+					<td>文節位置操作後の文表示</td>
+				</tr>
+				<tr>
+					<td>Sentence </td>
+					<td>文表記</td>
+				</tr>
+				<tr>
+					<td>Shape </td>
+					<td>ノードの形状</td>
+				</tr>
+				<tr>
+					<td colspan="2"><strong class="auto-style1">メソッド</strong></td>
+				</tr>
+				<tr>
+					<td>void Draw()</td>
+					<td>Panelに描画する</td>
+				</tr>
+				<tr>
+					<td>Bitmap DrawImage(Color)</td>
+					<td>背景色を指定して，画像を生成</td>
+				</tr>
+				<tr>
+					<td>void Dispose()</td>
+					<td>描画後の破棄</td>
+				</tr>
+			</table>
+			<p>&nbsp;</p>
+			<a name="view2"></a>
+			<h2>可視化：CClauseView</h2>
+			<p>　CClauseViewは，節を可視化します．</p>
+			<table id="simple1" cellspacing="1" class="simple" style="width: 100%; font-size: smaller;">
+				<tr>
+					<td colspan="2"><strong class="auto-style1">static</strong></td>
+				</tr>
+				<tr>
+					<td>Bitmap DrawImage(CSentence,Color)</td>
+					<td>文と背景色を指定して，画像を生成</td>
+				</tr>
+				<tr>
+					<td colspan="2"><strong class="auto-style1">プロパティ</strong></td>
+				</tr>
+				<tr>
+					<td>Canvas </td>
+					<td>描画対象のPanel</td>
+				</tr>
+				<tr>
+					<td>ClauseForeColor </td>
+					<td>節の文字色</td>
+				</tr>
+				<tr>
+					<td>EnabledDragDropMove </td>
+					<td>Panelのドラッグ＆ドロップ可否</td>
+				</tr>
+				<tr>
+					<td>IsDrawClauseLine </td>
+					<td>節の枠の表示を表示するか</td>
+				</tr>
+				<tr>
+					<td>IsDrawClauseName </td>
+					<td>節名の表示を表示するか</td>
+				</tr>
+				<tr>
+					<td>IsDrawModifyLine </td>
+					<td>係り受けを表示するか</td>
+				</tr>
+				<tr>
+					<td>LineClauseColor </td>
+					<td>節の線の色</td>
+				</tr>
+				<tr>
+					<td>LineClauseWidth </td>
+					<td>節の線の幅</td>
+				</tr>
+				<tr>
+					<td>LineColor </td>
+					<td>線の色</td>
+				</tr>
+				<tr>
+					<td>LineWidth </td>
+					<td>線の幅</td>
+				</tr>
+				<tr>
+					<td>NodeColor </td>
+					<td>ノードの色</td>
+				</tr>
+				<tr>
+					<td>NodeForeColor </td>
+					<td>ノードの文字色</td>
+				</tr>
+				<tr>
+					<td>NodeSize </td>
+					<td>ノードのサイズ</td>
+				</tr>
+				<tr>
+					<td>Sentence </td>
+					<td>文表記</td>
+				</tr>
+				<tr>
+					<td colspan="2"><strong class="auto-style1">メソッド</strong></td>
+				</tr>
+				<tr>
+					<td>void Draw()</td>
+					<td>Panelに描画する</td>
+				</tr>
+				<tr>
+					<td>Bitmap DrawImage(Color)</td>
+					<td>背景色を指定して，画像を生成</td>
+				</tr>
+				<tr>
+					<td>void Dispose()</td>
+					<td>描画後の破棄</td>
+				</tr>
+			</table>
+			<p>&nbsp;</p>
+			<a name="view3"></a>
+			<h2>可視化：CTreeView</h2>
+			<p>　CTreeViewは，文の木構造を可視化します．</p>
+			<table id="simple1" cellspacing="1" class="simple" style="width: 100%; font-size: smaller;">
+				<tr>
+					<td colspan="2"><strong class="auto-style1">static</strong></td>
+				</tr>
+				<tr>
+					<td>Bitmap DrawImage(CSentence,Color)</td>
+					<td>文と背景色を指定して，画像を生成</td>
+				</tr>
+				<tr>
+					<td colspan="2"><strong class="auto-style1">プロパティ</strong></td>
+				</tr>
+				<tr>
+					<td>AutoSpace </td>
+					<td>DepthSpace ，WidthSpaceを<br />
+					自動的に決定するか </td>
+				</tr>
+				<tr>
+					<td>Canvas </td>
+					<td>描画対象のPanel</td>
+				</tr>
+				<tr>
+					<td>DepthSpace </td>
+					<td>深さサイズ</td>
+				</tr>
+				<tr>
+					<td>EnabledDragDrop </td>
+					<td>ノードのドラッグ＆ドロップ可否</td>
+				</tr>
+				<tr>
+					<td>EnabledDragDropMove </td>
+					<td>Panelのドラッグ＆ドロップ可否</td>
+				</tr>
+				<tr>
+					<td>NodeSize </td>
+					<td>ノードのサイズ</td>
+				</tr>
+				<tr>
+					<td>Orientation </td>
+					<td>描画方向</td>
+				</tr>
+				<tr>
+					<td>Shape </td>
+					<td>ノードの形状</td>
+				</tr>
+				<tr>
+					<td>Tree </td>
+					<td>描画の元になった木</td>
+				</tr>
+				<tr>
+					<td>WidthSpace </td>
+					<td>幅サイズ</td>
+				</tr>
+				<tr>
+					<td colspan="2"><strong class="auto-style1">メソッド</strong></td>
+				</tr>
+				<tr>
+					<td>void Draw()</td>
+					<td>Panelに描画する</td>
+				</tr>
+				<tr>
+					<td>Bitmap DrawImage(Color)</td>
+					<td>背景色を指定して，画像を生成</td>
+				</tr>
+				<tr>
+					<td>void Dispose()</td>
+					<td>描画後の破棄</td>
+				</tr>
+			</table>
+			<br />
+			<pre class="brush: csharp" style="font-size: xx-small;">
+string s = &quot;赤い柿を食べたそうに見ている子猫を抱きしめたい．&quot;;
+CCabocha cabocha = new CCabocha();
+if (cabocha.Analyze(s) == true)
+{
+	// 文オブジェクト
+    CSentence sentence = new CSentence(s);
+    sentence.ConvertTo(cabocha.ResultText ,TOOL.CABOCHA);
+
+    // 係り受け可視化
+    CSentenceView view1 = new CSentenceView(panel1, sentence);
+    view1.Draw();
+    Bitmap bmp1 = CSentenceView.DrawImage(sentence, Color.White);
+    
+    // 節可視化
+    CClauseView view2 = new CClauseView(panel2, sentence);
+    view2.Draw();
+    Bitmap bmp2 = CClauseView.DrawImage(sentence, Color.White);
+    
+    // 木構造可視化
+    CTreeView view3 = new CTreeView(panel3, sentence);
+    view3.Draw();
+    Bitmap bmp3 = CTreeView.DrawImage(sentence, Color.White);
+
+}
+</pre>
+			<table style="width: 100%; font-size: smaller;">
+				<tr>
+					<td>【係り受け可視化】<br />
+					<img alt="" src="images/view1.png" /></td>
+				</tr>
+				<tr>
+					<td>【節可視化】<br />
+					<img alt="" src="images/view2.png" /></td>
+				</tr>
+				<tr>
+					<td>【木構造可視化】<br />
+					<img alt="" src="images/view3.png" /></td>
+				</tr>
+			</table>
+			<p>&nbsp;</p>
+			<p>&nbsp;</p>
+			<a name="example1"></a>
+			<h2>参照設定</h2>
+			<p>　saezuriは，プロジェクトの参照設定により読み込みます．また，usingステートメントで名前空間を定義しておくと便利です．以下に利用手順を示します． 
+			</p>
+			<ol>
+				<li>VisualStudio2010 C#にて，新規プロジェクトを作成する．</li>
+				<li>&nbsp;本ライブラリをプロジェクトの実行ファイル出力フォルダにコピーする． <br />
+				（プロジェクトの作成場所をD:\Sampleにした場合は，<br />
+				D:\Sample\bin\Debugが該当のフォルダになる） <br />
+				コピー対象：saezuri.dllおよびsaezuri.xml<br />
+				※xmlがあると開発時にIntelliSenseで補助説明が出る <br />
+				<img alt="" src="images/ex_folder.png" /></li>
+				<li>参照設定にて，saezuri.dllを読み込む<br />
+				<img alt="" src="images/ex_ref.png" /></li>
+				<li>必要に応じて，usingステートメントを利用する． 
+				<pre class="brush: csharp" style="font-size: xx-small;">
+using saezuri;
+using saezuri.NLP;
+
+namespace saezuri_example
+{
+    public partial class Form1 : Form
+    {
+        public Form1()
+        {
+            InitializeComponent();
+        }
+    }
+}
+</pre>
+				</li>
+			</ol>
+			<p>&nbsp;</p>
+			<a name="example2"></a>
+			<h2>サンプルプログラム</h2>
+			<p><a href="sample/saezuri_example.zip" target="_blank">　下記のサンプルプロジェクトのダンロード 
+			</a></p>
+			<pre class="brush: csharp" style="font-size: xx-small;">
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+
+using saezuri;
+using saezuri.NLP;
+
+namespace saezuri_example
+{
+    public partial class Form1 : Form
+    {
+        CDocument doc = null;
+        CSentenceView view1 = null;
+        public Form1()
+        {
+            InitializeComponent();
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            listBox1.Items.Clear();
+
+            string txt = textBox1.Text;
+
+            // 文書を作成
+            doc = new CDocument();
+            doc.ConvertShortEssay(txt);
+            // 各段落を参照
+            for (int i = 0; i &lt; doc.ParagraphList.Count; i++)
+            {
+                MessageBox.Show(&quot;第&quot; + (i + 1) + &quot;段落\r\n\r\n&quot; + doc.ParagraphList[i].Text);
+            }
+            // 文書を構成する文の解析と取得
+            CCabocha cabocha = new CCabocha();
+            Dictionary&lt;string, string&gt; analyzed = new Dictionary&lt;string, string&gt;();
+            foreach (string s in doc.GetALLSentenceTextList())
+            {
+                string _s = s.Trim(&#39; &#39;, &#39;　&#39;, &#39;\t&#39;);
+                if (cabocha.Analyze(_s) == true)
+                {
+                    analyzed.Add(_s, cabocha.ResultText);
+                }
+                listBox1.Items.Add(_s);
+            }
+            doc.SetOverWrite(analyzed);
+
+            
+        }
+
+        private void listBox1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (listBox1.SelectedIndex == -1) return;
+
+            List&lt;CSentence&gt; sentences =  doc.GetALLSentenceList();
+            CSentence sentence = sentences[listBox1.SelectedIndex];
+
+            StringBuilder sb = new StringBuilder();
+            foreach (CSegment _seg in sentence.SegmentList)
+            {
+                foreach (CMorpheme _mo in _seg.MorphemeList)
+                {
+                    sb.AppendFormat(&quot;{0}({1}) &quot;, _mo.Text, _mo.Pos);
+                }
+                sb.Append(&quot; / &quot;);
+            }
+            MessageBox.Show(sb.ToString());
+
+            if (view1 != null) view1.Dispose();
+            view1 = new CSentenceView(panel1, sentence);
+            view1.Draw();
+
+        }
+
+
+    }
+}
+
+</pre>
+		</div>
+		<!-- main end -->
+		<div id="sub">
+			<div class="section">
+				<h2>解析ツールの利用支援</h2>
+				<ul>
+					<li><a href="saezuri.html#cmecab">CMecab</a></li>
+					<li><a href="saezuri.html#cjuman">CJuman</a></li>
+					<li><a href="saezuri.html#cyahooma">CYahooMA</a></li>
+					<li><a href="saezuri.html#ccabocha">CCabocha</a></li>
+					<li><a href="saezuri.html#cknp">CKNP</a></li>
+					<li><a href="saezuri.html#cyahooda">CYahooDA</a></li>
+				</ul>
+			</div>
+			<!-- section end -->
+			<div class="section">
+				<h2>言語クラス類</h2>
+				<ul>
+					<li><a href="saezuri.html#cmorpheme">形態素：CMorpheme</a></li>
+					<li><a href="saezuri.html#cword">単語：CWord</a></li>
+					<li><a href="saezuri.html#csegment">文節：CSegment</a></li>
+					<li><a href="saezuri.html#csentence">文：CSentence</a></li>
+					<li><a href="saezuri.html#cclause">節：CClause</a></li>
+					<li><a href="saezuri.html#cparagraph">段落：CParagraph</a></li>
+					<li><a href="saezuri.html#cdocument">文書：CDocument</a></li>
+					<li><a href="saezuri.html#cevaluationgeneral">属性：CEvaluationGeneral</a></li>
+					<li><a href="saezuri.html#view1">可視化：CSentenceView</a></li>
+					<li><a href="saezuri.html#view2">可視化：CClauseView</a></li>
+					<li><a href="saezuri.html#view3">可視化：CTreeView</a></li>
+				</ul>
+			</div>
+			<!-- section end -->
+			<div class="section">
+				<h2>利用例</h2>
+				<ul>
+					<li><a href="saezuri.html#example1">参照設定</a></li>
+					<li><a href="saezuri.html#example2">サンプルプログラム</a></li>
+				</ul>
+			</div>
+			<!-- section end --></div>
+		<!-- sub end -->
+		<div id="totop">
+			<a href="#top">ページのトップへ戻る</a> </div>
+		<!-- totop end --></div>
+	<!-- contents end -->
+	<div id="footer">
+		<address>
+			2011 Tomarigi &amp; saezuri HELP</address>
+	</div>
+	<!-- footer end --></div>
+<!-- top end -->
+<script type="text/javascript">
+     SyntaxHighlighter.all();
+</script>
+
+</body>
+
+</html>

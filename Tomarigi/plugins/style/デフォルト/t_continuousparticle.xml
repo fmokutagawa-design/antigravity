@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<Setting xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <EnabledNo>true</EnabledNo>
+  <EnabledOther>true</EnabledOther>
+  <Num>3</Num>
+  <EnabledSetuzoku>true</EnabledSetuzoku>
+  <Num2>2</Num2>
+  <ColoringStr>Honeydew</ColoringStr>
+</Setting>

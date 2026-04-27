@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<Setting xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <AlphaType>1</AlphaType>
+  <NumeralType>1</NumeralType>
+  <KanaType>1</KanaType>
+  <ColoringStr>RosyBrown</ColoringStr>
+</Setting>

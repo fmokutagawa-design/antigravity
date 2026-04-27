@@ -2,8 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { ollamaService } from '../utils/ollamaService';
 import './AuditReportWindow.css';
 
-const AuditReportWindow = ({ isOpen, onClose }) => {
+const AuditReportWindow = ({ isOpen, onClose, currentText, activeFile }) => {
   const [report, setReport] = useState([]);
+  const [textlintReport, setTextlintReport] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState("");
@@ -36,10 +37,32 @@ const AuditReportWindow = ({ isOpen, onClose }) => {
     }
   };
 
+  const fetchTextlint = async () => {
+    if (!currentText || !window.api?.textlint) return;
+    try {
+      const results = await window.api.textlint.proofread(currentText);
+      const formatted = results.map(msg => ({
+        file: activeFile?.name || "現在のファイル",
+        full_path: activeFile?.path || activeFile?.handle,
+        original: currentText.substring(msg.index - 5, msg.index + 10).replace(/\n/g, ' '),
+        suggested: msg.message,
+        reason: `[${msg.ruleId}] ${msg.message}`,
+        line: msg.line,
+        index: msg.index,
+        category: '校正',
+        timestamp: new Date().toLocaleTimeString()
+      }));
+      setTextlintReport(formatted);
+    } catch (e) {
+      console.error('textlint failed:', e);
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       // 開いた時に一度レポートを取得
       fetchReport();
+      fetchTextlint();
       // 実行中かどうかのステータスも確認
       const checkInitialStatus = async () => {
         const status = await ollamaService.getAuditStatus();
@@ -75,6 +98,7 @@ const AuditReportWindow = ({ isOpen, onClose }) => {
 
   // カテゴリ判定
   const classifyCorrection = (item) => {
+    if (item.category === '校正') return '校正';
     const reason = item.reason || '';
     if (reason.includes('設定資料') || reason.includes('矛盾') || reason.includes('整合性')) return '監査';
     if (reason.includes('誤変換') || reason.includes('誤字')) return '誤字';
@@ -90,10 +114,11 @@ const AuditReportWindow = ({ isOpen, onClose }) => {
   }, [report]);
 
   // フィルタリングと優先度ソート
-  const PRIORITY = { '監査': 0, '誤字': 1, '文法': 2, '文体': 3 };
+  const PRIORITY = { '監査': 0, '誤字': 1, '校正': 2, '文法': 3, '文体': 4 };
 
   const processedItems = useMemo(() => {
-    let filtered = report.filter(item => {
+    const combined = [...textlintReport, ...report];
+    let filtered = combined.filter(item => {
       if (categoryFilter !== 'all') {
         const category = classifyCorrection(item);
         if (category !== categoryFilter) return false;
@@ -105,15 +130,19 @@ const AuditReportWindow = ({ isOpen, onClose }) => {
     return filtered.sort((a, b) => {
       const pa = PRIORITY[classifyCorrection(a)] ?? 99;
       const pb = PRIORITY[classifyCorrection(b)] ?? 99;
-      return pa - pb;
+      if (pa !== pb) return pa - pb;
+      return (a.line || 0) - (b.line || 0); // 行番号順
     });
-  }, [report, categoryFilter, fileFilter]);
+  }, [report, textlintReport, categoryFilter, fileFilter]);
 
   const handleJump = (item) => {
     const event = new CustomEvent('nexus-jump-to-text', {
       detail: {
         text: item.original,
-        file: item.full_path
+        file: item.file,
+        path: item.full_path,
+        line: item.line,
+        index: item.index
       }
     });
     window.dispatchEvent(event);
@@ -147,10 +176,11 @@ const AuditReportWindow = ({ isOpen, onClose }) => {
       <div className="audit-filter-bar">
         <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
           <option value="all">すべて</option>
+          <option value="監査">設定矛盾</option>
+          <option value="校正">最強校正(LT+Tomarigi)</option>
           <option value="誤字">誤字</option>
           <option value="文法">文法</option>
           <option value="文体">文体</option>
-          <option value="監査">設定矛盾</option>
         </select>
         
         <select value={fileFilter} onChange={e => setFileFilter(e.target.value)}>

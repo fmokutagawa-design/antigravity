@@ -317,13 +317,14 @@ export const ollamaService = {
     },
 
     // Hybrid Proofread (Rules + AI)
-    async proofreadWithRules(text, model = 'qwen3.5:9b') {
+    async proofreadWithRules(text, filePath = "", model = 'qwen3.5:9b') {
         try {
             const response = await fetch(`${this.ragServerUrl}/analyze/proofread`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     query: text,
+                    file_path: filePath,
                     model: model
                 })
             });

@@ -20,6 +20,9 @@ contextBridge.exposeInMainWorld('api', {
     system: {
         getFonts: () => ipcRenderer.invoke('system:getFonts')
     },
+    textlint: {
+        proofread: (text) => ipcRenderer.invoke('textlint:proofread', text)
+    },
     // Generic invoke for settings/persistence
     invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
     // UIスケール用: webFrame.setZoomFactor でビューポート全体を正しくズーム

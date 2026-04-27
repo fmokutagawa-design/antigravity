@@ -153,11 +153,13 @@
 }
 
 .category-監査 { background: #ff3b30; color: #fff; }
+.category-校正 { background: #007aff; color: #fff; }
 .category-誤字 { background: #ff9500; color: #fff; }
 .category-文法 { background: #34c759; color: #fff; }
 .category-文体 { background: #5856d6; color: #fff; }
 
 .homework-item.category-監査 { border-left: 4px solid #ff3b30; }
+.homework-item.category-校正 { border-left: 4px solid #007aff; }
 .homework-item.category-誤字 { border-left: 4px solid #ff9500; }
 .homework-item.category-文法 { border-left: 4px solid #34c759; }
 .homework-item.category-文体 { border-left: 4px solid #5856d6; }

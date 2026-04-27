@@ -1,0 +1,387 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html lang="ja" xml:lang="ja" xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta content="text/html; charset=UTF-8" http-equiv="Content-Type" />
+<meta content="text/css" http-equiv="Content-Style-Type" />
+<link href="base.css" rel="stylesheet" type="text/css" />
+<script src="syntaxhighlighter/shCore.js" type="text/javascript"></script>
+<script src="syntaxhighlighter/shBrushCSharp.js" type="text/javascript"></script>
+<link href="syntaxhighlighter/shCore.css" rel="stylesheet" type="text/css" />
+<link href="syntaxhighlighter/shThemeDefault.css" rel="stylesheet" type="text/css" />
+<title>Tomarigi & saezuri HELP</title>
+<style type="text/css">
+.auto-style1 {
+	color: #800000;
+}
+</style>
+</head>
+
+<body>
+
+<div id="top">
+	<div id="header">
+		<div style="height: 60px; font-weight: bold;">
+			<br />
+			Tomarigi &amp; saezuri HELP<br />
+		</div>
+	</div>
+	<!-- header end -->
+	<div id="menu">
+		<ul>
+			<li class="home"><a href="index.html">ホーム</a></li>
+			<li><a href="tomarigi.html">Tomarigi</a></li>
+			<li><a href="saezuri.html">saezuri(言語解析)</a></li>
+			<li><a class="active" href="check.html">saezuri(校正推敲)</a></li>
+			<li><a href="about.html">利用にあたって</a></li>
+		</ul>
+	</div>
+	<!-- menu end -->
+	<div id="contents">
+		<div id="main">
+			<a name="Tomarigi"></a>
+			<h2>校正・推敲プラグイン</h2>
+			<p>　Tomarigiで使用される校正・推敲プラグインを作成するためには，saezuriライブラリを利用します．saezuriライブラリには，校正・推敲プラグインとして動作するための「インターフェース(IPlugin)」が定義されています．この定義にしたがって，プロパティやメソッドを作成する必要があります．また，この処理を簡易化するための抽象クラス(<code class="csharp plain">IPluginBase</code>)もライブラリ内に内臓されています．したがって，このインターフェースおよび抽象クラスを継承して，プラグインを作成して下さい．</p>
+			<br />
+			<h3>プラグインクラス作成例</h3>
+			<p>　新規プロジェクトで，「クラスライブラリ」として作成します．使用する.NET Framework 
+			のバージョンは，3.5以上を選択して下さい．また，参照設定としてsaezuri.dllを指定します(「saezuri(言語解析)」のページに方法有り)．</p>
+			<pre class="brush: csharp" style="font-size: xx-small;">
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+using saezuri.plugin;
+using saezuri.NLP;
+
+namespace plugin_sample
+{
+    public class plugin_sample : IPluginBase, IPlugin
+    {
+
+    }
+}
+</pre>
+			
+			<p>　校正・推敲プラグインのコンストラクタでは，プラグインの属性情報の設定と設定ファイルの読み込みを行います．以下のような記述を行います．</p>
+			<pre class="brush: csharp" style="font-size: xx-small;">
+
+        public plugin_sample()
+        {
+            // プラグイン名
+            this.Name = "第二形態素のチェック(サンプル)";
+            // プラグインの詳細説明
+            this.Description = "二番目の形態素をチェックします．";
+            // プラグインの役割
+            this.Role = ROLETYPE.PROOFREADING;
+            // チェック機能があるか
+            this.EnabledCheck = true;
+            // 設定ダイアログがあるか
+            this.HasSetupDialog = true;
+
+            // 設定
+            Setting.DATA = saezuri.CUtility.LoadData&lt;Setting&gt;(string.Format("{0}{1}.xml", IPluginBase.SettingFolder, this.AssemblyName));
+            // 色設定がない場合のデフォルト
+            if (string.IsNullOrEmpty(Setting.DATA.ColoringStr) == true) { Setting.DATA.ColoringStr = System.Drawing.Color.Red.Name; }
+            Setting.DATA.Coloring = System.Drawing.Color.FromName(Setting.DATA.ColoringStr);
+
+        }
+
+</pre>
+			
+			
+			<p>　校正・推敲プラグイン内では，主にCheckメソッドを実装します．Checkメソッドは，引数の違いにより3種あります．どの範囲を対象とした指摘を行うかによって，それぞれ，文書(CDocument)・段落(CParagraph)・文(CSentence)を引数にする3種を使い分けます．すべてのCheckメソッドを実装する必要はありません．必要なCheckメソッドのみ実装します．各Checkメソッドでは，(複数の)指摘結果を返します．CCheckは，指摘内容そのものを表します．したがって，引数に与えられた文書や段落や文のオブジェクトを使って，校正・推敲個所を検出し，その結果をCCheckオブジェクトをとして生成して，そのリストを返す処理を記述する必要があります．</p>
+
+			<pre class="brush: csharp" style="font-size: xx-small;">
+        public new List&lt;CCheck&gt; Check(CSentence _SentencesData)
+        {
+            List&lt;CCheck&gt; checkList = new List&lt;CCheck&gt;();
+            return checkList;
+        }
+
+        public new List&lt;CCheck&gt; Check(CParagraph _ParagraphData)
+        {
+            List&lt;CCheck&gt; checkList = new List&lt;CCheck&gt;();
+            return checkList;
+        }
+
+        public new List&lt;CCheck&gt; Check(CDocument _DocumentData)
+        {
+            List&lt;CCheck&gt; checkList = new List&lt;CCheck&gt;();
+            return checkList;
+        }
+</pre>
+
+
+			<p>　各プラグインには， 
+			設定画面を出すためのShowSetupDialog()メソッドがあり，Tomarigiから呼び出されます．独自に作成した設定画面は，このメソッド内で呼び出す必要があります．なお，設定ファイルは，必ずIPluginBase.SettingFolderで指定されるフォルダ内に，プラグインと同じ名称のxmlファイルとして保存して下さい．以下に，設定ファイル名の指定の仕方と，設定画面を呼び出す例を示します．</p>
+			<pre class="brush: csharp" style="font-size: xx-small;">
+        public new void ShowSetupDialog()
+        {
+        	string setting_filename =  string.Format("{0}{1}.xml", IPluginBase.SettingFolder, this.AssemblyName);
+            new frmOption().ShowDialog(setting_filename);
+        }
+</pre>
+
+
+			<p>&nbsp;</p>
+			<a name="sample"></a>
+			<h2>サンプル</h2>
+			<p>　<a href="sample/plugin_sample.zip" target="_blank">第二形態素を検出するサンプルプラグインのダウンロード </a> </p>
+
+			<p>&nbsp;</p>
+			<a name="interface"></a>
+			<h2>インターフェース：IPlugin</h2>
+			<p>　Tomarigiからプラグインとして認識するために必要なインターフェースです．</p>
+			<table id="simple1" cellspacing="1" class="simple" style="width: 100%; font-size: smaller;">
+				<tr>
+					<td colspan="2"><strong class="auto-style1">プロパティ</strong></td>
+				</tr>
+				<tr>
+					<td>AssemblyName</td>
+					<td>アセンブリ名</td>
+				</tr>
+				<tr>
+					<td>Name</td>
+					<td>プラグインの名称</td>
+				</tr>
+				<tr>
+					<td>Description</td>
+					<td>&nbsp;プラグインの詳細説明</td>
+				</tr>
+				<tr>
+					<td>Enabled</td>
+					<td>プラグインの有効・無効</td>
+				</tr>
+				<tr>
+					<td>Help</td>
+					<td>※現在未使用</td>
+				</tr>
+				<tr>
+					<td>Version</td>
+					<td>プラグインのバージョン</td>
+				</tr>
+				<tr>
+					<td>EnabledCheck</td>
+					<td>指摘機能が有効か</td>
+				</tr>
+				<tr>
+					<td>Role</td>
+					<td>プラグインの役割(校正か推敲か)</td>
+				</tr>
+				<tr>
+					<td>EnabledMistake</td>
+					<td>※問題生成に関わる．<br />
+					　現在，使用しないで下さい</td>
+				</tr>
+				<tr>
+					<td>ExerciseTypeList</td>
+					<td>※問題生成に関わる．<br />
+					　現在，使用しないで下さい</td>
+				</tr>
+				<tr>
+					<td>HasSetupDialog</td>
+					<td>設定ダイアログがあるか</td>
+				</tr>
+				<tr>
+					<td>Tag</td>
+					<td>汎用</td>
+				</tr>
+				<tr>
+					<td colspan="2"><strong class="auto-style1">メソッド</strong></td>
+				</tr>
+				<tr>
+					<td>List&lt;CCheck&gt; Check(CSentence)</td>
+					<td>校正・推敲のチェック</td>
+				</tr>
+				<tr>
+					<td>List&lt;CCheck&gt; Check(CParagraph)</td>
+					<td>校正・推敲のチェック</td>
+				</tr>
+				<tr>
+					<td>List&lt;CCheck&gt; Check(CDocument)</td>
+					<td>校正・推敲のチェック</td>
+				</tr>
+				<tr>
+					<td>Exercise()系</td>
+					<td>※問題生成に関わる．<br />
+					　現在，使用しないで下さい</td>
+				</tr>
+				<tr>
+					<td>void ShowSetupDialog()</td>
+					<td>設定ダイアログの呼び出し</td>
+				</tr>
+			</table>
+			
+			<p></p>
+			<a name="abstract"></a>
+			<h2>抽象クラス：IPluginBase</h2>
+			<p>　IPluginBaseクラスは，IPluginインターフェースを実装した抽象クラスです．IPluginインターフェースと異なる部分のみ，下記に示します．</p>
+			<table id="simple2" cellspacing="1" class="simple" style="width: 100%; font-size: smaller;">
+				<tr>
+					<td colspan="2"><strong class="auto-style1">static</strong></td>
+				</tr>
+				<tr>
+					<td>PluginFolder</td>
+					<td>プラグインの格納フォルダ</td>
+				</tr>
+				<tr>
+					<td>SettingFolder</td>
+					<td>プラグインの設定ファイル格納フォルダ</td>
+				</tr>
+				</table>
+			<p></p>
+			<a name="ccheck"></a>
+			<h2>指摘クラス：CCheck</h2>
+			<p>　CWordクラスは，単語を表します．これは，係り受け解析ツールの結果から，文節ごとに単語情報を切りだして生成されます．ただし，この単語情報は，本ライブラリによって，独自に推定したものです．また，これは，Cabochaを使用した場合のみ，使用することができます．</p>
+			<a name="csegment"></a>
+			<a name="csentence"></a>
+			<a name="cclause"></a>
+			<a name="cparagraph"></a>
+			<p></p>
+			<a name="cdocument"></a>
+			<table id="simple8" cellspacing="1" class="simple" style="width: 100%; font-size: smaller;">
+				<tr>
+					<td colspan="2"><strong class="auto-style1">static</strong></td>
+				</tr>
+				<tr>
+					<td>PeriodChar</td>
+					<td>句点判定文字リスト(default： ．。！？)</td>
+				</tr>
+				<tr>
+					<td>ParagraphChar</td>
+					<td>段落判定文字列リスト(default： 改行2個，改行+全角空白，改行+半角空白，改行+Tab)</td>
+				</tr>
+				<tr>
+					<td>BracketsChars1</td>
+					<td>括弧対応チェック文字リスト(全角・半角を同列解釈default：(){}「」)</td>
+				</tr>
+				<tr>
+					<td>BracketsChars2</td>
+					<td>括弧対応チェック文字リスト(default：『』【】)</td>
+				</tr>
+				<tr>
+					<td colspan="2"><strong class="auto-style1">プロパティ</strong></td>
+				</tr>
+				<tr>
+					<td>ID</td>
+					<td>一意に識別するための番号<br />
+					※自動付与されます</td>
+				</tr>
+				<tr>
+					<td>ForeColor</td>
+					<td>指摘に使用する色</td>
+				</tr>
+				<tr>
+					<td>ForeColorHTML</td>
+					<td>ForeColorをHTML表記</td>
+				</tr>
+				<tr>
+					<td>Level</td>
+					<td>指摘レベル</td>
+				</tr>
+				<tr>
+					<td>Details</td>
+					<td>詳細情報</td>
+				</tr>
+				<tr>
+					<td>DetailsPic</td>
+					<td>詳細情報画像</td>
+				</tr>
+				<tr>
+					<td>Text</td>
+					<td>誤りを含む元の文</td>
+				</tr>
+				<tr>
+					<td>Message</td>
+					<td>指摘メッセージ</td>
+				</tr>
+				<tr>
+					<td>CorrectionList</td>
+					<td>修正候補</td>
+				</tr>
+				<tr>
+					<td>Role</td>
+					<td>指摘の役割(校正か推敲か)</td>
+				</tr>
+				<tr>
+					<td>PluginAssembly</td>
+					<td>指摘の元になったプラグインの<br />
+					アセンブリ名</td>
+				</tr>
+				<tr>
+					<td>Enabled</td>
+					<td>※この項目は，Tomarigiにより管理するための領域ですので，変更しないで下さい．</td>
+				</tr>
+				<tr>
+					<td>TargetRange</td>
+					<td>(複数の)指摘箇所<br />
+					RangePositionクラスのデータとして取り扱う．RangePositionは，開始位置と長さおよび終了位置を保持する</td>
+				</tr>
+				<tr>
+					<td>TargetText</td>
+					<td>指摘箇所の文字の概要</td>
+				</tr>
+				<tr>
+					<td>TargetIsALL</td>
+					<td>指摘箇所が全文の場合は，trueとする</td>
+				</tr>
+				<tr>
+					<td colspan="2"><strong class="auto-style1">メソッド</strong></td>
+				</tr>
+				<tr>
+					<td style="white-space: nowrap;">bool IsEqual(CCheck)</td>
+					<td>引数の指摘が内容的に<br />
+					同じものかどうか</td>
+				</tr>
+				<tr>
+					<td style="white-space: nowrap;">List&lt;CCheck&gt; 
+					DivideByRange()</td>
+					<td>指定範囲が複数ある場合に，単独の指定範囲ごとに分割する</td>
+				</tr>
+				</table>
+			<p></p>
+			<a name="cevaluationgeneral"></a>
+			<p>&nbsp;</p>
+			<a name="example1"></a>
+			<p>&nbsp;</p>
+			<a name="example2"></a>
+		</div>
+		<!-- main end -->
+		<div id="sub">
+			<div class="section">
+				<h2>概要</h2>
+				<ul>
+					<li><a href="check.html#top">校正・推敲プラグイン</a></li>
+					<li><a href="check.html#sample">サンプル</a></li>
+				</ul>
+			</div>
+			<!-- section end -->
+			<div class="section">
+				<h2>プラグイン仕様</h2>
+				<ul>
+					<li><a href="check.html#interface">インターフェース：IPlugin</a></li>
+					<li><a href="check.html#abstract">抽象クラス：IPluginBase</a></li>
+					<li><a href="check.html#ccheck">指摘クラス：CCheck</a></li>
+				</ul>
+			</div>
+			<!-- section end --></div>
+		<!-- sub end -->
+		<div id="totop">
+			<a href="#top">ページのトップへ戻る</a> </div>
+		<!-- totop end --></div>
+	<!-- contents end -->
+	<div id="footer">
+		<address>
+			2011 Tomarigi &amp; saezuri HELP</address>
+	</div>
+	<!-- footer end --></div>
+<!-- top end -->
+<script type="text/javascript">
+     SyntaxHighlighter.all();
+</script>
+
+</body>
+
+</html>

@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<DATA xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <PointOutFontSizeZoom>2</PointOutFontSizeZoom>
+  <EditorCheckBackSize>100</EditorCheckBackSize>
+  <EditorRecentListMAX>10</EditorRecentListMAX>
+  <EditorFontName>メイリオ</EditorFontName>
+  <EditorLineNumVisible>true</EditorLineNumVisible>
+  <EditorNewLineVisible>true</EditorNewLineVisible>
+  <EditorSingleSpace>true</EditorSingleSpace>
+  <EditorDoubleSpace>true</EditorDoubleSpace>
+  <EditorTab>false</EditorTab>
+  <EditorCaretBackVisible>false</EditorCaretBackVisible>
+  <EditorEOFVisible>true</EditorEOFVisible>
+  <EditorLineWrap>true</EditorLineWrap>
+  <EditorRulerH>false</EditorRulerH>
+  <EditorRecentList />
+  <EditorTabNum>4</EditorTabNum>
+</DATA>

@@ -1,0 +1,58 @@
+﻿<html>
+  <head>
+  <style type="text/css">
+  <!-- 
+  body{font-family:\"メイリオ\";}
+  a{ text-decoration:none;}
+  a:hover{text-decoration:underline;}
+  table{width:60%;border:1px #E3E3E3 solid;border-collapse:collapse;border-spacing:0;font-size:90%}
+  table th {padding:5px;border:#E3E3E3 solid;border-width:0 0 1px 1px;background:#F5F5F5;font-weight:bold;line-height:100%;text-align:left;white-space:nowrap;}
+  table td {padding:5px;border:1px #E3E3E3 solid;border-width:0 0 1px 1px;line-height:100%;white-space:nowrap;}
+  -->
+  </style>
+  </head>
+<body>
+<div style="font-size:80%">
+
+<table>
+<tr>
+<td>
+ポータブル ステータス
+</td>
+<td>
+@@@@@1
+</td>
+</tr>
+</table>
+
+
+
+<br />
+Tomarigiをポータブル環境で利用するためには，以下の手順にしたがって，準備して下さい．
+<br /><br />
+
+1. <br />
+あらかじめ，Mecab(ver0.996)とCabocha(ver0.68)をインストールして下さい．
+<br /><br />
+
+2. <br />
+Mecabをインストールしたフォルダ(通常ではC:\Program Files\MeCab)を<br />
+Tomarigiと同じフォルダにコピーします．
+<br /><br />
+
+3. <br />
+Cabochaをインストールしたフォルダ(通常ではC:\Program Files\Cabocha)を<br />
+Tomarigiと同じフォルダにコピーし，その中のetc\cabocharcをメモ帳で開きます．<br />
+「mecabrc = somwhere/mecabrc」の先頭の#を削除し，「somwhere/mecabrc」部分を<br />
+「..\..\mecab\etc\mecabrc」に書き換えます．<br />
+さらに，Mecabのbinフォルダ内にあるlibmecab.dllをCabochaのbinフォルダ内にコピーします．
+<br /><br />
+
+<span style="font-size:90%;color:red;">
+※自動構築に失敗する場合は，Tomarigi内にコピーしたmecab，cabochaを削除して再試行して下さい．
+</span>
+
+</div>
+</body>
+</html>
+

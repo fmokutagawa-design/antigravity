@@ -1,0 +1,3630 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>saezuri</name>
+    </assembly>
+    <members>
+        <member name="T:saezuri.NLP.CMSSpeech">
+            <summary>
+            音声合成利用クラス
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CMSSpeech.#ctor">
+            <summary>コンストラクタ</summary>
+        </member>
+        <member name="M:saezuri.NLP.CMSSpeech.Dispose">
+            <summary>破棄</summary>
+        </member>
+        <member name="M:saezuri.NLP.CMSSpeech.Speak(System.String)">
+            <summary>発声</summary>
+        </member>
+        <member name="M:saezuri.NLP.CMSSpeech.SpeakBackgrund(System.String)">
+            <summary>バックグラウンドによる発声</summary>
+        </member>
+        <member name="M:saezuri.NLP.CMSSpeech.Stop">
+            <summary>停止</summary>
+        </member>
+        <member name="M:saezuri.NLP.CMSSpeech.WaitUntilDone">
+            <summary>
+            発声が終わるまで待つ
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CMSSpeech.Enabled">
+            <summary>
+            このオブジェクトの有効・無効
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CMSSpeech.Volume">
+            <summary>
+            音量
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CMSSpeech.Rate">
+            <summary>
+            速度
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CMSSpeech.VoiceType">
+            <summary>
+            声のタイプ
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CMSSpeech.IsBackgrundBusy">
+            <summary>
+            バックグラウンドがビジー状態か
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CMSSpeech.TTS">
+            <summary>TTSオブジェクト</summary>
+        </member>
+        <member name="T:saezuri.NLP.CMSSpeech.VOICETYPE">
+            <summary>声のタイプ</summary>
+        </member>
+        <member name="F:saezuri.NLP.CMSSpeech.VOICETYPE.YOUNGLADY">
+            <summary>若いかもしれない女性</summary>
+        </member>
+        <member name="F:saezuri.NLP.CMSSpeech.VOICETYPE.LADY">
+            <summary>女性</summary>
+        </member>
+        <member name="F:saezuri.NLP.CMSSpeech.VOICETYPE.OLDLADY">
+            <summary>若くないかもしれない女性</summary>
+        </member>
+        <member name="T:saezuri.CTreeView">
+            <summary>係り受け解析結果を木構造として視覚化するクラス</summary>
+        </member>
+        <member name="M:saezuri.CTreeView.#ctor(System.Windows.Forms.Panel,saezuri.CTree)">
+            <summary>
+            コンストラクタ
+            </summary>
+            <param name="_canvas">描画対象Panel</param>
+            <param name="_tree">描画対象の木</param>
+        </member>
+        <member name="M:saezuri.CTreeView.Dispose">
+            <summary>
+            破棄
+            </summary>
+        </member>
+        <member name="M:saezuri.CTreeView.Draw">
+            <summary>
+            木を描画します．
+            </summary>
+        </member>
+        <member name="M:saezuri.CTreeView.DrawImage(System.Drawing.Color)">
+            <summary>Bitmap形式で出力</summary>
+        </member>
+        <member name="M:saezuri.CTreeView.NodePositionSet">
+            <summary>
+            ノードを配置し直す．
+            </summary>
+        </member>
+        <member name="M:saezuri.CTreeView.Rebuild">
+            <summary>
+            現在の木から必要なデータやイベントをすべて作成する
+            </summary>
+        </member>
+        <member name="M:saezuri.CTreeView.DrawImage(saezuri.CTree,System.Drawing.Color)">
+            <summary>
+            デフォルトの設定で画像を生成
+            </summary>
+            <param name="_tree"></param>
+            <param name="_backColor"></param>
+            <returns></returns>
+        </member>
+        <member name="P:saezuri.CTreeView.Canvas">
+            <summary>
+            木を描画するPanelコントロールの取得
+            </summary>
+        </member>
+        <member name="P:saezuri.CTreeView.Tree">
+            <summary>
+            描画対象となる木の取得
+            </summary>
+        </member>
+        <member name="P:saezuri.CTreeView.Shape">
+            <summary>
+            ノードの形状の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.CTreeView.NodeSize">
+            <summary>
+            ノードの大きさの取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.CTreeView.EnabledDragDrop">
+            <summary>
+            ノードのドラッグ＆ドロップを可能にするか取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.CTreeView.EnabledDragDropMove">
+            <summary>
+            パネルのドラッグ＆ドロップによる表示位置の移動可否を取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.CTreeView.AutoSpace">
+            <summary>
+            自動的にDepthSpace,WidthSpaceを変更するか取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.CTreeView.ParallelDrawMode">
+            <summary>
+            並列関係の描画モードの取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.CTreeView.Orientation">
+            <summary>
+            描画方向
+            </summary>
+        </member>
+        <member name="P:saezuri.CTreeView.DepthSpace">
+            <summary>
+            深さサイズの取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.CTreeView.WidthSpace">
+            <summary>
+            幅サイズの取得・設定
+            </summary>
+        </member>
+        <member name="T:saezuri.CTreeView.NODESHAPE">
+            <summary>ノードの形状</summary>
+        </member>
+        <member name="F:saezuri.CTreeView.NODESHAPE.CIRCLE">
+            <summary>円</summary>
+        </member>
+        <member name="F:saezuri.CTreeView.NODESHAPE.SQUARE">
+            <summary>四角</summary>
+        </member>
+        <member name="T:saezuri.CTreeView.VIEWORIENTATION">
+            <summary>描画方向</summary>
+        </member>
+        <member name="F:saezuri.CTreeView.VIEWORIENTATION.VERTICAL">
+            <summary>垂直</summary>
+        </member>
+        <member name="F:saezuri.CTreeView.VIEWORIENTATION.HORIZONTAL">
+            <summary>水平</summary>
+        </member>
+        <member name="T:saezuri.CTreeView.PARALLELDRAW">
+            <summary>並列状態の描画方法</summary>
+        </member>
+        <member name="F:saezuri.CTreeView.PARALLELDRAW.NORMAL">
+            <summary>結果をありのまま描画</summary>
+        </member>
+        <member name="F:saezuri.CTreeView.PARALLELDRAW.PARALLE">
+            <summary>推測される係り先も描画</summary>
+        </member>
+        <member name="F:saezuri.CTreeView.PARALLELDRAW.PARALLECHAIN">
+            <summary>推測される係り先を連鎖的に描画</summary>
+        </member>
+        <member name="T:saezuri.NLP.CYahooMA">
+            <summary>Yahoo形態素解析を利用するクラス</summary>
+        </member>
+        <member name="T:saezuri.NLP.NLPBASE">
+            <summary>NLPツールの抽象クラス</summary>
+        </member>
+        <member name="M:saezuri.NLP.NLPBASE.#ctor">
+            <summary></summary>
+        </member>
+        <member name="M:saezuri.NLP.NLPBASE.GetVersion(System.String)">
+            <summary>
+            バージョンの取得の取得
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.NLPBASE.Analyze(System.String)">
+            <summary>
+            解析の実行
+            </summary>
+            <param name="_sentence">解析する文</param>
+            <returns>失敗か成功か</returns>
+        </member>
+        <member name="M:saezuri.NLP.NLPBASE.CommandExecute(System.String,System.String,System.String,System.Boolean)">
+            <summary>
+            コマンドプロンプトベースのプログラムの実行
+            </summary>
+            <param name="_exefile">実行ファイル名</param>
+            <param name="_arg">実行ファイルの引数</param>
+            <param name="_input">標準入力(不要の場合は，null)</param>
+            <param name="_useUTF8">UTF8使用か</param>
+            <returns>標準出力，エラー時はnull</returns>
+        </member>
+        <member name="P:saezuri.NLP.NLPBASE.OriginalSentence">
+            <summary>
+            解析文
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.NLPBASE.Error">
+            <summary>
+            エラーメッセージの取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.NLPBASE.ResultText">
+            <summary>
+            解析結果の文字列表記の取得
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CYahooMA.AvailableCheck">
+            <summary>ツールの有効性のチェック</summary>
+        </member>
+        <member name="M:saezuri.NLP.CYahooMA.#cctor">
+            <summary>
+            静的コンストラクタ
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CYahooMA.#ctor(System.String)">
+            <summary>
+            コンストラクタ
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CYahooMA.Analyze(System.String)">
+            <summary>
+            解析を実行
+            </summary>
+            <param name="_sentence">解析する文</param>
+            <returns>成功か失敗か</returns>
+        </member>
+        <member name="P:saezuri.NLP.CYahooMA.SearviceURL">
+            <summary>
+            サービスURL
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CYahooMA.Enabled">
+            <summary>
+            インスタンスが有効かどうかの取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CYahooMA.ApplicationID">
+            <summary>
+            Yahoo アプリケーションID
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CYahooMA.Version">
+            <summary>
+            バージョン
+            </summary>
+        </member>
+        <member name="T:saezuri.NLP.CSentence">
+            <summary>
+            文クラス
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CSentence.#ctor(System.String)">
+            <summary>コンストラクタ</summary>
+        </member>
+        <member name="M:saezuri.NLP.CSentence.ConvertTo(System.String)">
+            <summary>
+            解析データを変換
+            </summary>
+            <param name="_analyzedata"></param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.NLP.CSentence.ConvertTo(System.String,saezuri.NLP.TOOL)">
+            <summary>
+            解析データを変換 - 自動的に，解析ツールを判定できない場合や少しでも処理を軽くしたい場合に，ツールを指定
+            </summary>
+            <param name="_analyzedata"></param>
+            <param name="_tool"></param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.NLP.CSentence.GetOneWordListFromSegment(saezuri.NLP.CSegment)">
+            <summary>単語切り</summary>
+        </member>
+        <member name="M:saezuri.NLP.CSentence.GetToolType">
+            <summary>
+            解析結果の文字列から使用ツールを予測
+            </summary>
+            <returns>使用ツール</returns>
+        </member>
+        <member name="M:saezuri.NLP.CSentence.BuildTree">
+            <summary>
+            現在の係り受け関係から木構造を再構築してTreeプロパティに割り当てる
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentence.NONE">
+            <summary>カラ文</summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentence.Text">
+            <summary>
+            文の取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentence.TextRaw">
+            <summary>
+            生文の取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentence.ResultText">
+            <summary>
+            形態素/係り受けオリジナル解析結果の取得・設定
+            </summary>            
+        </member>
+        <member name="P:saezuri.NLP.CSentence.Read">
+            <summary>
+            読み(カナ)の取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentence.Pronunciation">
+            <summary>
+            発音の取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentence.SegmentList">
+            <summary>
+            文を構成する文節CPhraseのリストの取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentence.SegmentFirst">
+            <summary>
+            SegmentListの最初の要素を取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentence.SegmentLast">
+            <summary>
+            SegmentListの最後の要素を取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentence.MorphemeList">
+            <summary>
+            文を構成する形態素CWordのリストの取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentence.MorphemeListCutPunctuation">
+            <summary>
+            文節を構成する形態素CWordのリスト(句読点除く)の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentence.MorphemeFirst">
+            <summary>
+            WordListの最初の要素を取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentence.MorphemeLast">
+            <summary>
+            WordListの最後の要素を取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentence.Clause">
+            <summary>
+            文を構成するCClauseの取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentence.WordList">
+            <summary>単語リスト</summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentence.Tree">
+            <summary>
+            係り受けを表す木構造の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentence.Tag">
+            <summary>
+            汎用の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentence.UsedTool">
+            <summary>使用されたツール</summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentence.CheckList">
+            <summary>文を対象とした指摘リスト</summary>
+        </member>
+        <member name="T:saezuri.NLP.CDocument">
+            <summary>
+            文書クラス
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.ResetPeriodChar">
+            <summary>文区切り記号をデフォルトのものにリセットする</summary>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.ResetParagraphChar">
+            <summary>段落区切り記号をデフォルトのものにリセットする</summary>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.#ctor">
+            <summary>コンストラクタ</summary>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.GetALLSentenceTextList">
+            <summary>文書内のすべての文(テキスト形式)</summary>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.GetALLSentenceList">
+            <summary>
+            この記事のCSentenceのリストを取得
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.GetParagraphIndex(System.String)">
+            <summary>
+            段落の区切り位置
+            </summary>
+            <param name="_text"></param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.ConvertShortEssay(System.String)">
+            <summary>
+            テキストを分割処理する
+            </summary>
+            <param name="_text"></param>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.ConvertShortEssay(System.Collections.Generic.List{System.Collections.Generic.List{System.String}})">
+            <summary>
+            段落ごとのデータを渡したうえでのテキスト分割
+            </summary>
+            <param name="_paragraphs"></param>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.ConvertShortEssay(System.String[])">
+            <summary>
+            文のデータをそのまま渡してドキュメント化
+            </summary>
+            <param name="_sentences"></param>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.DivideShortEssay(System.String)">
+            <summary>
+            段落ごとの分割
+            </summary>
+            <param name="_text"></param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.SetOverWrite(System.Collections.Generic.Dictionary{System.String,System.String})">
+            <summary>
+            既存の文に，上書きする
+            </summary>
+            <param name="existSentences"></param>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.SetOverWrite(System.String,System.String)">
+            <summary>
+            既存の文に，上書きする
+            </summary>
+            <param name="sentence"></param>
+            <param name="analizeResult"></param>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.AnalyzeWholeMecab">
+            <summary>Mecabを利用した全文解析</summary>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.AnalyzeWholeCabocha">
+            <summary>Cabochaを利用した全文解析</summary>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.AnalyzeWholeJuman">
+            <summary>JUMANを利用した全文解析</summary>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.AnalyzeWholeKNP">
+            <summary>KNPを利用した全文解析</summary>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.Save">
+            <summary>保存</summary>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.Load(System.String)">
+            <summary>読み込み</summary>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.ResetCheckData">
+            <summary>保持している指摘データをすべてクリアする</summary>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.GetExceptedCheckData">
+            <summary>現在除外されているチェック項目の一覧を取得</summary>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.OverWriteExceptedCheckData(System.Collections.Generic.List{saezuri.plugin.CCheck})">
+            <summary>指定された除外リストから，おそらく同じであるチェック項目のEnabledをfalseにする</summary>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.FindCheckByCheckID(System.String)">
+            <summary>
+            指定されたIDを持つ指摘データを返す
+            </summary>
+            <param name="_ID"></param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.FindSentenceByCheckID(System.String)">
+            <summary>
+            指定された指摘IDを持つ文CSentenceオブジェクトの取得
+            </summary>
+            <param name="_ID"></param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.CheckNumberCountDocument(System.Boolean)">
+            <summary>
+            Document対象のチェック数を取得
+            </summary>
+            <param name="_isOnlyEnabled">有効のものだけをカウントするか</param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.CheckNumberCountParagraph(System.Boolean)">
+            <summary>
+            Paragraph対象のチェック数を取得
+            </summary>
+            <param name="_isOnlyEnabled">有効のものだけをカウントするか</param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.NLP.CDocument.CheckNumberCountSentence(System.Boolean)">
+            <summary>
+            Sentence対象のチェック数を取得
+            </summary>
+            <param name="_isOnlyEnabled">有効のものだけをカウントするか</param>
+            <returns></returns>
+        </member>
+        <member name="P:saezuri.NLP.CDocument.PeriodChar">
+            <summary>句点区切り文字</summary>
+        </member>
+        <member name="P:saezuri.NLP.CDocument.ParagraphChar">
+            <summary>段落区切り文字</summary>
+        </member>
+        <member name="P:saezuri.NLP.CDocument.BracketsChars1">
+            <summary>括弧判定１種</summary>
+        </member>
+        <member name="P:saezuri.NLP.CDocument.BracketsChars2">
+            <summary>括弧判定２種</summary>
+        </member>
+        <member name="P:saezuri.NLP.CDocument.FileNamePath">
+            <summary>編集中のファイル名パスの取得・設定</summary>
+        </member>
+        <member name="P:saezuri.NLP.CDocument.FileName">
+            <summary>編集中のファイル名の取得</summary>
+        </member>
+        <member name="P:saezuri.NLP.CDocument.ID">
+            <summary>ID</summary>
+        </member>
+        <member name="P:saezuri.NLP.CDocument.Date">
+            <summary>日付</summary>
+        </member>
+        <member name="P:saezuri.NLP.CDocument.Title">
+            <summary>タイトル</summary>
+        </member>
+        <member name="P:saezuri.NLP.CDocument.Tag">
+            <summary>汎用</summary>
+        </member>
+        <member name="P:saezuri.NLP.CDocument.ParagraphList">
+            <summary>段落リスト</summary>
+        </member>
+        <member name="P:saezuri.NLP.CDocument.Attribute">
+            <summary>この文書の属性情報</summary>
+        </member>
+        <member name="P:saezuri.NLP.CDocument.CheckList">
+            <summary>文書全体を対象とした指摘リスト</summary>
+        </member>
+        <member name="P:saezuri.NLP.CDocument.ExceptedCheckList">
+            <summary>過去の対象外リスト</summary>
+        </member>
+        <member name="P:saezuri.NLP.CDocument.TextRaw">
+            <summary>このセクションのテキスト</summary>
+        </member>
+        <member name="P:saezuri.NLP.CDocument.Text">
+            <summary>このセクションのテキスト表示用</summary>
+        </member>
+        <member name="T:saezuri.NLP.CParagraph">
+            <summary>
+            段落クラス
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CParagraph.#ctor">
+            <summary>コンストラクタ</summary>
+        </member>
+        <member name="P:saezuri.NLP.CParagraph.Title">
+            <summary>段落タイトル</summary>
+        </member>
+        <member name="P:saezuri.NLP.CParagraph.SentenceList">
+            <summary>構成する文リスト</summary>
+        </member>
+        <member name="P:saezuri.NLP.CParagraph.CheckList">
+            <summary>段落全体を対象とした指摘リスト</summary>
+        </member>
+        <member name="P:saezuri.NLP.CParagraph.TextRaw">
+            <summary>この段落のテキスト</summary>
+        </member>
+        <member name="P:saezuri.NLP.CParagraph.Text">
+            <summary>この段落のテキスト</summary>
+        </member>
+        <member name="T:saezuri.NLP.CChasen">
+            <summary>Mecabを利用するクラス</summary>
+        </member>
+        <member name="M:saezuri.NLP.CChasen.AvailableCheck">
+            <summary>ツールの有効性のチェック</summary>
+        </member>
+        <member name="M:saezuri.NLP.CChasen.#cctor">
+            <summary>
+            静的コンストラクタ
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CChasen.#ctor">
+            <summary>
+            コンストラクタ
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CChasen.Analyze(System.String)">
+            <summary>
+            解析を実行
+            </summary>
+            <param name="_sentence">解析する文</param>
+            <returns>成功か失敗か</returns>
+        </member>
+        <member name="P:saezuri.NLP.CChasen.ExePath">
+            <summary>
+            実行ファイルパスの取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CChasen.Enabled">
+            <summary>
+            インスタンスが有効かどうかの取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CChasen.Version">
+            <summary>
+            バージョン
+            </summary>
+        </member>
+        <member name="T:saezuri.NLP.CEvaluationGeneral">
+            <summary>評価一般項目</summary>
+        </member>
+        <member name="M:saezuri.NLP.CEvaluationGeneral.GetTermList(System.Collections.Generic.List{saezuri.NLP.CWord.WORDTYPE})">
+            <summary>指定した種別の単語を取得</summary>
+        </member>
+        <member name="M:saezuri.NLP.CEvaluationGeneral.GetTermList(saezuri.NLP.CWord.WORDTYPE)">
+            <summary>指定した種別の単語を取得</summary>
+        </member>
+        <member name="M:saezuri.NLP.CEvaluationGeneral.#ctor(saezuri.NLP.CDocument)">
+            <summary>コンストラクタ</summary>
+        </member>
+        <member name="P:saezuri.NLP.CEvaluationGeneral.TotalCharCount">
+            <summary>総文字数</summary>
+        </member>
+        <member name="P:saezuri.NLP.CEvaluationGeneral.TotalCharCountNonSpace">
+            <summary>総文字数（空白等を除いた）</summary>
+        </member>
+        <member name="P:saezuri.NLP.CEvaluationGeneral.ParagraphCount">
+            <summary>段落数</summary>
+        </member>
+        <member name="P:saezuri.NLP.CEvaluationGeneral.TotalSentenceCount">
+            <summary>総文数</summary>
+        </member>
+        <member name="P:saezuri.NLP.CEvaluationGeneral.KanjiContentPercentage">
+            <summary>漢字含有率</summary>
+        </member>
+        <member name="P:saezuri.NLP.CEvaluationGeneral.AverageOfSentenceInParagraph">
+            <summary>段落の平均文数</summary>
+        </member>
+        <member name="P:saezuri.NLP.CEvaluationGeneral.AverageSentenceLength">
+            <summary>文長平均値</summary>
+        </member>
+        <member name="P:saezuri.NLP.CEvaluationGeneral.MedianSentenceLength">
+            <summary>文長中央値</summary>
+        </member>
+        <member name="P:saezuri.NLP.CEvaluationGeneral.MaxSentenceLength">
+            <summary>文長最大値</summary>
+        </member>
+        <member name="P:saezuri.NLP.CEvaluationGeneral.MinSentenceLength">
+            <summary>文長最小値</summary>
+        </member>
+        <member name="P:saezuri.NLP.CEvaluationGeneral.TotalMorphemeCount">
+            <summary>形態素数</summary>
+        </member>
+        <member name="P:saezuri.NLP.CEvaluationGeneral.MorphemeList">
+            <summary>形態素リスト</summary>
+        </member>
+        <member name="P:saezuri.NLP.CEvaluationGeneral.TotalWordCount">
+            <summary>単語リスト数(記号は除く)</summary>
+        </member>
+        <member name="P:saezuri.NLP.CEvaluationGeneral.WordList">
+            <summary>単語リスト(記号は除く)</summary>
+        </member>
+        <member name="P:saezuri.NLP.CEvaluationGeneral.TotalUniqueWordCount">
+            <summary>異なり語数</summary>
+        </member>
+        <member name="P:saezuri.NLP.CEvaluationGeneral.UniqueWordList">
+            <summary>異なり語リスト</summary>
+        </member>
+        <member name="P:saezuri.NLP.CEvaluationGeneral.FleschReadingEase">
+            <summary>Flesch Reading Ease</summary>
+        </member>
+        <member name="P:saezuri.NLP.CEvaluationGeneral.FleschKincaidGradeLevel">
+            <summary>Flesch-Kincaid Grade Level</summary>
+        </member>
+        <member name="P:saezuri.NLP.CEvaluationGeneral.VarietyRateVocabulary">
+            <summary>Variety Rate of Vocabulary</summary>
+        </member>
+        <member name="P:saezuri.NLP.CEvaluationGeneral.YuleK">
+            <summary>ユールK</summary>
+        </member>
+        <member name="T:saezuri.CNode">
+            <summary>
+            出力CLinkと入力CLinkを持つノードクラス
+            </summary>
+        </member>
+        <member name="M:saezuri.CNode.Node``1">
+            <summary>
+            ノードの取得
+            </summary>
+            <typeparam name="Type">ノードの型</typeparam>
+            <returns>ノードを表す値</returns>
+        </member>
+        <member name="M:saezuri.CNode.Node(System.Object)">
+            <summary>
+            ノードの設定
+            </summary>
+            <param name="_node">ノードを表す値</param>
+        </member>
+        <member name="M:saezuri.CNode.#ctor">
+            <summary>
+            コンストラクタ(シリアライズ用)
+            </summary>
+        </member>
+        <member name="M:saezuri.CNode.#ctor(System.Object)">
+            <summary>
+            ノードを表すオブジェクト
+            </summary>
+            <param name="_node"></param>
+        </member>
+        <member name="M:saezuri.CNode.traceWidth(System.Int32)">
+            <summary>各ノードの配置決め</summary>
+        </member>
+        <member name="M:saezuri.CNode.traceDepth(System.Int32)">
+            <summary>深さを決定する</summary>
+            <param name="_depth">深さ</param>
+        </member>
+        <member name="M:saezuri.CNode.setLeafNum">
+            <summary>このノード配下の葉の数を設定する</summary>
+        </member>
+        <member name="M:saezuri.CNode.setNodeNum">
+            <summary>このノード配下の葉の数を設定する</summary>
+        </member>
+        <member name="P:saezuri.CNode.NodeType">
+            <summary>
+            ノードの型の取得
+            </summary>
+        </member>
+        <member name="P:saezuri.CNode.NodeRaw">
+            <summary>
+            ノードの取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.CNode.Label">
+            <summary>
+            ノードラベルの取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.CNode.OutLink">
+            <summary>
+            出力辺の取得
+            </summary>
+        </member>
+        <member name="P:saezuri.CNode.InLink">
+            <summary>
+            入力辺の取得
+            </summary>
+        </member>
+        <member name="P:saezuri.CNode.Depth">
+            <summary>
+            深さの取得
+            </summary>
+        </member>
+        <member name="P:saezuri.CNode.Width">
+            <summary>
+            幅の取得
+            </summary>
+        </member>
+        <member name="P:saezuri.CNode.Leaf">
+            <summary>
+            リーフかどうかの取得
+            </summary>
+        </member>
+        <member name="P:saezuri.CNode.LeafNum">
+            <summary>
+            このノード配下のリーフ数の取得
+            </summary>
+        </member>
+        <member name="P:saezuri.CNode.NodeNum">
+            <summary>
+            このノード配下のノード数の取得
+            </summary>
+        </member>
+        <member name="P:saezuri.CNode.Tag">
+            <summary>
+            汎用の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.CNode.Image">
+            <summary>
+            画像イメージ用のLabelコントロールの取得・設定
+            </summary>
+        </member>
+        <member name="T:saezuri.CLink">
+            <summary>
+            CNodeを両端に持つリンククラス
+            </summary>
+        </member>
+        <member name="M:saezuri.CLink.#ctor">
+            <summary>
+            コンストラクタ(シリアライズ用)
+            </summary>
+        </member>
+        <member name="M:saezuri.CLink.#ctor(saezuri.CNode,saezuri.CNode)">
+            <summary>
+            コンストラクタ
+            </summary>
+            <param name="_from">始点ノード</param>
+            <param name="_to">終点ノード</param>
+        </member>
+        <member name="M:saezuri.CLink.#ctor(System.Object,saezuri.CNode,saezuri.CNode)">
+            <summary>
+            コンストラクタ
+            </summary>
+            <param name="_link">リンクオブジェクト</param>
+            <param name="_from">始点ノード</param>
+            <param name="_to">終点ノード</param>
+        </member>
+        <member name="M:saezuri.CLink.Link``1">
+            <summary>
+            リンクの取得
+            </summary>
+            <typeparam name="Type">リンクの型</typeparam>
+            <returns>リンクを表す値</returns>
+        </member>
+        <member name="M:saezuri.CLink.Link(System.Object)">
+            <summary>
+            リンクの設定
+            </summary>
+            <param name="_link">リンクを表す値</param>
+        </member>
+        <member name="P:saezuri.CLink.LinkType">
+            <summary>
+            リンクの型の取得
+            </summary>
+        </member>
+        <member name="P:saezuri.CLink.FromNode">
+            <summary>
+            始点ノードの取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.CLink.ToNode">
+            <summary>
+            終点ノードの取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.CLink.Tag">
+            <summary>
+            汎用の取得・設定
+            </summary>
+        </member>
+        <member name="T:saezuri.CTree">
+            <summary>
+            木構造クラス
+            </summary>
+        </member>
+        <member name="M:saezuri.CTree.#ctor">
+            <summary>
+            コンストラクタ(シリアライズ用)
+            </summary>
+        </member>
+        <member name="M:saezuri.CTree.#ctor(saezuri.CNode)">
+            <summary>
+            コンストラクタ
+            </summary>
+            <param name="_root">ルートノード</param>
+        </member>
+        <member name="M:saezuri.CTree.RebuildTree">
+            <summary>
+            CNodeのDepth,Width,LeafNum,NodeNumプロパティを再構築する
+            </summary>
+        </member>
+        <member name="M:saezuri.CTree.FindNode(System.Object)">
+            <summary>
+            指定された要素を持つノードを返す
+            </summary>
+            <param name="sNode">探索する要素</param>
+            <returns>発見できない場合はnull</returns>
+        </member>
+        <member name="P:saezuri.CTree.Root">
+            <summary>
+            木のルートノードの取得
+            </summary>
+        </member>
+        <member name="P:saezuri.CTree.NodeList">
+            <summary>
+            ノードリストの取得
+            </summary>
+        </member>
+        <member name="P:saezuri.CTree.LinkList">
+            <summary>
+            リンクリストの取得
+            </summary>
+        </member>
+        <member name="P:saezuri.CTree.BehindLinkList">
+            <summary>
+            リンクリストの取得
+            </summary>
+        </member>
+        <member name="P:saezuri.CTree.Tag">
+            <summary>
+            汎用の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.CTree.DepthMax">
+            <summary>
+            木の最大の深さの取得
+            </summary>
+        </member>
+        <member name="T:saezuri.NLP.CMecab">
+            <summary>Mecabを利用するクラス</summary>
+        </member>
+        <member name="M:saezuri.NLP.CMecab.AvailableCheck">
+            <summary>ツールの有効性のチェック</summary>
+        </member>
+        <member name="M:saezuri.NLP.CMecab.UTF8Check">
+            <summary>UTF8の辞書を使用しているかチェック</summary>
+        </member>
+        <member name="M:saezuri.NLP.CMecab.#cctor">
+            <summary>
+            静的コンストラクタ
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CMecab.#ctor">
+            <summary>
+            コンストラクタ
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CMecab.Analyze(System.String)">
+            <summary>
+            解析を実行
+            </summary>
+            <param name="_sentence">解析する文</param>
+            <returns>成功か失敗か</returns>
+        </member>
+        <member name="P:saezuri.NLP.CMecab.ExePath">
+            <summary>
+            実行ファイルパスの取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CMecab.RCPath">
+            <summary>
+            RCファイルがあれば，パス
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CMecab.Enabled">
+            <summary>
+            インスタンスが有効かどうかの取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CMecab.Version">
+            <summary>
+            バージョン
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CMecab.UseUTF8">
+            <summary>UTF8の辞書を使用しているか(read only)</summary>
+        </member>
+        <member name="T:saezuri.Properties.Resources">
+            <summary>
+              ローカライズされた文字列などを検索するための、厳密に型指定されたリソース クラスです。
+            </summary>
+        </member>
+        <member name="P:saezuri.Properties.Resources.ResourceManager">
+            <summary>
+              このクラスで使用されているキャッシュされた ResourceManager インスタンスを返します。
+            </summary>
+        </member>
+        <member name="P:saezuri.Properties.Resources.Culture">
+            <summary>
+              厳密に型指定されたこのリソース クラスを使用して、すべての検索リソースに対し、
+              現在のスレッドの CurrentUICulture プロパティをオーバーライドします。
+            </summary>
+        </member>
+        <member name="T:saezuri.NLP.CBingSearch">
+            <summary>
+            Bing Search
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CBingSearch.#ctor(System.String)">
+            <summary>コンストラクタ</summary>
+        </member>
+        <member name="M:saezuri.NLP.CBingSearch.Search(System.String)">
+            <summary>検索</summary>
+        </member>
+        <member name="M:saezuri.NLP.CBingSearch.Search(System.String,System.String)">
+            <summary>検索</summary>
+        </member>
+        <member name="P:saezuri.NLP.CBingSearch.AppID">
+            <summary>検索に利用するID</summary>
+        </member>
+        <member name="P:saezuri.NLP.CBingSearch.IsJapanOnly">
+            <summary>日本のサイトに限定するか</summary>
+        </member>
+        <member name="P:saezuri.NLP.CBingSearch.IsAdultFilter">
+            <summary>成人向けサイトフィルターを有効にするか</summary>
+        </member>
+        <member name="P:saezuri.NLP.CBingSearch.SearchCount">
+            <summary>検索件数</summary>
+        </member>
+        <member name="P:saezuri.NLP.CBingSearch.SearchOffset">
+            <summary>検索開始位置(0-1000)</summary>
+        </member>
+        <member name="T:saezuri.NLP.CBingSearch.CBingResult">
+            <summary>Bing Searchの結果</summary>
+        </member>
+        <member name="M:saezuri.NLP.CBingSearch.CBingResult.#ctor">
+            <summary>コンストラクタ</summary>
+        </member>
+        <member name="P:saezuri.NLP.CBingSearch.CBingResult.SearchString">
+            <summary>検索文字</summary>
+        </member>
+        <member name="P:saezuri.NLP.CBingSearch.CBingResult.Total">
+            <summary>
+            検索件数
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CBingSearch.CBingResult.Offset">
+            <summary>
+            取得開始位置(0-1000)
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CBingSearch.CBingResult.Results">
+            <summary>ページ取得結果</summary>
+        </member>
+        <member name="T:saezuri.NLP.CBingSearch.WebResult">
+            <summary>Bing Searchの結果(各サイト)</summary>
+        </member>
+        <member name="P:saezuri.NLP.CBingSearch.WebResult.Title">
+            <summary>タイトル</summary>
+        </member>
+        <member name="P:saezuri.NLP.CBingSearch.WebResult.Description">
+            <summary>説明</summary>
+        </member>
+        <member name="P:saezuri.NLP.CBingSearch.WebResult.Url">
+            <summary>URL</summary>
+        </member>
+        <member name="P:saezuri.NLP.CBingSearch.WebResult.CacheUrl">
+            <summary>キャッシュURL</summary>
+        </member>
+        <member name="P:saezuri.NLP.CBingSearch.WebResult.DisplayUrl">
+            <summary>DisplayURL</summary>
+        </member>
+        <member name="P:saezuri.NLP.CBingSearch.WebResult.DateTime">
+            <summary>日時</summary>
+        </member>
+        <member name="T:saezuri.NLP.CWebSearch">
+            <summary>
+            Webページ取得クラス
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CWebSearch.#ctor">
+            <summary>コンストラクタ</summary>
+        </member>
+        <member name="M:saezuri.NLP.CWebSearch.Search(System.String)">
+            <summary>
+            指定されたページの取得(マルチスレッド)
+            </summary>
+            <param name="url"></param>
+        </member>
+        <member name="M:saezuri.NLP.CWebSearch.Search(System.String[])">
+            <summary>
+            指定されたページの取得(マルチスレッド)
+            </summary>
+            <param name="urls"></param>
+        </member>
+        <member name="M:saezuri.NLP.CWebSearch.Search(saezuri.NLP.CBingSearch.CBingResult)">
+            <summary>
+            指定されたページの取得(マルチスレッド)
+            </summary>
+            <param name="searchResult"></param>
+        </member>
+        <member name="M:saezuri.NLP.CWebSearch.SearchSingleThread(saezuri.NLP.CBingSearch.CBingResult)">
+            <summary>
+            指定されたページの取得(シングルスレッド)
+            </summary>
+            <param name="searchResult"></param>
+        </member>
+        <member name="M:saezuri.NLP.CWebSearch.KeywordFilter(System.Collections.Generic.List{System.String},System.String,System.Boolean,System.Int32,System.Int32)">
+            <summary>
+            キーワードから抽出対象を選別する
+            </summary>
+            <param name="lines">対象</param>
+            <param name="Keyword">必要なキーワード</param>
+            <param name="needPeriod">文末に句点が必要か</param>
+            <param name="lenRangeMin">最低文字数(未使用時は-1を指定)</param>
+            <param name="lenRangeMax">最長文字数(未使用時は-1を指定)</param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.NLP.CWebSearch.KeywordFilter(System.Collections.Generic.List{System.String},System.String)">
+            <summary>
+            キーワードから抽出対象を選別する
+            </summary>
+            <param name="lines">対象</param>
+            <param name="Keyword">必要なキーワード</param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.NLP.CWebSearch.DivideLine(System.String)">
+            <summary>
+            HTMLから文を抽出
+            </summary>
+            <param name="html"></param>
+            <returns></returns>
+        </member>
+        <member name="P:saezuri.NLP.CWebSearch.Htmls">
+            <summary>取得できたHTML</summary>
+        </member>
+        <member name="P:saezuri.NLP.CWebSearch.Lines">
+            <summary>取得できた文</summary>
+        </member>
+        <member name="E:saezuri.NLP.CWebSearch.DownloadComplete">
+            <summary>
+            ダウンロード完了イベント
+            </summary>
+        </member>
+        <member name="T:saezuri.NLP.CWebSearch.DownloadCompleteEvent">
+            <summary>
+            ダウンロード完了イベント型
+            </summary>
+            <param name="sender"></param>
+        </member>
+        <member name="T:saezuri.plugin.CExercise">
+            <summary> 演習問題 </summary>
+        </member>
+        <member name="M:saezuri.plugin.CExercise.IsEqual(saezuri.plugin.CExercise,saezuri.plugin.CExercise)">
+            <summary>
+            ２つの問題が同じ問題かどうか
+            </summary>
+            <param name="_a"></param>
+            <param name="_b"></param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.plugin.CExercise.#ctor">
+            <summary>
+            コンストラクタ
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.CExercise.ID">
+            <summary>
+            ID
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.CExercise.ExaminationSentence">
+            <summary>
+            説明文上書き(CExerciseTypeによる説明を上書きする)
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.CExercise.QuestionType">
+            <summary>
+            設問タイプ
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.CExercise.QuestionTypeString">
+            <summary>
+            設問タイプ文字列
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.CExercise.Category">
+            <summary>
+            出題カテゴリ
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.CExercise.Limit">
+            <summary>
+            制限時間(秒)(0以下は無制限を意味する)
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.CExercise.PresentationSentence">
+            <summary>
+            提示文(穴埋め時は＜?＞で示す)
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.CExercise.ChoiceStrings">
+            <summary>
+            選択肢(単一選択式,複数選択式用,複数選択穴埋め式)
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.CExercise.OptionValue">
+            <summary>
+            オプション 
+            単一選択式 0=そのまま 1=選択肢をランダムに並び変える
+            複数選択穴埋め式 重複許可 1=選択肢をランダム＆重複選択未許可
+                2=選択肢をランダム＆重複選択許可 3=重複選択未許可 4=重複選択許可
+            複数自由穴埋め式 回答タイプ 1=回答の組み合わせがあっていれば良い 2=回答順序も正しく
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.CExercise.Answer">
+            <summary>
+            ユーザーの解答
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.CExercise.CorrectAnswer">
+            <summary>
+            正答
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.CExercise.PointOfBase">
+            <summary>
+            1問当たりの得点
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.CExercise.PointInALL">
+            <summary>
+            この設問は，すべて正解で得点か
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.CExercise.ORIGINAL">
+            <summary>
+            オリジナル文の係り受け解析
+            </summary>
+        </member>
+        <member name="T:saezuri.plugin.CExercise.QUESTIONTYPE">
+            <summary>設問タイプ</summary>
+        </member>
+        <member name="F:saezuri.plugin.CExercise.QUESTIONTYPE.MATCH">
+            <summary>正解文と完全一致</summary>
+        </member>
+        <member name="F:saezuri.plugin.CExercise.QUESTIONTYPE.CHOICE">
+            <summary>単一選択式 問題</summary>
+        </member>
+        <member name="F:saezuri.plugin.CExercise.QUESTIONTYPE.CHOICEMULTI">
+            <summary>複数選択式 問題</summary>
+        </member>
+        <member name="F:saezuri.plugin.CExercise.QUESTIONTYPE.FILLCHOICE">
+            <summary>複数選択穴埋め式 問題</summary>
+        </member>
+        <member name="F:saezuri.plugin.CExercise.QUESTIONTYPE.FILLWRITE">
+            <summary>複数記述穴埋め式 問題</summary>
+        </member>
+        <member name="F:saezuri.plugin.CExercise.QUESTIONTYPE.PLUGIN">
+            <summary>プラグインチェック</summary>
+        </member>
+        <member name="T:saezuri.plugin.CExerciseCategory">
+            <summary>問題カテゴリ</summary>
+        </member>
+        <member name="P:saezuri.plugin.CExerciseCategory.NONE">
+            <summary> 未使用時のダミー </summary>
+        </member>
+        <member name="P:saezuri.plugin.CExerciseCategory.ExaminationSentence">
+            <summary> 問題文 </summary>
+        </member>
+        <member name="P:saezuri.plugin.CExerciseCategory.PluginAssemblye">
+            <summary> プラグインアセンブリ </summary>
+        </member>
+        <member name="P:saezuri.plugin.CExerciseCategory.Type">
+            <summary>出題形式</summary>
+        </member>
+        <member name="P:saezuri.plugin.CExerciseCategory.TypeString">
+            <summary>出題形式表記</summary>
+        </member>
+        <member name="T:saezuri.NLP.CJuman">
+            <summary>Jumanを利用するクラス</summary>
+        </member>
+        <member name="M:saezuri.NLP.CJuman.AvailableCheck">
+            <summary>ツールの有効性のチェック</summary>
+        </member>
+        <member name="M:saezuri.NLP.CJuman.#cctor">
+            <summary>
+            静的コンストラクタ
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CJuman.#ctor">
+            <summary>
+            コンストラクタ
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CJuman.Analyze(System.String)">
+            <summary>
+            解析を実行
+            </summary>
+            <param name="_sentence">解析する文</param>
+            <returns>成功か失敗か</returns>
+        </member>
+        <member name="P:saezuri.NLP.CJuman.ExePath">
+            <summary>
+            実行ファイルパスの取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CJuman.RCPath">
+            <summary>
+            RCファイルがあれば，パス
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CJuman.Enabled">
+            <summary>
+            インスタンスが有効かどうかの取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CJuman.Version">
+            <summary>
+            バージョン
+            </summary>
+        </member>
+        <member name="T:saezuri.NLP.frmTextInput">
+            <summary>入力用テキストボックス</summary>
+        </member>
+        <member name="F:saezuri.NLP.frmTextInput.components">
+            <summary>
+            Required designer variable.
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.frmTextInput.Dispose(System.Boolean)">
+            <summary>
+            Clean up any resources being used.
+            </summary>
+            <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        </member>
+        <member name="M:saezuri.NLP.frmTextInput.InitializeComponent">
+            <summary>
+            Required method for Designer support - do not modify
+            the contents of this method with the code editor.
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.frmTextInput.#ctor">
+            <summary>コンストラクタ</summary>
+        </member>
+        <member name="P:saezuri.NLP.frmTextInput.Result">
+            <summary>テキスト</summary>
+        </member>
+        <member name="T:saezuri.NLP.CYahooDA">
+            <summary>Yahoo形態素解析を利用するクラス</summary>
+        </member>
+        <member name="M:saezuri.NLP.CYahooDA.AvailableCheck">
+            <summary>ツールの有効性のチェック</summary>
+        </member>
+        <member name="M:saezuri.NLP.CYahooDA.#cctor">
+            <summary>
+            静的コンストラクタ
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CYahooDA.#ctor(System.String)">
+            <summary>
+            コンストラクタ
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CYahooDA.Analyze(System.String)">
+            <summary>
+            解析を実行
+            </summary>
+            <param name="_sentence">解析する文</param>
+            <returns>成功か失敗か</returns>
+        </member>
+        <member name="P:saezuri.NLP.CYahooDA.SearviceURL">
+            <summary>
+            サービスURL
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CYahooDA.Enabled">
+            <summary>
+            インスタンスが有効かどうかの取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CYahooDA.ApplicationID">
+            <summary>
+            Yahoo アプリケーションID
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CYahooDA.Version">
+            <summary>
+            バージョン
+            </summary>
+        </member>
+        <member name="T:saezuri.NLP.CKNP">
+            <summary>KNPを利用するクラス</summary>
+        </member>
+        <member name="M:saezuri.NLP.CKNP.AvailableCheck">
+            <summary>ツールの有効性のチェック</summary>
+        </member>
+        <member name="M:saezuri.NLP.CKNP.#cctor">
+            <summary>
+            静的コンストラクタ
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CKNP.#ctor">
+            <summary>
+            コンストラクタ
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CKNP.Analyze(System.String)">
+            <summary>
+            解析を実行
+            </summary>
+            <param name="_sentence">解析する文</param>
+            <returns>成功か失敗か</returns>
+        </member>
+        <member name="P:saezuri.NLP.CKNP.ExePath">
+            <summary>
+            実行ファイルパスの取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CKNP.Enabled">
+            <summary>
+            インスタンスが有効かどうかの取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CKNP.Version">
+            <summary>
+            バージョン
+            </summary>
+        </member>
+        <member name="T:saezuri.plugin.POINTOUTLEVEL">
+            <summary>指摘レベル</summary>
+        </member>
+        <member name="F:saezuri.plugin.POINTOUTLEVEL.NULL">
+            <summary>未定</summary>
+        </member>
+        <member name="F:saezuri.plugin.POINTOUTLEVEL.LV0_DISABLE">
+            <summary>無効</summary>
+        </member>
+        <member name="F:saezuri.plugin.POINTOUTLEVEL.LV1_ATTENTION">
+            <summary>注意</summary>
+        </member>
+        <member name="F:saezuri.plugin.POINTOUTLEVEL.LV2_WARNING">
+            <summary>警告</summary>
+        </member>
+        <member name="F:saezuri.plugin.POINTOUTLEVEL.LV3_ERROR">
+            <summary>エラー</summary>
+        </member>
+        <member name="F:saezuri.plugin.POINTOUTLEVEL.INFORMATION">
+            <summary>情報</summary>
+        </member>
+        <member name="T:saezuri.plugin.CCheck">
+            <summary>校正・推敲の修正用クラス</summary>
+        </member>
+        <member name="M:saezuri.plugin.CCheck.#ctor">
+            <summary>
+            コンストラクタ
+            </summary>
+        </member>
+        <member name="M:saezuri.plugin.CCheck.IsEqual(saezuri.plugin.CCheck)">
+            <summary>
+            チェック結果(CCheck)の中身が同じものを指しているか
+            </summary>
+            <param name="_check"></param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.plugin.CCheck.DivideByRange">
+            <summary>
+            指定範囲が複数ある場合に，単独の指定範囲ごとに分割する(描画用のため，最低限のもののみ)
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="P:saezuri.plugin.CCheck.ID">
+            <summary>識別用のID</summary>
+        </member>
+        <member name="P:saezuri.plugin.CCheck.ForeColor">
+            <summary>色</summary>
+        </member>
+        <member name="P:saezuri.plugin.CCheck.ForeColorHTML">
+            <summary>HTML 文字色の取得</summary>
+        </member>
+        <member name="P:saezuri.plugin.CCheck.Level">
+            <summary>指摘レベル</summary>
+        </member>
+        <member name="P:saezuri.plugin.CCheck.Details">
+            <summary>詳細情報の取得・設定</summary>
+        </member>
+        <member name="P:saezuri.plugin.CCheck.DetailsPic">
+            <summary>詳細情報画像の取得・設定</summary>
+        </member>
+        <member name="P:saezuri.plugin.CCheck.Text">
+            <summary>この誤りを含む元の文の取得・設定</summary>
+        </member>
+        <member name="P:saezuri.plugin.CCheck.Message">
+            <summary>
+            メッセージの取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.CCheck.TargetRange">
+            <summary>ターゲット範囲</summary>
+        </member>
+        <member name="P:saezuri.plugin.CCheck.TargetText">
+            修正対象文字の取得・設定
+        </member>
+        <member name="P:saezuri.plugin.CCheck.TargetIsALL">
+            <summary>
+            対象はすべてかどうか
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.CCheck.CorrectionList">
+            <summary>
+            修正候補文字列リストの取得
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.CCheck.Role">
+            <summary>
+            役割が校正・推敲かその他か
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.CCheck.PluginAssembly">
+            <summary>
+            どのプラグインの結果かのアセンブリ名
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.CCheck.Enabled">
+            <summary>
+            このオブジェクトの有効・無効の管理用
+            </summary>
+        </member>
+        <member name="T:saezuri.plugin.CCheck.RangePosition">
+            <summary>
+            指摘位置を表すクラス
+            </summary>
+        </member>
+        <member name="M:saezuri.plugin.CCheck.RangePosition.#ctor(System.Int32,System.Int32)">
+            <summary>コンストラクタ</summary>
+        </member>
+        <member name="P:saezuri.plugin.CCheck.RangePosition.Start">
+            <summary>開始位置</summary>
+        </member>
+        <member name="P:saezuri.plugin.CCheck.RangePosition.Length">
+            <summary>長さ</summary>
+        </member>
+        <member name="P:saezuri.plugin.CCheck.RangePosition.End">
+            <summary>終了位置</summary>
+        </member>
+        <member name="T:saezuri.NLP.CSentenceView">
+            <summary>係り受け解析の結果を視覚化するクラス</summary>
+        </member>
+        <member name="M:saezuri.NLP.CSentenceView.#ctor(System.Windows.Forms.Panel,saezuri.NLP.CSentence)">
+            <summary>
+            コンストラクタ
+            </summary>
+            <param name="_canvas">描画先Panel</param>
+            <param name="_sentence">描画対象</param>
+        </member>
+        <member name="M:saezuri.NLP.CSentenceView.Dispose">
+            <summary>
+            破棄
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CSentenceView.Draw">
+            <summary>描画を実施</summary>
+        </member>
+        <member name="M:saezuri.NLP.CSentenceView.DrawImage(System.Drawing.Color)">
+            <summary>Bitmap形式で出力</summary>
+        </member>
+        <member name="M:saezuri.NLP.CSentenceView.Rebuild">
+            <summary>
+            ノードの画像を作り直す
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CSentenceView.DrawImage(saezuri.NLP.CSentence,System.Drawing.Color)">
+            <summary>
+            デフォルトの設定で画像を生成
+            </summary>
+            <param name="_sentence"></param>
+            <param name="_backColor"></param>
+            <returns></returns>
+        </member>
+        <member name="P:saezuri.NLP.CSentenceView.Canvas">
+            <summary>
+            描画するPanelコントロールの取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentenceView.Sentence">
+            <summary>
+            描画対象となるCSentence型の文の取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentenceView.Shape">
+            <summary>
+            ノードの形状の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentenceView.NodeSize">
+            <summary>
+            ノードの大きさの取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentenceView.NodeForeColor">
+            <summary>ノード文字色</summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentenceView.NodeColor">
+            <summary>ノードカラー</summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentenceView.LineColor">
+            <summary>ラインカラー</summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentenceView.LineWidth">
+            <summary>ライン幅</summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentenceView.IsLineCurve">
+            <summary>ラインタイプ</summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentenceView.EnabledDragDrop">
+            <summary>
+            ノードのドラッグ＆ドロップを可能にするか取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentenceView.EnabledDragDropMove">
+            <summary>
+            パネルのドラッグ＆ドロップによる表示位置の移動可否を取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentenceView.ParallelDrawMode">
+            <summary>
+            並列関係の描画モードの取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentenceView.PreviewSentence">
+            <summary>
+            文節位置操作後の文表記
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentenceView.PreviewVisible">
+            <summary>
+            文節位置操作後の文を表示するか
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentenceView.SCROLLX">
+            <summary>
+            スクロールによる座標差分
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentenceView.SCROLLY">
+            <summary>
+            スクロールによる座標差分
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSentenceView.NodeLabel">
+            <summary>
+             ノードラベル用Label
+            </summary>
+        </member>
+        <member name="T:saezuri.NLP.CSentenceView.NODESHAPE">
+            <summary>文節ノードの形状</summary>
+        </member>
+        <member name="F:saezuri.NLP.CSentenceView.NODESHAPE.CIRCLE">
+            <summary>円</summary>
+        </member>
+        <member name="F:saezuri.NLP.CSentenceView.NODESHAPE.SQUARE">
+            <summary>四角</summary>
+        </member>
+        <member name="F:saezuri.NLP.CSentenceView.NODESHAPE.BAR">
+            <summary>棒</summary>
+        </member>
+        <member name="F:saezuri.NLP.CSentenceView.NODESHAPE.NONE">
+            <summary>なし</summary>
+        </member>
+        <member name="T:saezuri.NLP.CSentenceView.PARALLELDRAW">
+            <summary>並列状態の描画方法</summary>
+        </member>
+        <member name="F:saezuri.NLP.CSentenceView.PARALLELDRAW.NORMAL">
+            <summary>結果をありのまま描画</summary>
+        </member>
+        <member name="F:saezuri.NLP.CSentenceView.PARALLELDRAW.PARALLE">
+            <summary>推測される係り先も描画</summary>
+        </member>
+        <member name="F:saezuri.NLP.CSentenceView.PARALLELDRAW.PARALLECHAIN">
+            <summary>推測される係り先を連鎖的に描画</summary>
+        </member>
+        <member name="T:saezuri.NLP.CSegment">
+            <summary>
+            文節クラス
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CSegment.#ctor(System.String,System.Int32,saezuri.NLP.TOOL)">
+            <summary>
+            コンストラクタ
+            </summary>
+            <param name="_information">文節の区切り情報</param>
+            <param name="_index">文節のインデックス番号</param>
+            <param name="_tool">使用するツール</param>
+        </member>
+        <member name="M:saezuri.NLP.CSegment.ModifyReBuild(saezuri.NLP.CSegment)">
+            <summary>
+            現在の状況から，modifyプロパティをセットする
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSegment.Index">
+            <summary>
+            文節番号
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSegment.Information">
+            <summary>
+            文節の区切り情報の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSegment.Modify">
+            <summary>
+            係り受け先文節の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSegment.ModifyIndex">
+            <summary>
+            係り受け先番号の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSegment.ModifiedList">
+            <summary>
+            係り受け元文節の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSegment.ModifiedIndexList">
+            <summary>
+            係り受け元番号の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSegment.ModifyLength">
+            <summary>
+            係り受け先までの文節間距離の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSegment.ModifyType">
+            <summary>
+            係り受けのタイプの取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSegment.ParallelDependList">
+            <summary>
+            並列関係による隠れた係り受け先リストの取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSegment.MorphemeList">
+            <summary>
+            文節を構成する形態素CWordのリストの取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSegment.MorphemeListCutPunctuation">
+            <summary>
+            文節を構成する形態素CWordのリスト(句読点除く)の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSegment.MorphemeFirst">
+            <summary>
+            CMorphemeListの最初の要素を取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSegment.MorphemeLast">
+            <summary>
+            WordListの最後の要素を取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSegment.WordList">
+            <summary>
+            文節を構成する単語CWordのリストの取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSegment.Text">
+            <summary>
+            文節表記の取得・設定
+            </summary>            
+        </member>
+        <member name="P:saezuri.NLP.CSegment.Read">
+            <summary>
+            読み(カナ)の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSegment.Pronunciation">
+            <summary>
+            発音の取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSegment.PosString">
+            <summary>
+            品詞-表記の取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSegment.Tag">
+            <summary>
+            汎用の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSegment.Next">
+            <summary>
+            この文節の次の文節
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSegment.Prev">
+            <summary>
+            この文節の前の文節
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSegment.Position">
+            <summary>
+            この文節の文中の開始位置
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSegment.CandidateModifyNum">
+            <summary>
+            係り受け候補
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSegment.ModifyedALLChains">
+            <summary>
+            この文節への係り元文節List
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSegment.ModifyedALLChainsExceptWhole">
+            <summary>
+            この文節への係り元文節List
+            </summary>
+        </member>
+        <member name="T:saezuri.plugin.CExerciseSet">
+            <summary>
+            問題セット
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.CExerciseSet.ID">
+            <summary>識別ID</summary>
+        </member>
+        <member name="P:saezuri.plugin.CExerciseSet.Infomation">
+            <summary>提示情報</summary>
+        </member>
+        <member name="P:saezuri.plugin.CExerciseSet.ExerciseList">
+            <summary>この問題集に含まれる問題リスト</summary>
+        </member>
+        <member name="P:saezuri.plugin.CExerciseSet.TotalLimitTime">
+            <summary>制限時間(秒)(0以下の場合は無制限を意味する)</summary>
+        </member>
+        <member name="P:saezuri.plugin.CExerciseSet.CanBack">
+            <summary>前の問題に戻れるかどうか(順番に解くことを強制)</summary>
+        </member>
+        <member name="P:saezuri.plugin.CExerciseSet.VisibleOfPoint">
+            <summary>得点関係の表示・非表示</summary>
+        </member>
+        <member name="P:saezuri.plugin.CExerciseSet.PassingMark">
+            <summary>合格点</summary>
+        </member>
+        <member name="P:saezuri.plugin.CExerciseSet.GameMode">
+            <summary>ハイスコアを狙うゲームモードのOn/Off</summary>
+        </member>
+        <member name="P:saezuri.plugin.CExerciseSet.User">
+            <summary>解答者</summary>
+        </member>
+        <member name="P:saezuri.plugin.CExerciseSet.TimeOfStart">
+            <summary>解答開始時間</summary>
+        </member>
+        <member name="P:saezuri.plugin.CExerciseSet.TimeOfEnd">
+            <summary>解答終了時間</summary>
+        </member>
+        <member name="P:saezuri.plugin.CExerciseSet.TotalPoint">
+            <summary>得点</summary>
+        </member>
+        <member name="T:saezuri.NLP.CClause">
+            <summary>
+            節クラス
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CClause.#ctor(saezuri.NLP.CSegment)">
+            <summary>コンストラクタ</summary>
+        </member>
+        <member name="M:saezuri.NLP.CClause.ContainCountUpdate">
+            <summary>含まれる節の数を更新する</summary>
+        </member>
+        <member name="P:saezuri.NLP.CClause.Frame">
+            <summary>
+            節の枠の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CClause.ContainCount">
+            <summary>
+            節の中にある節の数の取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CClause.Modify">
+            <summary>
+            係り受け先節の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CClause.ModifiedList">
+            <summary>
+            係り受け元節の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CClause.Type">
+            <summary>種別</summary>
+        </member>
+        <member name="P:saezuri.NLP.CClause.TypeString">
+            <summary>種別</summary>
+        </member>
+        <member name="P:saezuri.NLP.CClause.ClauseList">
+            <summary>節を構成する節</summary>
+        </member>
+        <member name="P:saezuri.NLP.CClause.SegmentList">
+            <summary>節を構成する文節</summary>
+        </member>
+        <member name="P:saezuri.NLP.CClause.ParentSegment">
+            <summary>節の基準となる文節</summary>
+        </member>
+        <member name="P:saezuri.NLP.CClause.Text">
+            <summary>節表記の取得</summary>            
+        </member>
+        <member name="P:saezuri.NLP.CClause.TextModified">
+            <summary>節表記の取得</summary>            
+        </member>
+        <member name="P:saezuri.NLP.CClause.Tag">
+            <summary>
+            汎用の取得・設定
+            </summary>
+        </member>
+        <member name="T:saezuri.NLP.CClause.CLAUSETYPE">
+            <summary>句の種別</summary>
+        </member>
+        <member name="F:saezuri.NLP.CClause.CLAUSETYPE.UNKNOWN">
+            <summary>未定義</summary>
+        </member>
+        <member name="F:saezuri.NLP.CClause.CLAUSETYPE.ADNOMINAL">
+            <summary>連体節</summary>
+        </member>
+        <member name="F:saezuri.NLP.CClause.CLAUSETYPE.ADVERBIAL">
+            <summary>副詞節</summary>
+        </member>
+        <member name="F:saezuri.NLP.CClause.CLAUSETYPE.NOMINAL_NOUN">
+            <summary>補足節-形式名詞</summary>
+        </member>
+        <member name="F:saezuri.NLP.CClause.CLAUSETYPE.NOMINAL_QUERY">
+            <summary>補足節-疑問</summary>
+        </member>
+        <member name="F:saezuri.NLP.CClause.CLAUSETYPE.NOMINAL_QUOTE">
+            <summary>補足節-引用</summary>
+        </member>
+        <member name="F:saezuri.NLP.CClause.CLAUSETYPE.NORMAL">
+            <summary>通常</summary>
+        </member>
+        <member name="T:saezuri.plugin.ROLETYPE">
+            <summary> プラグインの役割 </summary>
+        </member>
+        <member name="F:saezuri.plugin.ROLETYPE.OTHER">
+            <summary>その他</summary>
+        </member>
+        <member name="F:saezuri.plugin.ROLETYPE.PROOFREADING">
+            <summary>校正</summary>
+        </member>
+        <member name="F:saezuri.plugin.ROLETYPE.POLISH">
+            <summary>推敲</summary>
+        </member>
+        <member name="F:saezuri.plugin.ROLETYPE.COMMENT">
+            <summary>コメント</summary>
+        </member>
+        <member name="T:saezuri.plugin.CPluginInfo">
+            <summary>
+            プラグイン利用のためのクラス
+            </summary>
+        </member>
+        <member name="M:saezuri.plugin.CPluginInfo.#ctor(System.String,System.String)">
+            <summary>
+            PluginInfoクラスのコンストラクタ
+            </summary>
+            <param name="path">アセンブリファイルのパス</param>
+            <param name="cls">クラスの名前</param>
+        </member>
+        <member name="M:saezuri.plugin.CPluginInfo.FindPlugins(System.String)">
+            <summary>
+            有効なプラグインを探す
+            </summary>
+            <returns>有効なプラグインのPluginInfo配列</returns>
+        </member>
+        <member name="M:saezuri.plugin.CPluginInfo.CreateInstance">
+            <summary>
+            プラグインクラスのインスタンスを作成する
+            </summary>
+            <returns>プラグインクラスのインスタンス</returns>
+        </member>
+        <member name="M:saezuri.plugin.CPluginInfo.GetPluginByName(System.String,saezuri.plugin.IPlugin[])">
+            <summary>
+            指定されたプラグイン名のプラグインを返す
+            </summary>
+            <param name="AssemblyName"></param>
+            <param name="Plugins"></param>
+            <returns></returns>
+        </member>
+        <member name="P:saezuri.plugin.CPluginInfo.Location">
+            <summary>
+            アセンブリファイルのパス
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.CPluginInfo.ClassName">
+            <summary>
+            クラスの名前
+            </summary>
+        </member>
+        <member name="T:saezuri.plugin.IPlugin">
+            <summary>
+            プラグインで実装するインターフェイス
+            </summary>
+        </member>
+        <member name="M:saezuri.plugin.IPlugin.Check(saezuri.NLP.CSentence)">
+            <summary>
+            チェックを実行する
+            </summary>
+        </member>
+        <member name="M:saezuri.plugin.IPlugin.Check(saezuri.NLP.CParagraph)">
+            <summary>
+            段落のチェックを実行する
+            </summary>
+        </member>
+        <member name="M:saezuri.plugin.IPlugin.Check(saezuri.NLP.CDocument)">
+            <summary>
+            文全体のチェックを実行する
+            </summary>
+        </member>
+        <member name="M:saezuri.plugin.IPlugin.Exercise(saezuri.NLP.CSentence,System.Int32)">
+            <summary>
+            練習問題を生成する
+            </summary>       
+        </member>
+        <member name="M:saezuri.plugin.IPlugin.Exercise(System.Collections.Generic.List{saezuri.NLP.CSentence},System.Int32)">
+            <summary>
+            文全体の練習問題を生成する
+            </summary>       
+        </member>
+        <member name="M:saezuri.plugin.IPlugin.ShowSetupDialog">
+            <summary>
+            設定ダイアログを表示する
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.IPlugin.AssemblyName">
+            <summary>
+            プラグインのアセンブリ名
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.IPlugin.Name">
+            <summary>
+            プラグイン名
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.IPlugin.Description">
+            <summary>
+            プラグインの詳細説明
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.IPlugin.Enabled">
+            <summary>
+            プラグインの有効・無効
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.IPlugin.Help">
+            <summary>
+            プラグインの内容に関する教授情報
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.IPlugin.Version">
+            <summary>
+            プラグインのバージョン
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.IPlugin.EnabledCheck">
+            <summary>
+            チェック機能があるか
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.IPlugin.Role">
+            <summary>
+            このプラグインの役割
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.IPlugin.EnabledMistake">
+            <summary>
+            エラー生成機能があるか
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.IPlugin.ExerciseTypeList">
+            <summary>
+            練習問題タイプリスト
+            </summary>       
+        </member>
+        <member name="P:saezuri.plugin.IPlugin.HasSetupDialog">
+            <summary>
+            設定ダイアログがあるか
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.IPlugin.Tag">
+            <summary>
+            汎用データの取得と設定
+            </summary>
+        </member>
+        <member name="T:saezuri.plugin.IPluginBase">
+            <summary>
+            校正・推敲用プラグインのインタフェースを覆う抽象クラス
+            </summary>
+        </member>
+        <member name="M:saezuri.plugin.IPluginBase.#ctor">
+            <summary>コンストラクタ</summary>
+        </member>
+        <member name="M:saezuri.plugin.IPluginBase.Check(saezuri.NLP.CSentence)">
+            <summary>
+            文のチェックを実行する
+            </summary>
+        </member>
+        <member name="M:saezuri.plugin.IPluginBase.Check(saezuri.NLP.CParagraph)">
+            <summary>
+            段落のチェックを実行する
+            </summary>
+        </member>
+        <member name="M:saezuri.plugin.IPluginBase.Check(saezuri.NLP.CDocument)">
+            <summary>
+            文全体のチェックを実行する
+            </summary>
+        </member>
+        <member name="M:saezuri.plugin.IPluginBase.Exercise(saezuri.NLP.CSentence,System.Int32)">
+            <summary>
+            文の練習問題を生成する
+            </summary>       
+        </member>
+        <member name="M:saezuri.plugin.IPluginBase.Exercise(System.Collections.Generic.List{saezuri.NLP.CSentence},System.Int32)">
+            <summary>
+            文全体の練習問題を生成する
+            </summary>       
+        </member>
+        <member name="M:saezuri.plugin.IPluginBase.ShowSetupDialog">
+            <summary>
+            設定ダイアログを表示する
+            </summary>
+        </member>
+        <member name="M:saezuri.plugin.IPluginBase.Dispose">
+            <summary>
+            破棄される時の処理
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.IPluginBase.AssemblyName">
+            <summary>
+            プラグインのアセンブリ名
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.IPluginBase.Name">
+            <summary>
+            プラグイン名
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.IPluginBase.Description">
+            <summary>
+            プラグインの詳細説明
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.IPluginBase.Enabled">
+            <summary>
+            プラグインの有効・無効
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.IPluginBase.Help">
+            <summary>
+            プラグインの内容に関する教授情報
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.IPluginBase.Version">
+            <summary>
+            プラグインのバージョン
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.IPluginBase.Role">
+            <summary>
+            このプラグインの役割
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.IPluginBase.EnabledCheck">
+            <summary>
+            チェック機能があるか
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.IPluginBase.EnabledMistake">
+            <summary>
+            エラー生成機能があるか
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.IPluginBase.ExerciseTypeList">
+            <summary>
+            練習問題タイプリスト
+            </summary>       
+        </member>
+        <member name="P:saezuri.plugin.IPluginBase.HasSetupDialog">
+            <summary>
+            設定ダイアログがあるか
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.IPluginBase.Tag">
+            <summary>
+            汎用データの取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.IPluginBase.PluginFolder">
+            <summary>
+            プラグインファイルフォルダパス(get only)
+            </summary>
+        </member>
+        <member name="P:saezuri.plugin.IPluginBase.SettingFolder">
+            <summary>
+            プラグイン設定ファイルフォルダパス
+            </summary>
+        </member>
+        <member name="T:saezuri.NLP.CWord">
+            <summary>
+            単語
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CWord.#ctor">
+            <summary>コンストラクタ</summary>
+        </member>
+        <member name="M:saezuri.NLP.CWord.#ctor(saezuri.NLP.CWord.WORDTYPE,saezuri.NLP.CMorpheme)">
+            <summary>コンストラクタ</summary>
+        </member>
+        <member name="M:saezuri.NLP.CWord.#ctor(saezuri.NLP.CWord.WORDTYPE,saezuri.NLP.CMorpheme,saezuri.NLP.CMorpheme)">
+            <summary>コンストラクタ</summary>
+        </member>
+        <member name="M:saezuri.NLP.CWord.#ctor(saezuri.NLP.CWord.WORDTYPE,saezuri.NLP.CMorpheme,saezuri.NLP.CMorpheme,saezuri.NLP.CMorpheme)">
+            <summary>コンストラクタ</summary>
+        </member>
+        <member name="M:saezuri.NLP.CWord.#ctor(saezuri.NLP.CWord.WORDTYPE,System.Collections.Generic.List{saezuri.NLP.CMorpheme})">
+            <summary>コンストラクタ</summary>
+        </member>
+        <member name="M:saezuri.NLP.CWord.SetWordList(saezuri.NLP.CMorpheme)">
+            <summary>構成する形態素をセット</summary>
+        </member>
+        <member name="M:saezuri.NLP.CWord.SetWordList(saezuri.NLP.CMorpheme,saezuri.NLP.CMorpheme)">
+            <summary>構成する形態素をセット</summary>
+        </member>
+        <member name="M:saezuri.NLP.CWord.SetWordList(saezuri.NLP.CMorpheme,saezuri.NLP.CMorpheme,saezuri.NLP.CMorpheme)">
+            <summary>構成する形態素をセット</summary>
+        </member>
+        <member name="M:saezuri.NLP.CWord.SetWordList(System.Collections.Generic.List{saezuri.NLP.CMorpheme})">
+            <summary>構成する形態素をセット</summary>
+        </member>
+        <member name="P:saezuri.NLP.CWord.Text">
+            <summary>表記</summary>
+        </member>
+        <member name="P:saezuri.NLP.CWord.Read">
+            <summary>表記ヨミ</summary>
+        </member>
+        <member name="P:saezuri.NLP.CWord.TextBasis">
+            <summary>基本表記</summary>
+        </member>
+        <member name="P:saezuri.NLP.CWord.Type">
+            <summary>種別</summary>
+        </member>
+        <member name="P:saezuri.NLP.CWord.TypeString">
+            <summary>種別</summary>
+        </member>
+        <member name="P:saezuri.NLP.CWord.MorphemeList">
+            <summary>元になった形態素リスト</summary>
+        </member>
+        <member name="P:saezuri.NLP.CWord.Next">
+            <summary>次の単語</summary>
+        </member>
+        <member name="P:saezuri.NLP.CWord.Prev">
+            <summary>前の単語</summary>
+        </member>
+        <member name="T:saezuri.NLP.CWord.WORDTYPE">
+            <summary>単語の種別</summary>
+        </member>
+        <member name="F:saezuri.NLP.CWord.WORDTYPE.UNKNOWN">
+            <summary>未定義</summary>
+        </member>
+        <member name="F:saezuri.NLP.CWord.WORDTYPE.VERB">
+            <summary>動詞</summary>
+        </member>
+        <member name="F:saezuri.NLP.CWord.WORDTYPE.ADJECTIVE">
+            <summary>形容詞</summary>
+        </member>
+        <member name="F:saezuri.NLP.CWord.WORDTYPE.AUXILIARYVERB">
+            <summary>助動詞</summary>
+        </member>
+        <member name="F:saezuri.NLP.CWord.WORDTYPE.NOUN">
+            <summary>名詞</summary>
+        </member>
+        <member name="F:saezuri.NLP.CWord.WORDTYPE.INDEXICAL">
+            <summary>指示詞</summary>
+        </member>
+        <member name="F:saezuri.NLP.CWord.WORDTYPE.ADVERB">
+            <summary>副詞</summary>
+        </member>
+        <member name="F:saezuri.NLP.CWord.WORDTYPE.PARTICLE">
+            <summary>助詞</summary>
+        </member>
+        <member name="F:saezuri.NLP.CWord.WORDTYPE.ADNOMINAL">
+            <summary>連体詞</summary>
+        </member>
+        <member name="F:saezuri.NLP.CWord.WORDTYPE.CONJUNCTION">
+            <summary>接続詞</summary>
+        </member>
+        <member name="F:saezuri.NLP.CWord.WORDTYPE.INTERJECTION">
+            <summary>感動詞</summary>
+        </member>
+        <member name="F:saezuri.NLP.CWord.WORDTYPE.RELATIVEPRONOUN">
+            <summary>形式名詞</summary>
+        </member>
+        <member name="F:saezuri.NLP.CWord.WORDTYPE.SYMBOL">
+            <summary>記号</summary>
+        </member>
+        <member name="F:saezuri.NLP.CWord.WORDTYPE.OTHER">
+            <summary>その他</summary>
+        </member>
+        <member name="T:saezuri.NLP.frmDepend">
+            <summary>自然言語処理結果 GUI</summary>
+        </member>
+        <member name="F:saezuri.NLP.frmDepend.components">
+            <summary>
+            Required designer variable.
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.frmDepend.Dispose(System.Boolean)">
+            <summary>
+            Clean up any resources being used.
+            </summary>
+            <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        </member>
+        <member name="M:saezuri.NLP.frmDepend.InitializeComponent">
+            <summary>
+            Required method for Designer support - do not modify
+            the contents of this method with the code editor.
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.frmDepend.#ctor(saezuri.NLP.CSentence)">
+            <summary>コンストラクタ</summary>
+        </member>
+        <member name="M:saezuri.NLP.frmDepend.Reset(saezuri.NLP.CSentence)">
+            <summary>表示内容変更</summary>
+        </member>
+        <member name="T:saezuri.NLP.CkanjiSet">
+            <summary>
+            漢字セット
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CkanjiSet.#ctor">
+            <summary>コンストラクタ</summary>
+        </member>
+        <member name="M:saezuri.NLP.CkanjiSet.Find(System.Char)">
+            <summary>検索</summary>
+        </member>
+        <member name="M:saezuri.NLP.CkanjiSet.Find(System.String)">
+            <summary>検索</summary>
+        </member>
+        <member name="M:saezuri.NLP.CkanjiSet.FindRadical(System.Char)">
+            <summary>検索</summary>
+        </member>
+        <member name="M:saezuri.NLP.CkanjiSet.FindRadical(System.String)">
+            <summary>検索</summary>
+        </member>
+        <member name="M:saezuri.NLP.CkanjiSet.FindRadical(System.Int32)">
+            <summary>検索</summary>
+        </member>
+        <member name="M:saezuri.NLP.CkanjiSet.GetCommonKanjiSet">
+            <summary>常用漢字のセット</summary>
+        </member>
+        <member name="M:saezuri.NLP.CkanjiSet.GetCommonKanji">
+            <summary>常用漢字のセット</summary>
+        </member>
+        <member name="M:saezuri.NLP.CkanjiSet.Save">
+            <summary>保存</summary>
+        </member>
+        <member name="M:saezuri.NLP.CkanjiSet.Save(System.String)">
+            <summary>保存</summary>
+        </member>
+        <member name="M:saezuri.NLP.CkanjiSet.SaveBinary">
+            <summary>保存</summary>
+        </member>
+        <member name="M:saezuri.NLP.CkanjiSet.SaveBinary(System.String)">
+            <summary>保存</summary>
+        </member>
+        <member name="M:saezuri.NLP.CkanjiSet.Load(System.String)">
+            <summary>読み込み</summary>
+        </member>
+        <member name="M:saezuri.NLP.CkanjiSet.LoadBinary(System.String)">
+            <summary>読み込み</summary>
+        </member>
+        <member name="M:saezuri.NLP.CkanjiSet.LoadBinaryByte(System.Byte[])">
+            <summary>読み込み</summary>
+        </member>
+        <member name="M:saezuri.NLP.CkanjiSet.Load">
+            <summary>読み込み</summary>
+        </member>
+        <member name="P:saezuri.NLP.CkanjiSet.KanjiList">
+            <summary>漢字セット</summary>
+        </member>
+        <member name="P:saezuri.NLP.CkanjiSet.RadicalList">
+            <summary>部首セット</summary>
+        </member>
+        <member name="T:saezuri.NLP.CKanji">
+            <summary>漢字クラス</summary>
+        </member>
+        <member name="M:saezuri.NLP.CKanji.#ctor">
+            <summary>コンストラクタ</summary>
+        </member>
+        <member name="P:saezuri.NLP.CKanji.Text">
+            <summary>漢字表記</summary>
+        </member>
+        <member name="P:saezuri.NLP.CKanji.Stroke">
+            <summary>画数</summary>
+        </member>
+        <member name="P:saezuri.NLP.CKanji.LearnLv">
+            <summary>学習レベル(1～6:小学，7:中学，9:その他)</summary>
+        </member>
+        <member name="P:saezuri.NLP.CKanji.JISLv">
+            <summary>SJIS水準(1:第一水準，2:第二水準，9:その他)</summary>
+        </member>
+        <member name="P:saezuri.NLP.CKanji.IsCommon">
+            <summary>常用漢字かどうか</summary> 
+        </member>
+        <member name="P:saezuri.NLP.CKanji.Similar">
+            <summary>類似漢字</summary> 
+        </member>
+        <member name="P:saezuri.NLP.CKanji.RadicalID">
+            <summary>ID</summary>
+        </member>
+        <member name="P:saezuri.NLP.CKanji.Parts">
+            <summary>部品</summary>
+        </member>
+        <member name="P:saezuri.NLP.CKanji.OnS">
+            <summary>常用利用する音読みリスト</summary>
+        </member>
+        <member name="P:saezuri.NLP.CKanji.KunS">
+            <summary>常用利用する訓読みリスト</summary> 
+        </member>
+        <member name="P:saezuri.NLP.CKanji.On">
+            <summary>音読みリスト</summary>
+        </member>
+        <member name="P:saezuri.NLP.CKanji.Kun">
+            <summary>訓読みリスト</summary> 
+        </member>
+        <member name="T:saezuri.NLP.CRadical">
+            <summary>部首クラス</summary>
+        </member>
+        <member name="P:saezuri.NLP.CRadical.ID">
+            <summary>ID</summary>
+        </member>
+        <member name="P:saezuri.NLP.CRadical.Text">
+            <summary>表現文字</summary>
+        </member>
+        <member name="P:saezuri.NLP.CRadical.Read">
+            <summary>読み</summary>
+        </member>
+        <member name="P:saezuri.NLP.CRadical.Stroke">
+            <summary>画数</summary>
+        </member>
+        <member name="T:saezuri.NLP.CHomonymSet">
+            <summary>同音意義データクラス</summary>
+        </member>
+        <member name="M:saezuri.NLP.CHomonymSet.#ctor">
+            <summary>コンストラクタ</summary>
+        </member>
+        <member name="M:saezuri.NLP.CHomonymSet.Find(System.String)">
+            <summary>検索</summary>
+        </member>
+        <member name="M:saezuri.NLP.CHomonymSet.Save">
+            <summary>保存</summary>
+        </member>
+        <member name="M:saezuri.NLP.CHomonymSet.Save(System.String)">
+            <summary>保存</summary>
+        </member>
+        <member name="M:saezuri.NLP.CHomonymSet.SaveBinary">
+            <summary>保存</summary>
+        </member>
+        <member name="M:saezuri.NLP.CHomonymSet.SaveBinary(System.String)">
+            <summary>保存</summary>
+        </member>
+        <member name="M:saezuri.NLP.CHomonymSet.Load(System.String)">
+            <summary>読み込み</summary>
+        </member>
+        <member name="M:saezuri.NLP.CHomonymSet.LoadBinary(System.String)">
+            <summary>読み込み</summary>
+        </member>
+        <member name="M:saezuri.NLP.CHomonymSet.Load">
+            <summary>読み込み</summary>
+        </member>
+        <member name="P:saezuri.NLP.CHomonymSet.HomonymList">
+            <summary>同音意義セット</summary>
+        </member>
+        <member name="T:saezuri.NLP.CHomonym">
+            <summary>同音異義語クラス</summary>
+        </member>
+        <member name="M:saezuri.NLP.CHomonym.#ctor">
+            <summary>コンストラクタ</summary>
+        </member>
+        <member name="M:saezuri.NLP.CHomonym.ItemsExcept(System.String,System.Boolean)">
+            <summary>
+            指定した語を除いた同音リストを取得
+            </summary>
+            <param name="_Text">除きたい語</param>
+            <param name="_enableOnly">有効なものだけを取得するか</param>
+            <returns>同音リスト</returns>
+        </member>
+        <member name="M:saezuri.NLP.CHomonym.ItemsExcept(System.String)">
+            <summary>
+            指定した語を除いた同音リストをすべて取得
+            </summary>
+            <param name="_Text">除きたい語</param>
+            <returns>同音リスト</returns>
+        </member>
+        <member name="M:saezuri.NLP.CHomonym.ItemsTextExcept(System.String,System.Boolean)">
+            <summary>
+            指定した語を除いた同音リストを取得
+            </summary>
+            <param name="_Text">除きたい語</param>
+            <param name="_enableOnly">有効なものだけを取得するか</param>
+            <returns>同音リスト</returns>
+        </member>
+        <member name="M:saezuri.NLP.CHomonym.ItemsTextExcept(System.String)">
+            <summary>
+            指定した語を除いた同音リストをすべて取得
+            </summary>
+            <param name="_Text">除きたい語</param>
+            <returns>同音リスト</returns>
+        </member>
+        <member name="M:saezuri.NLP.CHomonym.Contains(System.String)">
+            <summary>
+            指定された語が含まれているか
+            </summary>
+            <param name="_Text"></param>
+            <returns></returns>
+        </member>
+        <member name="P:saezuri.NLP.CHomonym.Read">
+            <summary>読みカタカナ表記</summary>
+        </member>
+        <member name="P:saezuri.NLP.CHomonym.Items">
+            <summary>同音リスト</summary>
+        </member>
+        <member name="P:saezuri.NLP.CHomonym.Enabled">
+            <summary>使用するか</summary>
+        </member>
+        <member name="T:saezuri.NLP.CHomonym.CHomonymOne">
+            <summary>同音語</summary>
+        </member>
+        <member name="M:saezuri.NLP.CHomonym.CHomonymOne.#ctor">
+            <summary>コンストラクタ</summary>
+        </member>
+        <member name="P:saezuri.NLP.CHomonym.CHomonymOne.Text">
+            <summary>表記</summary>
+        </member>
+        <member name="P:saezuri.NLP.CHomonym.CHomonymOne.Mean">
+            <summary>意味</summary>
+        </member>
+        <member name="P:saezuri.NLP.CHomonym.CHomonymOne.Enabled">
+            <summary>使用するか</summary>
+        </member>
+        <member name="T:saezuri.NLP.CClauseView">
+            <summary>節関係を視覚化するクラス</summary>
+        </member>
+        <member name="M:saezuri.NLP.CClauseView.#ctor(System.Windows.Forms.Panel,saezuri.NLP.CSentence)">
+            <summary>
+            コンストラクタ
+            </summary>
+            <param name="_canvas">描画先Panel</param>
+            <param name="_sentence">描画対象</param>
+        </member>
+        <member name="M:saezuri.NLP.CClauseView.Dispose">
+            <summary>
+            破棄
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CClauseView.Draw">
+            <summary>描画を実施</summary>
+        </member>
+        <member name="M:saezuri.NLP.CClauseView.DrawImage(System.Drawing.Color)">
+            <summary>Bitmap形式で出力</summary>
+        </member>
+        <member name="M:saezuri.NLP.CClauseView._FrameRebuild(saezuri.NLP.CClause,System.Int32,System.Drawing.Font,System.Drawing.Graphics)">
+            <summary> 節の枠を決定する </summary>
+        </member>
+        <member name="M:saezuri.NLP.CClauseView._FrameRebuild(saezuri.NLP.CClause,System.Int32)">
+            <summary> 節の枠をの開始位置を更新する(再描画用) </summary>
+        </member>
+        <member name="M:saezuri.NLP.CClauseView._FrameMaxTop(saezuri.NLP.CClause,System.Int32)">
+            <summary> 最大の高さを取得する </summary>
+        </member>
+        <member name="M:saezuri.NLP.CClauseView._FrameMaxTop2(saezuri.NLP.CClause,System.Int32)">
+            <summary> 最大の高さを取得する </summary>
+        </member>
+        <member name="M:saezuri.NLP.CClauseView.Rebuild">
+            <summary> ノードの画像を作り直す </summary>
+        </member>
+        <member name="M:saezuri.NLP.CClauseView.DrawImage(saezuri.NLP.CSentence,System.Drawing.Color)">
+            <summary>
+            デフォルトの設定で画像を生成
+            </summary>
+            <param name="_sentence"></param>
+            <param name="_backColor"></param>
+            <returns></returns>
+        </member>
+        <member name="P:saezuri.NLP.CClauseView.Canvas">
+            <summary>
+            描画するPanelコントロールの取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CClauseView.Sentence">
+            <summary>
+            描画対象となるCSentence型の文の取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CClauseView.NodeSize">
+            <summary>
+            ノードの大きさの取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CClauseView.NodeForeColor">
+            <summary>ノード文字色</summary>
+        </member>
+        <member name="P:saezuri.NLP.CClauseView.NodeColor">
+            <summary>ノードカラー</summary>
+        </member>
+        <member name="P:saezuri.NLP.CClauseView.LineColor">
+            <summary>ラインカラー</summary>
+        </member>
+        <member name="P:saezuri.NLP.CClauseView.LineWidth">
+            <summary>ライン幅</summary>
+        </member>
+        <member name="P:saezuri.NLP.CClauseView.LineClauseColor">
+            <summary>ライン節カラー</summary>
+        </member>
+        <member name="P:saezuri.NLP.CClauseView.LineClauseWidth">
+            <summary>ライン節幅</summary>
+        </member>
+        <member name="P:saezuri.NLP.CClauseView.ClauseForeColor">
+            <summary>節文字色</summary>
+        </member>
+        <member name="P:saezuri.NLP.CClauseView.EnabledDragDropMove">
+            <summary>
+            パネルのドラッグ＆ドロップによる表示位置の移動可否を取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CClauseView.IsDrawModifyLine">
+            <summary>係り受けを描画するかどうか</summary>
+        </member>
+        <member name="P:saezuri.NLP.CClauseView.IsDrawClauseLine">
+            <summary>節の枠や係り受けを描画するかどうか</summary>
+        </member>
+        <member name="P:saezuri.NLP.CClauseView.IsDrawClauseName">
+            <summary>節名を描画するかどうか</summary>
+        </member>
+        <member name="P:saezuri.NLP.CClauseView.SCROLLX">
+            <summary>
+            スクロールによる座標差分
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CClauseView.SCROLLY">
+            <summary>
+            スクロールによる座標差分
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CClauseView.NodeLabel">
+            <summary>
+             ノードラベル用Label
+            </summary>
+        </member>
+        <member name="T:saezuri.NLP.CCabocha">
+            <summary>cabocha</summary>
+        </member>
+        <member name="M:saezuri.NLP.CCabocha.AvailableCheck">
+            <summary>
+            Mecabが使用可能かどうかをチェックする．
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.NLP.CCabocha.UTF8Check">
+            <summary>UTF8の辞書を使用しているかチェック</summary>
+        </member>
+        <member name="M:saezuri.NLP.CCabocha.#cctor">
+            <summary>
+            静的コンストラクタ
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CCabocha.#ctor">
+            <summary>
+            コンストラクタ
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CCabocha.Analyze(System.String)">
+            <summary>
+            解析を実行
+            </summary>
+            <param name="_sentence">解析する文</param>
+            <returns>成功か失敗か</returns>
+        </member>
+        <member name="M:saezuri.NLP.CCabocha.ReAnalyze(System.String,System.String)">
+            <summary>再解析</summary>
+        </member>
+        <member name="P:saezuri.NLP.CCabocha.ExePath">
+            <summary>
+            実行ファイルパスの取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CCabocha.RCPath">
+            <summary>
+            RCファイルがあれば，パス
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CCabocha.Enabled">
+            <summary>
+            インスタンスが有効かどうかの取得
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CCabocha.Version">
+            <summary>
+            バージョン
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CCabocha.UseUTF8">
+            <summary>UTF8の辞書を使用しているか(read only)</summary>
+        </member>
+        <member name="T:saezuri.CUtility">
+            <summary>
+            ユーティリティクラス
+            </summary>
+        </member>
+        <member name="M:saezuri.CUtility.SortByValue``2(System.Collections.Generic.IDictionary{``0,``1},System.Boolean)">
+            <summary>
+            Dictionary型を値でソートする．
+            </summary>
+            <typeparam name="TKey"></typeparam>
+            <typeparam name="TValue"></typeparam>
+            <param name="dict">ソート対象</param>
+            <param name="isAscending">昇順かどうか</param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.CUtility.InputBox(System.String,System.String)">
+            <summary>
+            InputBox
+            </summary>
+            <param name="message"></param>
+            <param name="title"></param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.CUtility.SaveData(System.String,System.Object)">
+            <summary>
+            引数のオブジェクトをXML化して保存する
+            </summary>
+            <param name="_filename">書き込み対象ファイル名(プラグイン名.xmlなど)</param>
+            <param name="_data">書き込むデータ</param>
+            <returns>書き込みに成功したかどうか</returns>
+        </member>
+        <member name="M:saezuri.CUtility.LoadData``1(System.String)">
+            <summary>
+            指定した型のデータとしてXMLの内容を読み込む
+            </summary>
+            <typeparam name="T">XMLに保存されている型</typeparam>
+            <param name="_filename">読み込み対象ファイル名(プラグイン名.xmlなど)</param>
+            <returns>読み込まれたデータ</returns>
+        </member>
+        <member name="M:saezuri.CUtility.SaveDataBinary(System.String,System.Object)">
+            <summary>
+            指定オブジェクトをバイナリで保存する
+            </summary>
+            <param name="_filename"></param>
+            <param name="_data"></param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.CUtility.LoadDataBinary``1(System.String)">
+            <summary>
+            指定オブジェクトをバイナリから読み込む
+            </summary>
+            <param name="_filename"></param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.CUtility.CopyDirectory(System.String,System.String)">
+            <summary>
+            ディレクトリのコピー
+            </summary>
+            <param name="sourceFileName"></param>
+            <param name="destFileName"></param>
+        </member>
+        <member name="M:saezuri.CUtility.ZipCompression(System.String,System.Collections.Generic.List{System.String})">
+            <summary>
+            ファイルのZIP圧縮
+            </summary>
+            <param name="_zipfile"></param>
+            <param name="_fileList"></param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.CUtility.ZipDirectoryCompression(System.String,System.String)">
+            <summary>
+            ディレクトリのZIP圧縮
+            </summary>
+            <param name="_zipfile"></param>
+            <param name="_folder"></param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.CUtility.ZipExtraction(System.String,System.String)">
+            <summary>
+            ZIPファイルの解凍
+            </summary>
+            <param name="_zipfile"></param>
+            <param name="_folder"></param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.CUtility.ConvertPasswordForStorage(System.String)">
+            <summary>
+            パスワードの暗号化
+            </summary>
+            <param name="Password">暗号元パスワード</param>
+            <returns>暗号済みパスワード</returns>
+        </member>
+        <member name="P:saezuri.CUtility.Is64bitOS">
+            <summary>
+            64bitOSかどうか
+            </summary>
+        </member>
+        <member name="P:saezuri.CUtility.ColorList">
+            <summary>色リスト</summary>
+        </member>
+        <member name="T:saezuri.CUtility.ColorName">
+            <summary>カラー名列挙</summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Black">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.White">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.DimGray">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Gray">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.DarkGray">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Silver">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.LightGray">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Gainsboro">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.WhiteSmoke">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Maroon">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.DarkRed">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Red">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Brown">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Firebrick">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.IndianRed">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Snow">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.LightCoral">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.RosyBrown">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.MistyRose">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Salmon">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Tomato">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.DarkSalmon">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Coral">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.OrangeRed">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.LightSalmon">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Sienna">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.SeaShell">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Chocolate">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.SaddleBrown">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.SandyBrown">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.PeachPuff">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Peru">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Linen">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Bisque">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.DarkOrange">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.BurlyWood">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Tan">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.AntiqueWhite">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.NavajoWhite">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.BlanchedAlmond">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.PapayaWhip">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Moccasin">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Orange">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Wheat">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.OldLace">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.FloralWhite">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.DarkGoldenrod">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Goldenrod">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Cornsilk">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Gold">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Khaki">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.LemonChiffon">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.PaleGoldenrod">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.DarkKhaki">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Beige">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.LightGoldenrodYellow">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Olive">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Yellow">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.LightYellow">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Ivory">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.OliveDrab">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.YellowGreen">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.DarkOliveGreen">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.GreenYellow">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Chartreuse">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.LawnGreen">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.DarkSeaGreen">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.LightGreen">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.ForestGreen">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.LimeGreen">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.PaleGreen">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.DarkGreen">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Green">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Lime">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Honeydew">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.SeaGreen">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.MediumSeaGreen">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.SpringGreen">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.MintCream">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.MediumSpringGreen">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.MediumAquamarine">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Aquamarine">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Turquoise">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.LightSeaGreen">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.MediumTurquoise">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.DarkSlateGray">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.PaleTurquoise">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Teal">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.DarkCyan">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Cyan">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Aqua">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.LightCyan">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Azure">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.DarkTurquoise">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.CadetBlue">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.PowderBlue">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.LightBlue">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.DeepSkyBlue">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.SkyBlue">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.LightSkyBlue">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.SteelBlue">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.AliceBlue">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.DodgerBlue">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.SlateGray">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.LightSlateGray">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.LightSteelBlue">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.CornflowerBlue">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.RoyalBlue">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.MidnightBlue">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Lavender">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Navy">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.DarkBlue">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.MediumBlue">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Blue">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.GhostWhite">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.SlateBlue">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.DarkSlateBlue">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.MediumSlateBlue">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.MediumPurple">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.BlueViolet">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Indigo">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.DarkOrchid">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.DarkViolet">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.MediumOrchid">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Thistle">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Plum">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Violet">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Purple">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.DarkMagenta">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Fuchsia">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Magenta">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Orchid">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.MediumVioletRed">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.DeepPink">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.HotPink">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.LavenderBlush">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.PaleVioletRed">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Crimson">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.Pink">
+            <summary></summary>
+        </member>
+        <member name="F:saezuri.CUtility.ColorName.LightPink">
+            <summary></summary>
+        </member>
+        <member name="T:saezuri.NLP.TOOL">
+            <summary>ツール名</summary>
+        </member>
+        <member name="F:saezuri.NLP.TOOL.NONE">
+            <summary>none</summary>
+        </member>
+        <member name="F:saezuri.NLP.TOOL.CHASEN">
+            <summary>chasen</summary>
+        </member>
+        <member name="F:saezuri.NLP.TOOL.MECAB">
+            <summary>mecab</summary>
+        </member>
+        <member name="F:saezuri.NLP.TOOL.CABOCHA">
+            <summary>cabocha</summary>
+        </member>
+        <member name="F:saezuri.NLP.TOOL.JUMAN">
+            <summary>juman</summary>
+        </member>
+        <member name="F:saezuri.NLP.TOOL.KNP">
+            <summary>knp</summary>
+        </member>
+        <member name="F:saezuri.NLP.TOOL.YAHOO_MA">
+            <summary>yahoo_ma</summary>
+        </member>
+        <member name="F:saezuri.NLP.TOOL.YAHOO_DA">
+            <summary>yahoo_da</summary>
+        </member>
+        <member name="T:saezuri.NLP.DependencyTYPE">
+            <summary>係り受けタイプ</summary>
+        </member>
+        <member name="F:saezuri.NLP.DependencyTYPE.OTHER">
+            <summary>その他</summary>
+        </member>
+        <member name="F:saezuri.NLP.DependencyTYPE.DEPENDENCY">
+            <summary>係り受け</summary>
+        </member>
+        <member name="F:saezuri.NLP.DependencyTYPE.PARATAXIS">
+            <summary>並列</summary>
+        </member>
+        <member name="F:saezuri.NLP.DependencyTYPE.APPOSITION">
+            <summary>同格</summary>
+        </member>
+        <member name="T:saezuri.NLP.CNLP">
+            <summary>
+            NLP関連のユーティリティクラス
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.ReadFile(System.String)">
+            <summary>
+            文字コード・改行コードを自動判定してテキストを読み込む
+            </summary>
+            <param name="filename"></param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.ReadFileLines(System.String)">
+            <summary>
+            文字コード・改行コードを自動判定してテキストを読み込む
+            </summary>
+            <param name="filename"></param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.OpenDialog">
+            <summary>ファイルを開く</summary>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.SaveHtml(System.Collections.Generic.List{saezuri.NLP.CSentence},System.String,System.Boolean,System.Boolean,System.Boolean)">
+            <summary>mhtml 出力</summary>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.SaveSentenceViewImage(saezuri.NLP.CSentence)">
+            <summary>係り受け画像 出力</summary>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.SaveSentenceViewImage(saezuri.NLP.CSentence,System.String,System.Drawing.Color)">
+            <summary>係り受け画像 出力</summary>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.SaveClauseViewImage(saezuri.NLP.CSentence)">
+            <summary>係り受け節画像 出力</summary>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.SaveClauseViewImage(saezuri.NLP.CSentence,System.String,System.Drawing.Color)">
+            <summary>係り受け節画像 出力</summary>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.SaveTreeViewImage(saezuri.NLP.CSentence)">
+            <summary>係り受け節画像 出力</summary>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.SaveTreeViewImage(saezuri.NLP.CSentence,System.String,System.Drawing.Color)">
+            <summary>係り受け節画像 出力</summary>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.GetCharacterCode(System.String)">
+            <summary>
+            文字コードを判別する
+            </summary>
+            <remarks>
+            Jcode.pmのgetcodeメソッドを移植したものです。
+            Jcode.pm(http://openlab.ring.gr.jp/Jcode/index-j.html)
+            Jcode.pmのCopyright: Copyright 1999-2005 Dan Kogai
+            </remarks>
+            <param name="filename">文字コードを調べるファイル</param>
+            <returns>適当と思われるEncodingオブジェクト。
+            判断できなかった時はnull。</returns>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.GetCharacterCode(System.Byte[])">
+            <summary>
+            文字コードを判別する
+            </summary>
+            <param name="bytes">文字コードを調べるバイト列</param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.StrConvKata2Hira(System.String)">
+            <summary>
+            文字列をカタカナからひらがなへ変換
+            </summary>
+            <param name="_str">変換対象の文字列</param>
+            <returns>変換後の文字列</returns>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.StrConvHira2Kata(System.String)">
+            <summary>
+            文字列をひらがなからカタカナへ変換
+            </summary>
+            <param name="_str">変換対象の文字列</param>
+            <returns>変換後の文字列</returns>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.StrConvHalf2Wide(System.String)">
+            <summary>
+            半角文字を全角文字に変換する
+            </summary>
+            <param name="_str">変換対象の文字列</param>
+            <returns>変換後の文字列</returns>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.StrConvWide2Half(System.String)">
+            <summary>
+            全角文字を半角文字に変換する
+            </summary>
+            <param name="_str">変換対象の文字列</param>
+            <returns>変換後の文字列</returns>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.StrConvKata2Roma(System.String)">
+            <summary>
+            カタカナからローマ字へ
+            </summary>
+            <param name="str"></param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.StrConvHira2Roma(System.String)">
+            <summary>
+            ひらがなからローマ字へ
+            </summary>
+            <param name="str"></param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.IsKatakana(System.String)">
+            <summary>
+            カタカナかどうか
+            </summary>
+            <param name="_str"></param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.IsHiragana(System.String)">
+             <summary>
+            ひらがなかどうか
+             </summary>
+             <param name="_str"></param>
+             <returns></returns>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.IsKanji(System.String)">
+             <summary>
+            漢字かどうか
+             </summary>
+             <param name="_str"></param>
+             <returns></returns>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.GetKanjiRate(System.String)">
+            <summary>漢字含有率</summary>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.GetKanjiContentList(System.String)">
+            <summary>漢字使用種別の取得</summary>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.GetHiraganaContentList(System.String)">
+            <summary>ひらがな種別の取得</summary>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.GetKatakanaContentList(System.String)">
+            <summary>カタカナ種別の取得</summary>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.GetUNIgram(System.Collections.Generic.List{System.String})">
+            <summary>Uni-gram取得</summary>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.GetUNIgram(System.String)">
+            <summary>Uni-gram取得</summary>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.GetBIgram(System.Collections.Generic.List{System.String})">
+            <summary>Bi-gram取得</summary>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.GetBIgram(System.String)">
+            <summary>Bi-gram取得</summary>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.GetTRIgram(System.Collections.Generic.List{System.String})">
+            <summary>Tri-gram取得</summary>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.GetTRIgram(System.String)">
+            <summary>Tri-gram取得</summary>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.GetNgram(System.Int32,System.Collections.Generic.List{System.String})">
+            <summary>N-gram取得</summary>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.GetNgram(System.Int32,System.String)">
+            <summary>N-gram取得</summary>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.GetTFIDF(saezuri.NLP.CDocument,System.Collections.Generic.List{saezuri.NLP.CDocument},System.Boolean)">
+            <summary>
+            TF-IDF値を求める
+            </summary>
+            <param name="target">キーワード候補を含む文書</param>
+            <param name="docs">全文書</param>
+            <param name="useMorpheme">形態素か単語か(単語はCabochaを使用する必要あり)</param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.GetTFIDFWeb(System.String,saezuri.NLP.CDocument,System.Boolean)">
+            <summary>
+            Web検索を利用したTF-IDF値を求める
+            </summary>
+            <param name="BingAppID">Bing API用のAppID</param>
+            <param name="target">キーワード候補を含む文書</param>
+            <param name="useMorpheme">形態素か単語か(単語はCabochaを使用する必要あり)</param>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.NLP.CNLP.GetTFIDFWeb(System.String,saezuri.NLP.CDocument,System.Int64,System.Boolean)">
+            <summary>
+            Web検索を利用したTF-IDF値を求める
+            </summary>
+            <param name="BingAppID">Bing API用のAppID</param>
+            <param name="target">キーワード候補を含む文書</param>
+            <param name="docNum">総文書数(0指定でデフォルト12億)</param>
+            <param name="useMorpheme">形態素か単語か(単語はCabochaを使用する必要あり)</param>
+            <returns></returns>
+        </member>
+        <member name="P:saezuri.NLP.CNLP.CODE_JIS">
+            <summary>文字コード - JIS</summary>
+        </member>
+        <member name="P:saezuri.NLP.CNLP.CODE_SJIS">
+            <summary>文字コード - SJIS</summary>
+        </member>
+        <member name="P:saezuri.NLP.CNLP.CODE_UTF8">
+            <summary>文字コード - UTF-8</summary>
+        </member>
+        <member name="P:saezuri.NLP.CNLP.CODE_EUC">
+            <summary>文字コード - EUC</summary>
+        </member>
+        <member name="P:saezuri.NLP.CNLP.CODE_UNICODE">
+            <summary>文字コード - UNICODE</summary>
+        </member>
+        <member name="T:saezuri.NLP.CMorpheme">
+            <summary>
+            形態素クラス
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CMorpheme.#ctor">
+            <summary>
+            コンストラクタ
+            </summary>
+        </member>
+        <member name="M:saezuri.NLP.CMorpheme.#ctor(System.String,System.String,System.String,System.String,System.String,System.String)">
+            <summary>
+            コンストラクタ
+            </summary>
+            <param name="_word">表記</param>
+            <param name="_read">読み(カナ)</param>
+            <param name="_basis">基本形</param>
+            <param name="_pos">品詞-品詞細分類1-品詞細分類2-品詞細分類3</param>
+            <param name="_type">活用型</param>
+            <param name="_forms">活用形</param>
+        </member>
+        <member name="M:saezuri.NLP.CMorpheme.#ctor(System.String,saezuri.NLP.TOOL)">
+            <summary>
+            コンストラクタ
+            </summary>
+            <param name="_line">Chasen or Mecabの形態素 一行</param>
+            <param name="_tool">使用するツール</param>
+        </member>
+        <member name="M:saezuri.NLP.CMorpheme.Clone">
+            <summary>
+            複製する
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:saezuri.NLP.CMorpheme.Copy">
+            <summary>
+            複製する
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="P:saezuri.NLP.CMorpheme.Text">
+            <summary>
+            表記の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CMorpheme.Read">
+            <summary>
+            読み(カナ)の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CMorpheme.Basis">
+            <summary>
+            基本形の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CMorpheme.BasicRead">
+            <summary>
+            基本形の平仮名ヨミ(推定値のため信憑性なしの値です)失敗すると，Readプロパティの値を返します．
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CMorpheme.Pronunciation">
+            <summary>
+            発音(Mecabのみ)の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CMorpheme.Pos">
+            <summary>品詞の取得</summary>
+        </member>
+        <member name="P:saezuri.NLP.CMorpheme.Pos1">
+            <summary>品詞細分類1の取得</summary>
+        </member>
+        <member name="P:saezuri.NLP.CMorpheme.Pos2">
+            <summary>品詞細分類2の取得</summary>
+        </member>
+        <member name="P:saezuri.NLP.CMorpheme.Pos3">
+            <summary>品詞細分類3の取得</summary>
+        </member>
+        <member name="P:saezuri.NLP.CMorpheme.PosString">
+            <summary>
+            品詞-表記の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CMorpheme.InflectedForms">
+            <summary>
+            活用形(未然形・連用形等)の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CMorpheme.InflectedType">
+            <summary>
+            活用型(五段～等)の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CMorpheme.Supplement">
+            <summary>
+            補足情報の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CMorpheme.Tag">
+            <summary>
+            汎用の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CMorpheme.Parent">
+            <summary>
+            この語を含む文節の取得・設定
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CMorpheme.Next">
+            <summary>
+            この語の次の形態素
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CMorpheme.Prev">
+            <summary>
+            この語の前の形態素
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CMorpheme.Position">
+            <summary>
+            この語の文中の開始位置
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CMorpheme.SubMorpheme">
+            <summary>
+            形態素サブ要素
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="T:saezuri.NLP.CSubMorpheme">
+            <summary>
+            形態素サブ
+            </summary>
+        </member>
+        <member name="P:saezuri.NLP.CSubMorpheme.Text">
+            <summary>表記</summary>
+        </member>
+        <member name="P:saezuri.NLP.CSubMorpheme.Read">
+            <summary>よみ</summary>
+        </member>
+        <member name="P:saezuri.NLP.CSubMorpheme.IsKanji">
+            <summary>使用学年</summary>
+        </member>
+    </members>
+</doc>

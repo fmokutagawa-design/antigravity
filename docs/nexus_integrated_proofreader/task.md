@@ -1,0 +1,12 @@
+- [x] textlint 基盤のセットアップ (`.textlintrc.js`, 依存パッケージのインストール)
+- [x] LanguageTool/RedPen ルールの移植 (`nexus-integrated-rules.js`)
+    - [x] 読点数チェック (RedPen)
+    - [x] 二重否定チェック (LanguageTool)
+    - [x] 冗長表現「ことができる」チェック (LanguageTool)
+    - [x] 助詞の誤用「お」->「を」チェック (LanguageTool)
+- [x] Tomarigi 辞書の prh 形式への変換 (`convert_tomarigi_to_prh.py`)
+- [x] textlint と Electron の統合
+    - [x] メインプロセス IPC ハンドラ (`textlintMain.cjs`)
+    - [x] プリロード API 公開 (`preload.cjs`)
+    - [x] フロントエンドサービス (`textlintService.js`)
+- [x] 動作検証 (テストスクリプトによる実動作確認、全ルール発火確認)

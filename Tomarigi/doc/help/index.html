@@ -1,0 +1,237 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html lang="ja" xml:lang="ja" xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta content="text/html; charset=UTF-8" http-equiv="Content-Type" />
+<meta content="text/css" http-equiv="Content-Style-Type" />
+<link href="base.css" rel="stylesheet" type="text/css" />
+<title>Tomarigi & saezuri HELP</title>
+<style type="text/css">
+.auto-style1 {
+	color: #800000;
+}
+.auto-style3 {
+	color: #808080;
+}
+</style>
+</head>
+
+<body>
+
+<div id="top">
+	<div id="header">
+		<div style="height: 60px; font-weight: bold;">
+			<br />
+			Tomarigi &amp; saezuri HELP<br />
+		</div>
+	</div>
+	<!-- header end -->
+	<div id="menu">
+		<ul>
+			<li class="home"><a class="active" href="index.html">ホーム</a></li>
+			<li><a href="tomarigi.html">Tomarigi</a></li>
+			<li><a href="saezuri.html">saezuri(言語解析)</a></li>
+			<li><a href="check.html">saezuri(校正推敲)</a></li>
+			<li><a href="about.html">利用にあたって</a></li>
+		</ul>
+	</div>
+	<!-- menu end -->
+	<div id="contents">
+		<div id="main">
+			<a name="Tomarigi"></a>
+			<h2>Tomarigiとは</h2>
+			<p>　Tomarigiは，作成した文章表現を改善していく際の気づきを誘発することを目的とた校正・推敲支援ツールです．入力された文章を解析することで，誤り候補を抽出し，ユーザーに指摘を行うとともに，可能であれば修正候補などを表示します．</p>
+			<p>
+			<img alt="tomarigi image" src="images/tomarigi3.png" width="100%" /></p>
+			<p>　本ツールでは，文を1文ずつ切り分け，形態素解析・係り受け解析を行い，その結果をプラグイン形式の校正・推敲チェック機能により，指摘箇所を抽出します．このプラグインは，同梱のsaezuriライブラリを用いることで，誰でも(プログラミングの心得があれば)開発することができ，独自の校正・推敲機能を追加することができます(C#での開発のみ想定)． 
+			</p>
+			<p>　このツールでは，いくつかの外部ツールを別途利用しています．動作環境をご覧ください．</p>
+			<p>&nbsp;</p>
+			<a name="env"></a>
+			<h2>動作環境</h2>
+			<table id="simple" cellspacing="1" class="simple" style="width: 100%; font-size: smaller;">
+				<tr>
+					<td colspan="2"><strong class="auto-style1">必須</strong></td>
+				</tr>
+				<tr>
+					<td>OS</td>
+					<td>Windows 7 <sup>※1</sup></td>
+				</tr>
+				<tr>
+					<td>.NET Framework</td>
+					<td>3.5以上</td>
+				</tr>
+				<tr>
+					<td>形態素解析ツール</td>
+					<td>Mecab v0.996</td>
+				</tr>
+				<tr>
+					<td>係り受け解析ツール</td>
+					<td>Cabocha v0.68</td>
+				</tr>
+				<tr>
+					<td class="auto-style3" colspan="2">※1 .NET Framework 3.5が必要</td>
+				</tr>
+				<tr>
+					<td colspan="2"><strong class="auto-style1">任意</strong></td>
+				</tr>
+				<tr>
+					<td>音声合成ツール<sup>※2</sup></td>
+					<td>Microsoft Speech Platform - Server Runtime</td>
+				</tr>
+				<tr>
+					<td class="auto-style3" colspan="2">※2 読み上げを利用する場合のみ必要</td>
+				</tr>
+			</table>
+			<p></p>
+			<a name="Install"></a>
+			<h2>Install / Uninstall</h2>
+			<h3>Install</h3>
+			<p>※Tomarigiを起動した後のヘルプメニューの「自然言語解析ツールの確認」および「音声利用の確認」にも，案内があります．</p>
+			<ol>
+				<li>
+				<a href="http://msdn.microsoft.com/ja-jp/netframework/aa569263" target="_blank">
+				専用サイト</a>から最新の.NET Frameworkをダウンロードするか，Windows Updateで導入する．</li>
+				<li>
+				<a href="https://code.google.com/p/mecab/downloads/list" target="_blank">
+				専用サイト</a>からmecab-0.996.exeをダウンロードし，インストールする．<br />
+				※デフォルトのインストールオプションにて(文字コードは，Shift_JIS)</li>
+				<li>
+				<a href="https://code.google.com/p/cabocha/downloads/list" target="_blank">
+				専用サイト</a>からCacboha 0.68をダウンロードし，インストールする．<br />
+				※デフォルトのインストールオプションにて(文字コードは，Shift_JIS)</li>
+				<li>読み上げ機能を利用する場合は，<a href="http://www.microsoft.com/downloads/en/details.aspx?FamilyID=bb0f72cb-b86b-46d1-bf06-665895a313c7" target="_blank">x86/SpeechPlatformRuntime.msi</a>と<a href="http://www.microsoft.com/downloads/en/details.aspx?FamilyID=47ffd4e5-e682-4228-8058-dd895252a3c3" target="_blank">MSSpeech_TTS_ja-JP_Haruka.msi</a>をダウンロードし，インストールする．</li>
+				<li>zip形式で配布されているTomarigiを適当な個所に解凍し，Tomarigi3.exeを実行して，使用を開始する．</li>
+			</ol>
+			<h3>Uninstall</h3>
+			<p>　Tomarigi自体は，解凍して作成されたフォルダごと削除して下さい．レジストリ等の変更は，一切していません．その他のツールに関しては，コントロールパネルの「プログラムのアンインストール」等から，削除して下さい．</p>
+			
+			
+			
+					<div id="totop">
+			<a href="#top">ページのトップへ戻る</a> </div>
+
+			
+			<a name="saezuri"></a>
+			<h2>saezuriとは</h2>
+			<p>　saezuriは，Tomarigi用のプラグインを作成するためのライブラリで，自然言語解析支援と校正・推敲機能を提供するための雛型が含まれています．</p>
+			<p>　自然言語解析支援としては，以下の既存の解析ツールに対応しています．ただし，Tomarigi用プラグインとしては，MecabとCabochaのみサポートしています(他のツールを併用することは可能ですが，プラグイン内の処理にて，独自に別の自然言語解析ツールを使用する必要があります)．</p>			
+			<ul>
+				<li>形態素解析ツール： Mecab v0.996</li>
+				<li>形態素解析ツール： Juman v6.0</li>
+				<li>形態素解析ツール： Yahoo日本語形態素解析 v1</li>
+				<li>係り受け解析ツール： Cabocha 0.68</li>
+				<li>係り受け解析ツール： KNP 3.01</li>
+				<li>係り受け解析ツール： Yahoo日本語係り受け解析 v1</li>
+			</ul>
+			<p>　校正・推敲機能を提供するひな形としては，Tomarigi本体から利用されるためのプラグインインターフェースを提供します． 
+			</p>
+			<p>&nbsp;</p>
+			<a name="env2"></a>
+			<h2>動作環境</h2>
+			<table id="simple2" cellspacing="1" class="simple" style="width: 100%; font-size: smaller;">
+				<tr>
+					<td colspan="2"><strong class="auto-style1">必須</strong></td>
+				</tr>
+				<tr>
+					<td>OS</td>
+					<td>Windows 7 <sup>※1</sup></td>
+				</tr>
+				<tr>
+					<td>.NET Framework</td>
+					<td>3.5以上</td>
+				</tr>
+				<tr>
+					<td>開発ソフト(推奨)</td>
+					<td>Visual Studio 2010 C#</td>
+				</tr>
+				<tr>
+					<td>形態素解析ツール</td>
+					<td>Mecab v0.996</td>
+				</tr>
+				<tr>
+					<td>係り受け解析ツール</td>
+					<td>Cabocha v0.68</td>
+				</tr>
+				<tr>
+					<td class="auto-style3" colspan="2">※1 .NET Framework 3.5以上同梱に限る</td>
+				</tr>
+				<tr>
+					<td colspan="2"><strong class="auto-style1">任意</strong></td>
+				</tr>
+				<tr>
+					<td>形態素解析ツール</td>
+					<td>JUMAN v6.0</td>
+				</tr>
+				<tr>
+					<td>形態素解析ツール</td>
+					<td>Yahoo日本語係り受け解析<sup>※2</sup> v1</td>
+				</tr>
+				<tr>
+					<td>係り受け解析ツール</td>
+					<td>KNP 3.01</td>
+				</tr>
+				<tr>
+					<td>係り受け解析ツール</td>
+					<td>Yahoo日本語係り受け解析<sup>※2</sup> v1</td>
+				</tr>
+				<tr>
+					<td class="auto-style3" colspan="2">※2 
+					Yahoo!デベロッパーネットワークより，アプリケーションIDの取得が必要</td>
+				</tr>
+			</table>
+			<p></p>
+			<a name="Install2"></a>
+			<h2>Install / Uninstall</h2>
+			<h3>Install</h3>
+			<ol>
+				<li>				
+				Tomarigiを使用する際は，すでに同梱済みのためインストール作業は不要．<br />
+				プラグイン開発に利用する場合は，次の手順も行う．</li>
+				<li>
+				Visual Studio 2010 
+				C#において，クラスライブラリプロジェクトを作成し，bin\Debugフォルダ内に，saezuri.dllを配置する．</li>
+				<li>
+				プロジェクトの参照設定から，saezuri.dllを追加する．</li>
+				<li>
+				必要に応じて，saezuri.xmlをsaezuri.dllと同じフォルダにコピーする．saezuri.xmlがあると，開発時にメソッドやプロパティの説明が出る．</li>
+			</ol>
+			<h3>Uninstall</h3>
+			<p>　saezuri.dllをそのまま削除して下さい．また，saezuri.xmlを使用した場合は，それも合わせて削除して下さい．</p>
+			
+		</div>
+		<!-- main end -->
+		<div id="sub">
+			<div class="section">
+				<h2>Tomarigi</h2>
+				<ul>
+					<li><a href="index.html#Tomatigi">Tomarigiとは</a></li>
+					<li><a href="index.html#env">動作環境</a></li>
+					<li><a href="index.html#Install">Install / Uninstall</a></li>
+				</ul>
+			</div>
+			<!-- section end -->
+			<div class="section">
+				<h2>saezuri</h2>
+				<ul>
+					<li><a href="index.html#saezuri">saezuriとは</a></li>
+					<li><a href="index.html#env2">動作環境</a></li>
+					<li><a href="index.html#Install2">Install / Uninstall</a></li>
+				</ul>
+			</div>
+			<!-- section end --></div>
+		<!-- sub end -->
+		<div id="totop">
+			<a href="#top">ページのトップへ戻る</a> </div>
+		<!-- totop end --></div>
+	<!-- contents end -->
+	<div id="footer">
+		<address>
+			2011 Tomarigi &amp; saezuri HELP</address>
+	</div>
+	<!-- footer end --></div>
+<!-- top end -->
+
+</body>
+
+</html>

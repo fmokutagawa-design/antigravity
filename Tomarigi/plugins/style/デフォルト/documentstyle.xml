@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<documentstyle xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <title>デフォルト</title>
+  <password />
+  <periodsplit />
+  <paragraphsplit />
+  <paragraphtitle />
+  <number>600-800</number>
+  <exceptplugins />
+  <is_setting>true</is_setting>
+  <is_settingplugin>true</is_settingplugin>
+  <is_visibleproperty>true</is_visibleproperty>
+  <is_visiblecheck>true</is_visiblecheck>
+  <is_visiblecheckcorrect>true</is_visiblecheckcorrect>
+</documentstyle>

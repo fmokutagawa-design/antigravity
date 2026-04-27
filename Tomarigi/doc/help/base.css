@@ -1,0 +1,336 @@
+﻿@charset "UTF-8";
+
+/* ---------------------
+ * FONTSIZE MODEL * 
+ * ---------------------
+ *  63% ->	10pxに相当
+ *  70% ->	11pxに相当
+ *  75% ->	12pxに相当
+ *  82% ->	13pxに相当
+ *  88% ->	14pxに相当
+ *  94% ->	15pxに相当
+ * 100% ->	16pxに相当
+ * 107% ->	17pxに相当
+ * 113% ->	18pxに相当
+ * 119% ->	19pxに相当
+ * 125% ->	20pxに相当
+ * --------------------- */
+ 
+ 
+/* ========BASIC======== */
+* {
+   font-family:"Hiragino Kaku Gothic Pro",HiraKakuPro-W3,"ヒラギノ角ゴ Pro W3","メイリオ", Meiryo,"MS P ゴシック",verdana,sans-serif;
+   color:#333;
+}
+
+body {
+   margin:0;
+   padding:0;
+   letter-spacing:1px;
+   background:#fff;
+}
+
+br {
+   letter-spacing:normal;
+}
+
+a {
+   color:#E79E00;
+   text-decoration:none;
+}
+
+a:hover {
+   color:#E79E00;
+   /*text-decoration:underline;*/
+}
+
+img {
+   border:0;
+   vertical-align:bottom;
+}
+
+h1,h2,h3,h4,h5,h6 {
+   margin:0;
+}
+
+/* ========TEMPLATE LAYOUT======== */
+div#header {
+   width:779px;
+   margin:0 auto;
+   position:relative;
+   padding:0 5px;
+}
+
+div#pr {
+   position:absolute;
+   width:460px;
+   left:300px;
+   top:10px;
+}
+
+div#menu {
+   width:100%;
+   float:left;
+   margin-bottom:20px;
+   background:url("images/bg_menu.gif") 0 100% repeat-x;
+}
+
+div#contents {
+   width:779px;
+   margin:0 auto;
+}
+
+div#main {
+   float:right;
+   width:539px;
+}
+
+div#sub {
+   float:left;
+   width:220px;
+}
+
+div#totop {
+   clear:both;
+}
+
+div#footer {
+   clear:both;
+   background:#EBEADD;
+}
+
+
+/* ========HEADER CUSTOMIZE======== */
+div#header h1 {
+   margin:0;
+   padding:10px;
+   font-size:150%;/* 24px相当 */
+   color:#fff;
+   line-height:70px;
+}
+
+div#header h1 a {
+   color:#333;
+}
+
+div#header h1 a:hover {
+   color:#666;
+}
+
+div#header #pr p {
+   margin:0;
+   font-size:75%;/* 12px相当 */
+}
+
+
+/* ========MENU CUSTOMIZE======== */
+div#menu ul {
+   width:779px;
+   margin:0 auto;
+   padding:0;
+}
+
+div#menu li {
+   float:left;
+   font-size:75%;/* 12px相当 */
+   color:#333;
+   text-align:center;
+   list-style-type:none;
+}
+
+div#menu li a {
+   display:block;
+   width:155px;
+   color:#5A5132;
+   line-height:30px;
+   border-left:1px solid #D8D8D8;
+}
+
+div#menu li.home a {
+   border:none;
+}
+
+div#menu li a.active {
+   background:#F2F2F2;
+}
+
+div#menu li a:hover {
+   color:#333;
+   background:#F2F2F2;
+   text-decoration:none;
+}
+
+
+/* ========MAIN CONTENTS CUSTOMIZE======== */
+div#main h2 {
+   margin-bottom:8px;
+   padding:2px 2px 2px 0;
+   color:#5A5132;
+   font-size:94%;/* 15px相当 */
+   font-weight:bold;
+   border-bottom:3px double #5A5132;
+}
+
+div#main h3 {
+   margin-bottom:3px;
+   font-size:88%;/* 14px相当 */
+}
+
+div#main h4 {
+   margin-bottom:2px;
+   font-size:82%;/* 13px相当 */
+}
+
+div#main h5 {
+   margin-bottom:2px;
+   font-size:82%;/* 13px相当 */
+}
+
+div#main h6 {
+   margin-bottom:2px;
+   font-size:82%;/* 13px相当 */
+}
+
+div#main p {
+   margin:0 0 1em 0;
+   font-size:82%;/* 13px相当 */
+}
+
+div#main ul,ol,dl {
+   font-size:82%;/* 13px相当 */
+}
+
+div#main dt {
+   margin-bottom:3px;
+}
+
+div#main dd {
+   padding:0;
+   margin:0 0 0.5em 1em;
+   padding:3px;
+   background:#f1f1f1;
+}
+
+/* INFORMATION CUSTOMIZE */
+* html body div#main dl.information dd div {
+   display:inline-block;
+}
+
+div#main dl.information dt {
+   float:left;
+   width:10em;
+   margin:0;
+   padding:0;
+}
+
+div#main dl.information dd {
+   margin:0 0 0.5em 10em;
+   padding:0;
+   background:transparent;
+}
+
+/* ========SUBCONTENTS CUSTOMIZE======== */
+div#sub .section {
+   margin-bottom:10px;
+}
+
+div#sub h2 {
+   padding:3px;
+   font-size:88%;/* 14px相当 */
+   font-weight:bold;
+   color:#5A5132;
+   padding-left:10px;
+   background:#fff url("images/bg_submenu.gif") 0 50% no-repeat;
+   border-bottom:1px solid #E7E7E7;
+}
+
+div#sub ul {
+   margin:0;
+   padding:0;
+}
+
+div#sub li {
+   font-size:82%;/* 13px相当 */
+   line-height:1.4;
+   border-bottom:1px solid #ddd;
+   list-style:none;
+   
+}
+
+div#sub li a {
+   display:block;
+   padding-left:20px;
+   color:#333;
+   line-height:3.0;
+   background:url("images/bg_sub_list.gif") 5px 15px no-repeat;
+}
+
+
+/* ========TOTOP CUSTOMIZE========= */
+div#totop {
+   margin:10px 0;
+   text-align:right;
+   font-size:75%;/* 12px相当 */
+}
+
+div#totop a {
+   padding:0 0 0 12px;
+   background:url("images/bg_totop.gif") 0 50% no-repeat;
+   color:#333;
+}
+
+
+/* ========FOOTMENU CUSTOMIZE======== */
+div#footMenu ul {
+   margin:0 0 10px 0;
+   padding:10px 0 0 0;
+   text-align:right;
+   background:url("images/bg_dotline.gif") 0 0 repeat-x;
+}
+
+div#footMenu li {
+   display:inline;
+   margin:0 0 0 10px;
+   font-size:75%;/* 12px相当 */
+   list-style:none;
+}
+
+div#footMenu li a {
+   padding-left:10px;
+   color:#333;
+   background: url(images/bg_footmenu.gif) 0 50% no-repeat;
+}
+
+
+/* ========FOOTER CUSTOMIZE======== */
+address {
+   padding:10px 0;
+   font-style:normal;
+   font-size:75%;/* 12px相当 */
+   text-align:center;
+}
+
+
+/* ======== TABLE ======== */
+table.simple {
+    width: 100%;
+    border: 1px #E3E3E3 solid;
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+table.simple th {
+    padding: 5px;
+    border: #E3E3E3 solid;
+    border-width: 0 0 1px 1px;
+    background: #F5F5F5;
+    font-weight: bold;
+    line-height: 120%;
+    text-align: center;
+}
+table.simple td {
+    padding: 5px;
+    border: 1px #E3E3E3 solid;
+    border-width: 0 0 1px 1px;
+    text-align: left;
+}

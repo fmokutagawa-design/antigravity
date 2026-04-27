@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<Setting xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <EnabledSentenceLen>true</EnabledSentenceLen>
+  <SentenceLen>150</SentenceLen>
+  <EnabledSegmentLen>true</EnabledSegmentLen>
+  <SegmentLen>15</SegmentLen>
+  <EnabledMemoryLen>true</EnabledMemoryLen>
+  <Capacity>8</Capacity>
+  <ClLengthMIN>1</ClLengthMIN>
+  <RevCanNum>4</RevCanNum>
+  <EnabledTwoStep>true</EnabledTwoStep>
+  <ColoringStr>LightPink</ColoringStr>
+</Setting>

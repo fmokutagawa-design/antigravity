@@ -1,0 +1,157 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html lang="ja" xml:lang="ja" xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta content="text/html; charset=UTF-8" http-equiv="Content-Type" />
+<meta content="text/css" http-equiv="Content-Style-Type" />
+<link href="base.css" rel="stylesheet" type="text/css" />
+<title>Tomarigi & saezuri HELP</title>
+</head>
+
+<body>
+
+<div id="top">
+	<div id="header">
+		<div style="height: 60px; font-weight: bold;">
+			<br />
+			Tomarigi &amp; saezuri HELP<br />
+		</div>
+	</div>
+	<!-- header end -->
+	<div id="menu">
+		<ul>
+			<li class="home"><a href="index.html">ホーム</a></li>
+			<li><a class="active" href="tomarigi.html">Tomarigi</a></li>
+			<li><a href="saezuri.html">saezuri(言語解析)</a></li>
+			<li><a href="check.html">saezuri(校正推敲)</a></li>
+			<li><a href="about.html">利用にあたって</a></li>
+		</ul>
+	</div>
+	<!-- menu end -->
+	<div id="contents">
+		<div id="main">
+			<a name="check"></a>
+			<h2>Tomarigiによる文のチェック</h2>
+			<p>　Tomarigiは，エディタ領域に入力された文を解析し，チェック結果を表示します．結果は，文書全体・段落ごと・各文をそれぞれカード(指摘カードと呼ぶ)化され，各カードごとに，指摘箇所が表示されます．ここで提示された指摘箇所は，クリックすることで，さらに指摘詳細カードとして，指摘理由や可能であれば修正候補を表示することになります．</p>
+			<p>　操作の手順を次の通りとなります．</p>
+			<ol>
+				<li>エディタ領域に文章を入力する</li>
+				<li>ボタンを押して文章のチェックを行う</li>
+				<li>指摘されたら，指摘箇所をクリックする</li>
+			</ol>
+			<p>
+			<img alt="tomarigi image" src="images/tomarigi4.png" width="100%" /></p>
+			
+			
+			<a name="point1"></a>
+			<h2>結果確認(指摘カード)</h2>
+			<p>
+			　Tomarigiによるチェックを行った結果，指摘カードが作成されます．指摘カードには，含まれる指摘数や係り受け関係等の可視化などが含まれます．文内の指摘箇所には，色が付けられ，文全体をさす場合は，下線+●がつきます．また，指摘箇所が重複した場合は，■記号によって文末に付加されます．</p>
+			<p><img alt="" height="302" src="images/card1.png" width="577" /></p>
+			
+
+			<a name="point2"></a>
+			<h2>結果確認(指摘詳細カード)</h2>
+			<p>
+			　指摘詳細カードでは，１つ１つの指摘ごとの結果が表示されます．指摘カードとの違いは，指摘理由を表示するとともに，(存在する場合は)修正候補の提示も行います．また，指摘となる参考図が存在する場合も，それを表示することができます．指摘を非表示にした場合は，Tomarigiを終了するまでは，同じ文・同じ個所の指摘は再度表示されなくなります．</p>
+			<p><img alt="" height="246" src="images/card2.png" width="479" /></p>
+			
+
+			<a name="save"></a>
+			<h2>結果保存</h2>
+			<p>　Tomarigiによって得られた校正・推敲結果は，HTML形式で保存することができます．チェックメニューの「チェック結果の保存」をクリックして下さい．</p>			
+			<img alt="" src="images/resultsave.png" /></p>
+
+			<p>&nbsp;</p>
+			<a name="property"></a>
+			<h2>文書プロパティ</h2>
+			<p>
+			　Tomarigiでは，一度全体のチェックを行うと，文書プロパティの値が更新されます．文書プロパティとは，下図のように，文字数や異なり語数などの情報をここではさしています．</p>
+			<p>
+			<img alt="" src="images/docproperty.png" /></p>
+			<p>文書プロパティ領域の右下の 
+			<img alt="" height="16" src="images/item_list.png" width="16" /> 
+			をクリックすると，表示されます．</p>
+			<p>&nbsp;</p>
+			<a name="style"></a>
+			<h2>文書スタイル</h2>
+			<p>　この文書スタイルは，特にTomarigiそのものには影響しない参考程度の機能としてVer 
+			0.3台から追加構築したものです．ここで文書スタイルと呼んでいるのは，主に次のものです．すべてメニューのオプションから設定することができます．また，このスタイルの状態を保存しておき，あとで切り替えて利用することもできます．</p>
+			<h3>段落区切り文字と文区切り文字</h3>
+			<p>　段落の区切り対象と文の区切り対象は，これで決定されます．Tomarigiの解析対象は，「文書全体・段落ごと・文ごと」になりますので，解析結果に影響を及ぼします．あまり変更はおすすめできません．</p>
+			<h3>段落名</h3>
+			<p>　段落名を指定しておくことで，エディタ領域の左側に段落名が表示されます．段落名の表示・非表示は，段落ガイドラインの下部をクリックすることで切り替えます．</p>			
+			<p><img alt="" src="images/outline.png" /></p>
+			<h3>文字数</h3>
+			<p>　文字数の指定を以下の4種の中から1つ指定できます．下図(文書プロパティ領域)は，600字以上800字以下が設定されている時の状態です．平均文字数や漢字含有率については，「おおよそ青領域におさめた方が良い」という目安となっています．</p>
+			<ul>
+				<li>x文字以上y文字以下</li>
+				<li>x文字程度</li>
+				<li>x文字以上</li>
+				<li>x文字以下</li>
+			</ul>
+			<p><img alt="" src="images/docstyle.png"  /></p>
+			
+			
+			
+					<div id="totop">
+			<a href="#top">ページのトップへ戻る</a> </div>
+
+			
+			<a name="env"></a>
+			<h2>環境確認</h2>
+			<p>　ヘルプメニューの「自然言語解析ツールの確認」や「音声利用の確認」を選ぶと，現在のPC環境を確認できます．すべて，Enableになっていれば，Tomarigiの動作環境が準備できているということになります．音声利用は，Disableでも読み上げ機能が利用できないだけで，Tomarigiそのものは利用できます．</p>
+			<p>
+			<img alt="" src="images/menu_help.png"  /></p>			
+			<p><img alt="" src="images/info.png" /></p>
+			<p>&nbsp;</p>
+			<a name="portable"></a>
+			<h2>ポータブル化</h2>
+			<p>
+			　ヘルプメニューの「ポータブルの準備」をクリックすると，現在のTomarigi環境がポータブル化されたものかどうかを確認できます．また，MecabおよびCabochaをインストールしている環境下で，「自動構築」をクリックすると，自動的にポータブル環境を構築します．ポータブル化後は，TomarigiのフォルダをUSBメモリ等にコピーして，MecabやCabochaが未インストールの環境でも使用できるようになります．ただし，読み上げ機能は，ポータブル化できません．</p>
+			<p><img alt="" src="images/info2.png" /></p>
+			
+		</div>
+		<!-- main end -->
+		<div id="sub">
+			<div class="section">
+				<h2>Tomarigiの利用</h2>
+				<ul>
+					<li><a href="tomarigi.html#check">文のチェック</a></li>
+					<li><a href="tomarigi.html#point1">結果確認(指摘カード)</a></li>
+					<li><a href="tomarigi.html#point2">結果確認(指摘詳細カード)</a></li>
+					<li><a href="tomarigi.html#save">結果の保存</a></li>
+				</ul>
+			</div>
+			<!-- section end -->
+			<div class="section">
+				<h2>付加機能</h2>
+				<ul>
+					<li><a href="tomarigi.html#property">文書プロパティ</a></li>
+					<li><a href="tomarigi.html#style">文書スタイル</a></li>
+				</ul>
+			</div>
+			<!-- section end -->
+			<div class="section">
+				<h2>環境</h2>
+				<ul>
+					<li><a href="tomarigi.html#env">環境確認</a></li>
+					<li><a href="tomarigi.html#portable">ポータブル化</a></li>
+				</ul>
+			</div>
+			<!-- section end --></div>
+		<!-- sub end -->
+		<div id="totop">
+			<a href="#top">ページのトップへ戻る</a> </div>
+		<!-- totop end --></div>
+	<!-- contents end -->
+	<div id="footer">
+		<address>
+			2011 Tomarigi &amp; saezuri HELP</address>
+	</div>
+	<!-- footer end --></div>
+<!-- top end -->
+
+</body>
+
+</html>

@@ -1,0 +1,166 @@
+<?xml version="1.0"?>
+<Setting xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <OkurikanaSet>
+    <okurikana>
+      <Pos>動詞</Pos>
+      <Correct>行う</Correct>
+      <Exclude>行なう</Exclude>
+      <Except />
+      <Disable>false</Disable>
+      <Mistake>true</Mistake>
+    </okurikana>
+    <okurikana>
+      <Pos>動詞</Pos>
+      <Correct>断る</Correct>
+      <Exclude>断わる</Exclude>
+      <Except />
+      <Disable>false</Disable>
+      <Mistake>true</Mistake>
+    </okurikana>
+    <okurikana>
+      <Pos>動詞</Pos>
+      <Correct>著す</Correct>
+      <Exclude>著わす</Exclude>
+      <Except />
+      <Disable>false</Disable>
+      <Mistake>true</Mistake>
+    </okurikana>
+    <okurikana>
+      <Pos>動詞</Pos>
+      <Correct>表す</Correct>
+      <Exclude>表わす</Exclude>
+      <Except />
+      <Disable>false</Disable>
+      <Mistake>true</Mistake>
+    </okurikana>
+    <okurikana>
+      <Pos>動詞</Pos>
+      <Correct>果たす</Correct>
+      <Exclude>果す</Exclude>
+      <Except />
+      <Disable>false</Disable>
+      <Mistake>true</Mistake>
+    </okurikana>
+    <okurikana>
+      <Pos>動詞</Pos>
+      <Correct>起こる</Correct>
+      <Exclude>起る</Exclude>
+      <Except />
+      <Disable>false</Disable>
+      <Mistake>true</Mistake>
+    </okurikana>
+    <okurikana>
+      <Pos>動詞</Pos>
+      <Correct>現れる</Correct>
+      <Exclude>現われる</Exclude>
+      <Except />
+      <Disable>false</Disable>
+      <Mistake>true</Mistake>
+    </okurikana>
+    <okurikana>
+      <Pos>動詞</Pos>
+      <Correct>合わす</Correct>
+      <Exclude>合す</Exclude>
+      <Except />
+      <Disable>false</Disable>
+      <Mistake>true</Mistake>
+    </okurikana>
+    <okurikana>
+      <Pos>動詞</Pos>
+      <Correct>終わる</Correct>
+      <Exclude>終る</Exclude>
+      <Except />
+      <Disable>false</Disable>
+      <Mistake>true</Mistake>
+    </okurikana>
+    <okurikana>
+      <Pos>動詞</Pos>
+      <Correct>積もる</Correct>
+      <Exclude>積る</Exclude>
+      <Except />
+      <Disable>false</Disable>
+      <Mistake>true</Mistake>
+    </okurikana>
+    <okurikana>
+      <Pos>動詞</Pos>
+      <Correct>当たる</Correct>
+      <Exclude>当る</Exclude>
+      <Except />
+      <Disable>false</Disable>
+      <Mistake>true</Mistake>
+    </okurikana>
+    <okurikana>
+      <Pos>動詞</Pos>
+      <Correct>落とす</Correct>
+      <Exclude>落す</Exclude>
+      <Except />
+      <Disable>false</Disable>
+      <Mistake>true</Mistake>
+    </okurikana>
+    <okurikana>
+      <Pos>動詞</Pos>
+      <Correct>押さえる</Correct>
+      <Exclude>押える</Exclude>
+      <Except />
+      <Disable>false</Disable>
+      <Mistake>true</Mistake>
+    </okurikana>
+    <okurikana>
+      <Pos>動詞</Pos>
+      <Correct>合わせる</Correct>
+      <Exclude>合せる</Exclude>
+      <Except />
+      <Disable>false</Disable>
+      <Mistake>true</Mistake>
+    </okurikana>
+    <okurikana>
+      <Pos>動詞</Pos>
+      <Correct>聞こえる</Correct>
+      <Exclude>聞える</Exclude>
+      <Except />
+      <Disable>false</Disable>
+      <Mistake>true</Mistake>
+    </okurikana>
+    <okurikana>
+      <Pos>名詞</Pos>
+      <Correct>行い</Correct>
+      <Exclude>行ない</Exclude>
+      <Except />
+      <Disable>false</Disable>
+      <Mistake>true</Mistake>
+    </okurikana>
+    <okurikana>
+      <Pos>名詞</Pos>
+      <Correct>向かい</Correct>
+      <Exclude>向い</Exclude>
+      <Except />
+      <Disable>false</Disable>
+      <Mistake>true</Mistake>
+    </okurikana>
+    <okurikana>
+      <Pos>名詞</Pos>
+      <Correct>終わり</Correct>
+      <Exclude>終り</Exclude>
+      <Except />
+      <Disable>false</Disable>
+      <Mistake>true</Mistake>
+    </okurikana>
+    <okurikana>
+      <Pos>名詞</Pos>
+      <Correct>代わり</Correct>
+      <Exclude>代り</Exclude>
+      <Except />
+      <Disable>false</Disable>
+      <Mistake>true</Mistake>
+    </okurikana>
+    <okurikana>
+      <Pos>名詞</Pos>
+      <Correct>当たり</Correct>
+      <Exclude>当り</Exclude>
+      <Except />
+      <Disable>false</Disable>
+      <Mistake>true</Mistake>
+    </okurikana>
+  </OkurikanaSet>
+  <ColoringStr>Yellow</ColoringStr>
+</Setting>

@@ -48,11 +48,33 @@ class Proofreader:
                 print(f"Error loading rules: {e}")
 
         # 2. 小説特化型の追加ルール (textlint / Tomarigi セオリー)
+        # ※リテラル置換で可能なものは fast_rules へ移行済み
         self.novel_specific_rules = [
-            (re.compile(r'というふうに'), 'と', '冗長な表現です'),
-            (re.compile(r'することができる'), 'できる', '冗長な表現です'),
             (re.compile(r'([^\s]+)を行う'), r'\1する', '「〜する」で簡潔に表現できます'),
         ]
+
+        # 3. 高速エンジン（リテラル置換）用ルール
+        # キーワード: (置換案, メッセージ)
+        self.fast_rules = {
+            "というふうに": ("と", "冗長な表現です"),
+            "することができる": ("できる", "冗長な表現です"),
+        }
+
+    def _run_fast_scan(self, text, narration_only=True):
+        """リテラル文字列による高速スキャン"""
+        results = []
+        for word, (suggestion, message) in self.fast_rules.items():
+            start = 0
+            while True:
+                idx = text.find(word, start)
+                if idx == -1: break
+                results.append({
+                    "original": word,
+                    "suggested": suggestion,
+                    "reason": message + ("（地の文）" if narration_only else "")
+                })
+                start = idx + len(word)
+        return results
 
     def check_stylistic_consistency(self, sentences):
         """敬体(ですます)と常体(だである)の混在をチェック"""
@@ -213,6 +235,9 @@ class Proofreader:
         
         # --- Layer 1: 校正 (瞬時) ---
         if mode in ['proof', 'all']:
+            # 高速リテラルスキャン（地の文）
+            corrections.extend(self._run_fast_scan(narration_text, narration_only=True))
+            
             # 文体チェック（地の文のみ）
             narration_sentences = re.split(r'(?<=[。？！])\s*', narration_text)
             narration_sentences = [s for s in narration_sentences if s.strip()]

@@ -7,6 +7,7 @@ const {
     cleanupOrphanedTempFiles,
     ValidationError,
 } = require('./atomicWrite.cjs');
+const { setupTextlintHandlers } = require('./textlintMain.cjs');
 
 const isDev = !app.isPackaged;
 
@@ -192,6 +193,7 @@ async function runStartupCleanup() {
 
 app.whenReady().then(() => {
     console.log('--- NEXUS Main Process Ready ---');
+    setupTextlintHandlers();
     startBridgeServer();
     createWindow();
 

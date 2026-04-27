@@ -1,0 +1,45 @@
+{
+  "case_0": [
+    {
+      "original": "することができる",
+      "suggested": "できる",
+      "reason": "冗長な表現です（地の文）"
+    }
+  ],
+  "case_1": [
+    {
+      "original": "全体",
+      "suggested": "ひらがな増",
+      "reason": "漢字率 41.2%: 小説としては堅苦しすぎます。"
+    },
+    {
+      "original": "はは",
+      "suggested": "は",
+      "reason": "助詞「は」が連続しています。タイポの可能性があります。"
+    },
+    {
+      "original": "はは",
+      "suggested": "は",
+      "reason": "助詞「は」が連続しています。タイポの可能性があります。"
+    }
+  ],
+  "case_2": [
+    {
+      "original": "全体",
+      "suggested": "ひらがな増",
+      "reason": "漢字率 42.9%: 小説としては堅苦しすぎます。"
+    }
+  ],
+  "case_3": [
+    {
+      "original": "お",
+      "suggested": "名詞を",
+      "reason": "文法ミスがあります。名詞を見る"
+    },
+    {
+      "original": "（）",
+      "suggested": "修正",
+      "reason": "カッコの対応が取れていません。"
+    }
+  ]
+}

@@ -39,8 +39,10 @@ import TodoPanel from './components/TodoPanel';
 import SnapshotPanel from './components/SnapshotPanel';
 import AIKnowledgeManager from './components/AIKnowledgeManager';
 import { saveSnapshot } from './utils/snapshotStore';
-import './components/MaterialsPanel.css';
 import './components/LinkPanel.css';
+import KnowledgeSuggestionBanner from './components/KnowledgeSuggestionBanner';
+import AuditReportWindow from './components/AuditReportWindow';
+import { ollamaService } from './utils/ollamaService';
 
 import { saveTextFile, loadTextFile } from './utils/fileUtils';
 import { fileSystem, isElectron, isNative, isTauri } from './utils/fileSystem';
@@ -1149,12 +1151,36 @@ function App() {
     if (showMetadata) {
       setText(newContent);
     } else {
-      // Bug A 対策 / Bug 2 指摘対応: 500ms 遅延する parsedNote.metadata ではなく最新の Ref を使用する。
       // latestMetadataRef.current は handleOpenFile 等で常に最新に同期されていることを前提とする。
       const content = serializeNote(newContent, latestMetadataRef.current);
       setText(content);
     }
   }, [showMetadata]);
+
+  const handleConfirmKnowledge = useCallback(async (metadata) => {
+    if (!activeFileHandle) return;
+    
+    // 現在のテキストの冒頭に YAML Frontmatter を注入
+    const yaml = `-- -\ntags: ${JSON.stringify(metadata.tags)}\ndoc_type: ${metadata.doc_type}\nproject: ${metadata.project}\nimportance: ${metadata.importance}\nentities: ${metadata.entities.join(',')}\n-- -\n`;
+    
+    let newText = text;
+    if (text.startsWith('-- -')) {
+        // 既存のFrontmatterを置換
+        newText = text.replace(/^-- -[\s\S]*?-- -\n?/, yaml);
+    } else {
+        newText = yaml + text;
+    }
+    
+    setText(newText);
+    showToast(`${metadata.project} の知識として登録しました（アンドゥ可能です）`);
+    
+    // DB にも即時通知
+    try {
+        await ollamaService.updateDBItemTags(activeFileHandle.path || activeFileHandle.handle, metadata.tags);
+    } catch (e) {
+        console.error("Failed to sync tags to DB:", e);
+    }
+  }, [activeFileHandle, text, showToast]);
 
 
 
@@ -1665,6 +1691,13 @@ function App() {
                   title="出力・整形"
                 >
                   📤
+                </div>
+                <div
+                  className={`sidebar-nav-item ${sidebarTab === 'audit' ? 'active' : ''}`}
+                  onClick={() => setSidebarTab('audit')}
+                  title="校正監査"
+                >
+                  🔍
                 </div>
                 <div
                   className={`sidebar-nav-item ${sidebarTab === 'snapshots' ? 'active' : ''}`}
@@ -2276,7 +2309,13 @@ function App() {
         }, [isSidebarVisible, sidebarTab, activeTab, projectHandle, fileTree, activeFileHandle, isProjectMode, settings, projectContextMenu, savedProjectHandle, showCardCreator, isMaterialsLoading, allMaterialFiles, linkGraph, projectSettings, currentSessionChars, aiAction, aiOptions, corrections, aiModel, localModels, selectedLocalModel, isLocalConnected, candidates, snippets, notesText, presets, isDarkMode, showMetadata, debouncedText])}
 
         <div className="content-wrapper" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <main className={`main-content ${showReference && activeTab !== 'reference' ? 'split-view' : ''}`} style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+          <main className={`main-content ${showReference && activeTab !== 'reference' ? 'split-view' : ''}`} style={{ flex: 1, display: 'flex', overflow: 'hidden', flexDirection: 'column' }}>
+            <KnowledgeSuggestionBanner 
+              activeFile={activeFileHandle}
+              currentText={text}
+              onConfirm={handleConfirmKnowledge}
+            />
+            <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
             <div className="editor-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
 
               {/* StoryBoard: Always mounted, usually hidden */}
@@ -2378,6 +2417,7 @@ function App() {
                 />
               ) : null}
             </div>
+          </div>
 
 
 
@@ -2754,6 +2794,13 @@ function App() {
         allFiles={allMaterialFiles}
         refreshMaterials={refreshMaterials}
         showToast={showToast}
+      />
+
+      <AuditReportWindow 
+        isOpen={sidebarTab === 'audit'} 
+        onClose={() => setSidebarTab('none')} 
+        currentText={text}
+        activeFile={activeFileHandle}
       />
     </div >
   );
