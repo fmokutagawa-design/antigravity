@@ -27,25 +27,12 @@ class Proofreader:
             except Exception as e:
                 print(f"Warning: failed to load whitelist: {e}")
 
-        # 1. 外部辞書の読み込み (LanguageTool 700+項目)
-        if os.path.exists(rules_path):
-            try:
-                with open(rules_path, "r", encoding="utf-8") as f:
-                    self.rules = json.load(f)
-                
-                # 正規表現を高速化のためにプリコンパイル
-                for rule in self.rules:
-                    try:
-                        self.compiled_rules.append({
-                            "pattern": re.compile(rule["pattern"]),
-                            "suggestion": rule["suggestion"],
-                            "message": rule["message"],
-                            "id": rule["id"]
-                        })
-                    except Exception:
-                        continue # 不正な正規表現はスキップ
-            except Exception as e:
-                print(f"Error loading rules: {e}")
+        # 1. 外部辞書の読み込み
+        # ※ textlint (Electron側) が lt_complex_rules.json で同等のチェックを
+        #   品詞条件付きで実行するため、Python側での重複実行を無効化。
+        #   Python側は小説特化ルール (fast_rules, novel_specific) と
+        #   物語監査 (audit_narrative) に専念する。
+        # if os.path.exists(rules_path): ...
 
         # 2. 小説特化型の追加ルール (textlint / Tomarigi セオリー)
         # ※リテラル置換で可能なものは fast_rules へ移行済み
@@ -140,9 +127,16 @@ class Proofreader:
             # 現在の章の状態を取得 (stateは単一のdictを想定)
             if state.get('status') == 'dead':
                 search_names = [char_name] + self._get_aliases(char_name)
+                exclusion_words = ["回想", "思い出", "かつて", "あの日", "死", "遺影", "墓", "供養", "亡き"]
                 for name in search_names:
-                    pattern = re.compile(rf'{re.escape(name)}(?!.*(回想|死|遺影|墓|供養))')
-                    for m in pattern.finditer(text):
+                    for m in re.finditer(re.escape(name), text):
+                        # マッチ位置の前後50文字を取得して回想コンテキストをチェック
+                        ctx_start = max(0, m.start() - 50)
+                        ctx_end = min(len(text), m.end() + 50)
+                        context = text[ctx_start:ctx_end]
+                        if any(w in context for w in exclusion_words):
+                            continue  # 回想・追悼コンテキストなのでスキップ
+                        
                         reason = f"第{chapter_number}章時点では【{char_name}】は死亡しているはずです。"
                         audit_results.append({
                             "original": m.group(0),
@@ -275,15 +269,8 @@ class Proofreader:
                 if len(s1_end) >= 2 and s1_end == s2_end == s3_end:
                     corrections.append({"original": f"「{s1_end}」の連続", "suggested": "変更", "reason": "地の文で文末表現が3回連続しています。"})
 
-            # 外部辞書スキャン（地の文のみ）
-            for rule in self.compiled_rules:
-                for m in rule["pattern"].finditer(text):
-                    if not is_in_dialogue(m.start()) and not self._is_whitelisted(m.group(0)):
-                        corrections.append({
-                            "original": m.group(0),
-                            "suggested": rule["suggestion"],
-                            "reason": rule["message"]
-                        })
+            # 外部辞書スキャン — textlint に一本化したため無効化
+            # (compiled_rules は空のまま保持)
 
             # 2. 全文に適用するルール
             ratio = self.calculate_kanji_ratio(text)

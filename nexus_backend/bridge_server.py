@@ -120,11 +120,10 @@ async def ask_rag(request: AskRequest):
 async def propose_metadata(request: Request):
     """
     ファイルパスからプロジェクト名やドキュメントタイプを高速に提案する
-    (AIを使わず、KnowledgeProcessorのルールベースを使用する)
     """
     try:
         data = await request.json()
-        file_path = data.get("file_path", "")
+        file_path = data.get("full_path", "") or data.get("file_path", "")
         content = data.get("content", "")
         
         from knowledge_processor import KnowledgeProcessor
@@ -150,13 +149,38 @@ async def suggest_tags(request: Request):
     entities = kp._extract_entities("temp.txt", content)
     return {"tags": list(entities)[:15]}
 
-@app.delete("/db/items")
-async def delete_db_item(request: Request):
+@app.post("/db/update_tags")
+async def update_tags(request: Request):
+    """ファイルのタグ情報を更新する"""
     data = await request.json()
-    full_path = data.get("full_path")
+    full_path = data.get("full_path", "")
+    tags = data.get("tags", [])
+    if not full_path:
+        raise HTTPException(status_code=400, detail="full_path is required")
+    try:
+        results = collection.get(where={"full_path": full_path})
+        if results["ids"]:
+            tags_str = ",".join(tags) if isinstance(tags, list) else tags
+            for chunk_id in results["ids"]:
+                collection.update(ids=[chunk_id], metadatas=[{"tags": tags_str}])
+            return {"success": True, "updated": len(results["ids"])}
+        raise HTTPException(status_code=404, detail="File not found in DB")
+    except HTTPException: raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/db/items")
+async def delete_db_item(full_path: str = ""):
+    """フロントエンドは ?full_path=... をクエリパラメータで送る"""
     if not full_path: return {"success": False}
-    collection.delete(where={"full_path": full_path})
-    return {"success": True}
+    try:
+        results = collection.get(where={"full_path": full_path})
+        if results["ids"]:
+            collection.delete(ids=results["ids"])
+            return {"success": True, "deleted": len(results["ids"])}
+        return {"success": False, "reason": "not found"}
+    except Exception as e:
+        return {"success": False, "reason": str(e)}
 
 @app.post("/db/ingest")
 async def trigger_ingest():
@@ -187,6 +211,50 @@ async def list_db_items():
         return sorted(list(files_map.values()), key=lambda x: x['file'])
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/analyze/reference_sheet")
+async def generate_reference_sheet(request: AskRequest):
+    """設定資料シートを自動生成する"""
+    query = request.query
+    file_path = request.file_path
+
+    from knowledge_processor import KnowledgeProcessor
+    kp = KnowledgeProcessor()
+    project_id = kp._determine_project(file_path) if file_path else "Unknown"
+
+    try:
+        async_client = ollama.AsyncClient()
+        response_vector = await async_client.embeddings(model="nomic-embed-text", prompt=query)
+        where_clause = {"project": project_id} if project_id != "Unknown" else None
+        results = collection.query(query_embeddings=[response_vector["embedding"]], where=where_clause, n_results=15)
+
+        context = ""
+        if results['documents'] and results['documents'][0]:
+            for doc, meta in zip(results['documents'][0], results['metadatas'][0]):
+                context += f'<memory type="{meta.get("doc_type")}" source="{meta.get("file")}">{doc}</memory>\n'
+
+        system_prompt = """あなたは設定資料の作成者です。提供された情報から、整理された設定シートを作成してください。
+キャラクター名、属性（外見・武器・所属等）、関係性を項目ごとにまとめてください。"""
+        prompt = f"<creation_memory>\n{context}\n</creation_memory>\n\n{query}"
+
+        response = await async_client.chat(
+            model=request.model,
+            messages=[{'role': 'system', 'content': system_prompt}, {'role': 'user', 'content': prompt}]
+        )
+        return {"sheet": response['message']['content']}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# スレッドセーフな監査状態管理
+audit_lock = threading.Lock()
+
+def _update_audit_state(**kwargs):
+    with audit_lock:
+        audit_state.update(kwargs)
+
+def _get_audit_state():
+    with audit_lock:
+        return dict(audit_state)
 
 @app.post("/analyze/proofread")
 async def combined_proofread(request: AskRequest):
@@ -229,31 +297,27 @@ async def combined_proofread(request: AskRequest):
 
 @app.post("/analyze/audit/start")
 async def start_full_audit(background_tasks: BackgroundTasks):
-    global audit_state
-    if audit_state["running"]: return {"status": "already_running"}
+    current = _get_audit_state()
+    if current["running"]: return {"status": "already_running"}
     
     def run_audit_process():
-        global audit_state
-        audit_state["running"] = True
-        audit_state["completed"] = False
-        audit_state["progress"] = "監査実行中..."
+        _update_audit_state(running=True, completed=False, progress="監査実行中...")
         try:
             from audit_batch_processor import AuditBatchProcessor
             processor = AuditBatchProcessor()
             processor.run_full_audit()
-            audit_state["completed"] = True
-            audit_state["progress"] = "完了"
+            _update_audit_state(completed=True, progress="完了")
         except Exception as e:
-            audit_state["progress"] = f"エラー: {e}"
+            _update_audit_state(progress=f"エラー: {e}")
         finally:
-            audit_state["running"] = False
+            _update_audit_state(running=False)
 
     background_tasks.add_task(run_audit_process)
     return {"status": "started"}
 
 @app.get("/analyze/audit/status")
 async def get_audit_status():
-    return audit_state
+    return _get_audit_state()
 
 @app.get("/analyze/audit/report")
 async def get_audit_report():

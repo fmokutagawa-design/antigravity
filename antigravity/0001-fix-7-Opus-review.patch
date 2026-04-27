@@ -1,0 +1,266 @@
+From 758f0c87127503c5caa6176c03b6ac8e4acd016c Mon Sep 17 00:00:00 2001
+From: Opus <opus@nexus>
+Date: Mon, 27 Apr 2026 09:02:34 +0000
+Subject: [PATCH] =?UTF-8?q?fix:=20=E6=AE=8B=E5=AD=98=E3=83=90=E3=82=B07?=
+ =?UTF-8?q?=E4=BB=B6=E3=81=AE=E4=BF=AE=E6=AD=A3=20(Opus=20review)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- fix: /db/propose_metadata のキー名不一致 (full_path ↔ file_path)
+- fix: DELETE /db/items がJSON bodyを読んでいたのをquery paramに修正
+- fix: Geminiが削除した /db/update_tags と /analyze/reference_sheet を復元
+- fix: audit_state にthreading.Lockを導入 (スレッドセーフ化)
+- fix: 回想シーンの否定先読みバグを前後50文字コンテキスト方式に修正
+- fix: Python側の外部辞書スキャンを無効化 (textlintとの二重実行解消)
+- fix: AuditReportWindow のカウント分母にtextlintReportを加算
+---
+ .../src/components/AuditReportWindow.jsx      |   4 +-
+ nexus_backend/bridge_server.py                | 100 +++++++++++++++---
+ nexus_backend/proofreader.py                  |  46 +++-----
+ 3 files changed, 101 insertions(+), 49 deletions(-)
+
+diff --git a/antigravity/src/components/AuditReportWindow.jsx b/antigravity/src/components/AuditReportWindow.jsx
+index 84fb913..c0d6bf5 100644
+--- a/antigravity/src/components/AuditReportWindow.jsx
++++ b/antigravity/src/components/AuditReportWindow.jsx
+@@ -189,7 +189,7 @@ const AuditReportWindow = ({ isOpen, onClose, currentText, activeFile }) => {
+         </select>
+         
+         <span className="audit-count">
+-          {processedItems.length} / {report.length} 件
++          {processedItems.length} / {textlintReport.length + report.length} 件
+         </span>
+       </div>
+ 
+@@ -198,7 +198,7 @@ const AuditReportWindow = ({ isOpen, onClose, currentText, activeFile }) => {
+           <div className="loading">監査結果を読み込み中...</div>
+         ) : processedItems.length === 0 ? (
+           <div className="no-items">
+-            {report.length === 0 ? "指摘事項はありません。完璧です！" : "フィルタ条件に一致する項目はありません。"}
++            {(report.length + textlintReport.length) === 0 ? "指摘事項はありません。完璧です！" : "フィルタ条件に一致する項目はありません。"}
+           </div>
+         ) : (
+           <ul className="homework-list">
+diff --git a/nexus_backend/bridge_server.py b/nexus_backend/bridge_server.py
+index e7fae7f..92997a2 100644
+--- a/nexus_backend/bridge_server.py
++++ b/nexus_backend/bridge_server.py
+@@ -124,7 +124,7 @@ async def propose_metadata(request: Request):
+     """
+     try:
+         data = await request.json()
+-        file_path = data.get("file_path", "")
++        file_path = data.get("full_path", "") or data.get("file_path", "")
+         content = data.get("content", "")
+         
+         from knowledge_processor import KnowledgeProcessor
+@@ -151,12 +151,17 @@ async def suggest_tags(request: Request):
+     return {"tags": list(entities)[:15]}
+ 
+ @app.delete("/db/items")
+-async def delete_db_item(request: Request):
+-    data = await request.json()
+-    full_path = data.get("full_path")
++async def delete_db_item(full_path: str = ""):
++    """フロントエンドは ?full_path=... をクエリパラメータで送る"""
+     if not full_path: return {"success": False}
+-    collection.delete(where={"full_path": full_path})
+-    return {"success": True}
++    try:
++        results = collection.get(where={"full_path": full_path})
++        if results["ids"]:
++            collection.delete(ids=results["ids"])
++            return {"success": True, "deleted": len(results["ids"])}
++        return {"success": False, "reason": "not found"}
++    except Exception as e:
++        return {"success": False, "reason": str(e)}
+ 
+ @app.post("/db/ingest")
+ async def trigger_ingest():
+@@ -188,6 +193,71 @@ async def list_db_items():
+     except Exception as e:
+         raise HTTPException(status_code=500, detail=str(e))
+ 
++@app.post("/db/update_tags")
++async def update_tags(request: Request):
++    """ファイルのタグ情報を更新する"""
++    data = await request.json()
++    full_path = data.get("full_path", "")
++    tags = data.get("tags", [])
++    if not full_path:
++        raise HTTPException(status_code=400, detail="full_path is required")
++    try:
++        results = collection.get(where={"full_path": full_path})
++        if results["ids"]:
++            tags_str = ",".join(tags) if isinstance(tags, list) else tags
++            for chunk_id in results["ids"]:
++                collection.update(ids=[chunk_id], metadatas=[{"tags": tags_str}])
++            return {"success": True, "updated": len(results["ids"])}
++        raise HTTPException(status_code=404, detail="File not found in DB")
++    except HTTPException:
++        raise
++    except Exception as e:
++        raise HTTPException(status_code=500, detail=str(e))
++
++@app.post("/analyze/reference_sheet")
++async def generate_reference_sheet(request: AskRequest):
++    """設定資料シートを自動生成する"""
++    query = request.query
++    file_path = request.file_path
++
++    from knowledge_processor import KnowledgeProcessor
++    kp = KnowledgeProcessor()
++    project_id = kp._determine_project(file_path) if file_path else "Unknown"
++
++    try:
++        async_client = ollama.AsyncClient()
++        response_vector = await async_client.embeddings(model="nomic-embed-text", prompt=query)
++        where_clause = {"project": project_id} if project_id != "Unknown" else None
++        results = collection.query(query_embeddings=[response_vector["embedding"]], where=where_clause, n_results=15)
++
++        context = ""
++        if results['documents'] and results['documents'][0]:
++            for doc, meta in zip(results['documents'][0], results['metadatas'][0]):
++                context += f'<memory type="{meta.get("doc_type")}" source="{meta.get("file")}">{doc}</memory>\n'
++
++        system_prompt = """あなたは設定資料の作成者です。提供された情報から、整理された設定シートを作成してください。
++キャラクター名、属性（外見・武器・所属等）、関係性を項目ごとにまとめてください。"""
++        prompt = f"<creation_memory>\n{context}\n</creation_memory>\n\n{query}"
++
++        response = await async_client.chat(
++            model=request.model,
++            messages=[{'role': 'system', 'content': system_prompt}, {'role': 'user', 'content': prompt}]
++        )
++        return {"sheet": response['message']['content']}
++    except Exception as e:
++        raise HTTPException(status_code=500, detail=str(e))
++
++# スレッドセーフな監査状態管理
++audit_lock = threading.Lock()
++
++def _update_audit_state(**kwargs):
++    with audit_lock:
++        audit_state.update(kwargs)
++
++def _get_audit_state():
++    with audit_lock:
++        return dict(audit_state)
++
+ @app.post("/analyze/proofread")
+ async def combined_proofread(request: AskRequest):
+     text = request.query
+@@ -229,31 +299,27 @@ async def combined_proofread(request: AskRequest):
+ 
+ @app.post("/analyze/audit/start")
+ async def start_full_audit(background_tasks: BackgroundTasks):
+-    global audit_state
+-    if audit_state["running"]: return {"status": "already_running"}
++    current = _get_audit_state()
++    if current["running"]: return {"status": "already_running"}
+     
+     def run_audit_process():
+-        global audit_state
+-        audit_state["running"] = True
+-        audit_state["completed"] = False
+-        audit_state["progress"] = "監査実行中..."
++        _update_audit_state(running=True, completed=False, progress="監査実行中...")
+         try:
+             from audit_batch_processor import AuditBatchProcessor
+             processor = AuditBatchProcessor()
+             processor.run_full_audit()
+-            audit_state["completed"] = True
+-            audit_state["progress"] = "完了"
++            _update_audit_state(completed=True, progress="完了")
+         except Exception as e:
+-            audit_state["progress"] = f"エラー: {e}"
++            _update_audit_state(progress=f"エラー: {e}")
+         finally:
+-            audit_state["running"] = False
++            _update_audit_state(running=False)
+ 
+     background_tasks.add_task(run_audit_process)
+     return {"status": "started"}
+ 
+ @app.get("/analyze/audit/status")
+ async def get_audit_status():
+-    return audit_state
++    return _get_audit_state()
+ 
+ @app.get("/analyze/audit/report")
+ async def get_audit_report():
+diff --git a/nexus_backend/proofreader.py b/nexus_backend/proofreader.py
+index b27cab8..9a35499 100644
+--- a/nexus_backend/proofreader.py
++++ b/nexus_backend/proofreader.py
+@@ -27,25 +27,12 @@ class Proofreader:
+             except Exception as e:
+                 print(f"Warning: failed to load whitelist: {e}")
+ 
+-        # 1. 外部辞書の読み込み (LanguageTool 700+項目)
+-        if os.path.exists(rules_path):
+-            try:
+-                with open(rules_path, "r", encoding="utf-8") as f:
+-                    self.rules = json.load(f)
+-                
+-                # 正規表現を高速化のためにプリコンパイル
+-                for rule in self.rules:
+-                    try:
+-                        self.compiled_rules.append({
+-                            "pattern": re.compile(rule["pattern"]),
+-                            "suggestion": rule["suggestion"],
+-                            "message": rule["message"],
+-                            "id": rule["id"]
+-                        })
+-                    except Exception:
+-                        continue # 不正な正規表現はスキップ
+-            except Exception as e:
+-                print(f"Error loading rules: {e}")
++        # 1. 外部辞書の読み込み
++        # ※ textlint (Electron側) が lt_complex_rules.json で同等のチェックを
++        #   品詞条件付きで実行するため、Python側での重複実行を無効化。
++        #   Python側は小説特化ルール (fast_rules, novel_specific) と
++        #   物語監査 (audit_narrative) に専念する。
++        # if os.path.exists(rules_path): ...
+ 
+         # 2. 小説特化型の追加ルール (textlint / Tomarigi セオリー)
+         # ※リテラル置換で可能なものは fast_rules へ移行済み
+@@ -140,9 +127,15 @@ class Proofreader:
+             # 現在の章の状態を取得 (stateは単一のdictを想定)
+             if state.get('status') == 'dead':
+                 search_names = [char_name] + self._get_aliases(char_name)
++                exclusion_words = ["回想", "思い出", "かつて", "あの日", "死", "遺影", "墓", "供養", "亡き"]
+                 for name in search_names:
+-                    pattern = re.compile(rf'{re.escape(name)}(?!.*(回想|死|遺影|墓|供養))')
+-                    for m in pattern.finditer(text):
++                    for m in re.finditer(re.escape(name), text):
++                        # マッチ位置の前後50文字を取得して回想コンテキストをチェック
++                        ctx_start = max(0, m.start() - 50)
++                        ctx_end = min(len(text), m.end() + 50)
++                        context = text[ctx_start:ctx_end]
++                        if any(w in context for w in exclusion_words):
++                            continue  # 回想・追悼コンテキストなのでスキップ
+                         reason = f"第{chapter_number}章時点では【{char_name}】は死亡しているはずです。"
+                         audit_results.append({
+                             "original": m.group(0),
+@@ -275,15 +268,8 @@ class Proofreader:
+                 if len(s1_end) >= 2 and s1_end == s2_end == s3_end:
+                     corrections.append({"original": f"「{s1_end}」の連続", "suggested": "変更", "reason": "地の文で文末表現が3回連続しています。"})
+ 
+-            # 外部辞書スキャン（地の文のみ）
+-            for rule in self.compiled_rules:
+-                for m in rule["pattern"].finditer(text):
+-                    if not is_in_dialogue(m.start()) and not self._is_whitelisted(m.group(0)):
+-                        corrections.append({
+-                            "original": m.group(0),
+-                            "suggested": rule["suggestion"],
+-                            "reason": rule["message"]
+-                        })
++            # 外部辞書スキャン — textlint に一本化したため無効化
++            # (compiled_rules は空のまま保持)
+ 
+             # 2. 全文に適用するルール
+             ratio = self.calculate_kanji_ratio(text)
+-- 
+2.43.0
+

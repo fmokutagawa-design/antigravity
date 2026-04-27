@@ -189,7 +189,7 @@ const AuditReportWindow = ({ isOpen, onClose, currentText, activeFile }) => {
         </select>
         
         <span className="audit-count">
-          {processedItems.length} / {report.length} 件
+          {processedItems.length} / {textlintReport.length + report.length} 件
         </span>
       </div>
 
@@ -198,7 +198,7 @@ const AuditReportWindow = ({ isOpen, onClose, currentText, activeFile }) => {
           <div className="loading">監査結果を読み込み中...</div>
         ) : processedItems.length === 0 ? (
           <div className="no-items">
-            {report.length === 0 ? "指摘事項はありません。完璧です！" : "フィルタ条件に一致する項目はありません。"}
+            {(report.length + textlintReport.length) === 0 ? "指摘事項はありません。完璧です！" : "フィルタ条件に一致する項目はありません。"}
           </div>
         ) : (
           <ul className="homework-list">
