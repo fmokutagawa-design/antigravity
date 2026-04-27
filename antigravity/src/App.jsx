@@ -78,6 +78,7 @@ import { useWorkText } from './hooks/useWorkText';
 import { useExport } from './hooks/useExport';
 import { useCorrections } from './hooks/useCorrections';
 import { usePersistentData } from './hooks/usePersistentData';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import SplitByChaptersModal from './components/SplitByChaptersModal';
 import ImportChaptersModal from './components/ImportChaptersModal';
 
@@ -729,6 +730,16 @@ function App() {
     fileSystem
   });
 
+  useKeyboardShortcuts({
+    setIsSearchOpen,
+    handleSaveFileRef,
+    setIsRapidMode,
+    setShowReader,
+    setInputModalMode,
+    setInputModalValue,
+    setShowInputModal
+  });
+
   const handleLaunchOneDrive = React.useCallback(async () => {
     if (!window.api?.system?.launchApp) {
       showToast('デスクトップ版でのみ利用可能です。', 'error');
@@ -1202,40 +1213,6 @@ function App() {
   }, [debouncedText, allMaterialFiles]);
 
   // Keyboard shortcuts (Cmd/Ctrl + F: search, Cmd+Shift+R: rapid mode, Cmd+S: save, Cmd+T: TODO)
-
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
-        e.preventDefault();
-        setIsSearchOpen(true);
-      }
-      // Cmd+S: Save
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-        e.preventDefault();
-        if (handleSaveFileRef.current) handleSaveFileRef.current();
-      }
-      // Cmd+Shift+R: Toggle rapid writing mode
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'R') {
-        e.preventDefault();
-        setIsRapidMode(prev => !prev);
-      }
-      // Alt+R: Reader Mode
-      if (e.altKey && (e.code === 'KeyR' || e.key === 'r' || e.key === 'R')) {
-        e.preventDefault();
-        setShowReader(prev => !prev);
-      }
-      // Cmd+T: Insert TODO
-      if ((e.metaKey || e.ctrlKey) && e.key === 't') {
-        e.preventDefault();
-        setInputModalMode('insert_todo');
-        setInputModalValue('');
-        setShowInputModal(true);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
   // ウィンドウを閉じる前に未保存チェック
   useEffect(() => {
