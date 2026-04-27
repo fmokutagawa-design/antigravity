@@ -373,7 +373,7 @@ const AIAssistant = ({
                     await ollamaService.chatWithRAG(prompt, selectedLocalModel, (chunk) => {
                         fullText += chunk;
                         setGeneratedText(fullText);
-                    }, abortControllerRef.current.signal, systemPrompt);
+                    }, abortControllerRef.current.signal, systemPrompt, activeFile?.path || activeFile?.handle || '');
                 } else {
                     await ollamaService.chat(messages, selectedLocalModel, (chunk) => {
                         fullText += chunk;
@@ -548,7 +548,9 @@ const AIAssistant = ({
                         userMessage,
                         selectedLocalModel,
                         onChunk,
-                        abortControllerRef.current.signal
+                        abortControllerRef.current.signal,
+                        "",
+                        activeFile?.path || activeFile?.handle || ''
                     );
                 } else {
                     await ollamaService.chat(

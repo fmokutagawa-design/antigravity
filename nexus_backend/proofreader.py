@@ -136,44 +136,48 @@ class Proofreader:
         if not materials_context:
             return audit_results
 
-        # 1. キャラクターの生存チェック
-        for char_name, info_list in materials_context.get('characters', {}).items():
-            # materials_context['characters'][char_name] はイベントのリスト
-            
-            # 現在の章の状態を取得
-            if chapter_number is not None:
-                # リストから最適な状態を探す（extractorのロジックと同様のものをここで再現するか、contextに単一状態が入っていることを期待するか）
-                # extractor.get_state_at_chapter が返す形式を想定
-                # もし info_list が単一の dict だった場合のフォールバックも考慮
-                if isinstance(info_list, list):
-                    state = {"status": "alive", "chapter": 0}
-                    for event in info_list:
-                        eff = event.get("chapter", event.get("effective_from", 0))
-                        if eff <= chapter_number:
-                            state = event
-                        else:
-                            break
-                else:
-                    state = info_list
-            else:
-                # 章指定がない場合は最新（リストの最後）または単一状態
-                state = info_list[-1] if isinstance(info_list, list) else info_list
-
+        for char_name, state in materials_context.get('characters', {}).items():
+            # 現在の章の状態を取得 (stateは単一のdictを想定)
             if state.get('status') == 'dead':
-                # 正式名 + 全エイリアスで検索
                 search_names = [char_name] + self._get_aliases(char_name)
                 for name in search_names:
                     pattern = re.compile(rf'{re.escape(name)}(?!.*(回想|死|遺影|墓|供養))')
                     for m in pattern.finditer(text):
-                        reason = f"設定資料では【{char_name}】は死亡していますが、このシーンに「{name}」として登場しています。"
-                        if chapter_number is not None:
-                            reason = f"第{chapter_number}章の時点では【{char_name}】は死亡しているはずです。（第{state.get('chapter', '?')}章で死亡）"
-                        
+                        reason = f"第{chapter_number}章時点では【{char_name}】は死亡しているはずです。"
                         audit_results.append({
                             "original": m.group(0),
                             "suggested": "時系列の確認",
                             "reason": reason + f"（ソース: {state.get('source', '不明')}）"
                         })
+
+            # 属性チェック (瞳の色、出身、武器など)
+            attributes = state.get('attributes', {})
+            if attributes:
+                search_names = [char_name] + self._get_aliases(char_name)
+                for attr_key, attr_val in attributes.items():
+                    # 属性の矛盾を検知するためのパターン
+                    # 例: 瞳が「青」なのに「赤い瞳」と書かれている場合
+                    keywords = {
+                        "eye_color": ["瞳", "目", "眼"],
+                        "hair": ["髪"],
+                        "origin": ["出身", "故郷"],
+                        "weapon": ["武器", "装備", "剣", "銃"]
+                    }.get(attr_key, [])
+
+                    if not keywords: continue
+
+                    for name in search_names:
+                        # 「名前」の近くにある「属性キーワード」を探す
+                        # 例: 「アリスの赤い瞳」
+                        pattern = re.compile(rf'{re.escape(name)}[^。？！]{0,20}(?:{"|".join(keywords)})[：:\s]*([^\s,，。、]+)')
+                        for m in pattern.finditer(text):
+                            detected_val = m.group(1)
+                            if attr_val not in detected_val and detected_val not in attr_val:
+                                audit_results.append({
+                                    "original": m.group(0),
+                                    "suggested": f"{attr_val}",
+                                    "reason": f"設定資料では【{char_name}】の{attr_key}は「{attr_val}」ですが、本文では「{detected_val}」と描写されています。"
+                                })
 
         return audit_results
 

@@ -208,6 +208,7 @@ const AuditReportWindow = ({ isOpen, onClose, currentText, activeFile }) => {
                 <li key={index} className={`homework-item category-${category}`} onClick={() => handleJump(item)}>
                   <div className="item-meta">
                     <span className={`category-tag category-${category}`}>{category}</span>
+                    <span className="project-tag">{item.project || 'Unknown'}</span>
                     <span className="file-name">{item.file}</span>
                     <span className="timestamp">{item.timestamp}</span>
                   </div>

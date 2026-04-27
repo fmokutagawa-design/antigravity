@@ -7,25 +7,11 @@
     "message": "したがっては文の最後にきません。したがって「。」を削除して、文を続けるのが正しいです"
   },
   {
-    "id": "O",
-    "category": "文法",
-    "pattern": "お",
-    "suggestion": "名詞を",
-    "message": "文法ミスがあります。名詞を見る"
-  },
-  {
     "id": "KAIKETUNARU",
     "category": "文法",
     "pattern": "解決なる",
     "suggestion": "解決になる",
     "message": "文法ミスがあります。解決になるの間違いです。"
-  },
-  {
-    "id": "DOUSI_DEHA",
-    "category": "文法",
-    "pattern": "では",
-    "suggestion": "のでは",
-    "message": "文法ミスがあります。のではの間違いです。"
   },
   {
     "id": "MEISI_DESUMU",
@@ -61,13 +47,6 @@
     "pattern": "これわ",
     "suggestion": "これは",
     "message": "文法ミスがあります。これはの間違いです。"
-  },
-  {
-    "id": "MEISI_YOMU",
-    "category": "文法",
-    "pattern": "読む",
-    "suggestion": "を読む",
-    "message": "文法ミスがあります。を読むの間違いです。"
   },
   {
     "id": "WOSANNKASITE",
@@ -390,13 +369,6 @@
     "pattern": "むずかしと",
     "suggestion": "むずかしいと",
     "message": "文法ミスがあります。むずかしいとの間違いです。"
-  },
-  {
-    "id": "KEDO",
-    "category": "文法",
-    "pattern": "げと",
-    "suggestion": "けど",
-    "message": "文法ミスがあります。けどの間違いです。"
   },
   {
     "id": "KANOJOHA_MEISI_GAIRU",
@@ -742,13 +714,6 @@
     "message": "誤字があります。汚名返上の間違いです。"
   },
   {
-    "id": "BOKINN",
-    "category": "誤字",
-    "pattern": "募金",
-    "suggestion": "寄付",
-    "message": "誤字があります。寄付の間違いです。"
-  },
-  {
     "id": "KANPUUMASATU",
     "category": "誤字",
     "pattern": "寒風摩擦",
@@ -901,13 +866,6 @@
     "pattern": "季節柄",
     "suggestion": "時節柄",
     "message": "誤字があります。時節柄の間違いです。"
-  },
-  {
-    "id": "MESENN",
-    "category": "誤字",
-    "pattern": "目線",
-    "suggestion": "視線",
-    "message": "誤字があります。視線の間違いです。"
   },
   {
     "id": "SYUKKETUSI",
@@ -1134,13 +1092,6 @@
     "message": "誤字があります。働き詰めの間違いです。"
   },
   {
-    "id": "RYOUHU",
-    "category": "誤字",
-    "pattern": "領布",
-    "suggestion": "頒布",
-    "message": "誤字があります。頒布の間違いです。"
-  },
-  {
     "id": "HIONOMITINIMOOTORU",
     "category": "誤字",
     "pattern": "人の道にも劣る",
@@ -1274,13 +1225,6 @@
     "message": "誤変換です。朝漬けの間違いです。"
   },
   {
-    "id": "ANNGOU",
-    "category": "誤変換",
-    "pattern": "暗合",
-    "suggestion": "暗号",
-    "message": "誤変換です。暗号の間違いです"
-  },
-  {
     "id": "AIKURUSII",
     "category": "誤変換",
     "pattern": "愛苦しい",
@@ -1300,20 +1244,6 @@
     "pattern": "青二歳",
     "suggestion": "青二才",
     "message": "誤変換です。青二才の間違いです。"
-  },
-  {
-    "id": "AKUTAI",
-    "category": "誤変換",
-    "pattern": "悪体",
-    "suggestion": "悪態",
-    "message": "誤変換です。悪態の間違いです。"
-  },
-  {
-    "id": "ISAI",
-    "category": "誤変換",
-    "pattern": "異才",
-    "suggestion": "異彩",
-    "message": "誤変換です。異彩の間違いです。"
   },
   {
     "id": "ISSEIITIDAI",
@@ -1344,20 +1274,6 @@
     "message": "誤変換です。有頂天の間違いです。"
   },
   {
-    "id": "OUGI",
-    "category": "誤変換",
-    "pattern": "奥技",
-    "suggestion": "奥義",
-    "message": "誤変換です。奥義の間違いです。"
-  },
-  {
-    "id": "AIMAI",
-    "category": "誤変換",
-    "pattern": "曖味",
-    "suggestion": "曖昧",
-    "message": "誤変換です。曖昧の間違いです。"
-  },
-  {
     "id": "ANNZENNHOSYOU",
     "category": "誤変換",
     "pattern": "安全保証",
@@ -1384,13 +1300,6 @@
     "pattern": "異句同音",
     "suggestion": "異口同音",
     "message": "誤変換です。異口同音の間違いです。"
-  },
-  {
-    "id": "IKANN",
-    "category": "誤変換",
-    "pattern": "遺感",
-    "suggestion": "遺憾",
-    "message": "誤変換です。遺憾の間違いです。"
   },
   {
     "id": "ISIHYOUJI",
@@ -1428,13 +1337,6 @@
     "message": "誤変換です。一抹の不安の間違いです。"
   },
   {
-    "id": "ITIRITU",
-    "category": "誤変換",
-    "pattern": "一率",
-    "suggestion": "一律",
-    "message": "連合関係がおかしいです。一律の間違いです。"
-  },
-  {
     "id": "IKKAINOISI",
     "category": "誤変換",
     "pattern": "一界の医師",
@@ -1447,13 +1349,6 @@
     "pattern": "一獲千金",
     "suggestion": "一攫千金",
     "message": "誤変換です。一攫千金の間違いです。"
-  },
-  {
-    "id": "IKKATU",
-    "category": "誤変換",
-    "pattern": "一活",
-    "suggestion": "一括",
-    "message": "誤変換です。一括の間違いです。"
   },
   {
     "id": "IKKANNNOOWARI",
@@ -1519,13 +1414,6 @@
     "message": "誤変換です。今際の際の間違いです。"
   },
   {
-    "id": "IMOHORI",
-    "category": "誤変換",
-    "pattern": "芋堀",
-    "suggestion": "芋掘り",
-    "message": "誤変換です。芋掘りの間違いです。"
-  },
-  {
     "id": "OTYAWOIRERU",
     "category": "誤変換",
     "pattern": "御\\|お茶を入れる",
@@ -1575,13 +1463,6 @@
     "message": "誤変換です。嘯くの間違いです。"
   },
   {
-    "id": "UMEMUKU",
-    "category": "誤変換",
-    "pattern": "呷く",
-    "suggestion": "呻く",
-    "message": "誤変換です。呻くの間違いです。"
-  },
-  {
     "id": "URASABISII",
     "category": "誤変換",
     "pattern": "裏寂しい",
@@ -1617,27 +1498,6 @@
     "message": "誤変換です。蜿蜒長蛇の列の間違いです。"
   },
   {
-    "id": "ENNSYOU",
-    "category": "誤変換",
-    "pattern": "炎焼",
-    "suggestion": "延焼",
-    "message": "誤変換です。延焼の間違いです。"
-  },
-  {
-    "id": "ENNRYO",
-    "category": "誤変換",
-    "pattern": "遠虜",
-    "suggestion": "遠慮",
-    "message": "誤変換です。遠慮の間違いです。"
-  },
-  {
-    "id": "OUTAI",
-    "category": "誤変換",
-    "pattern": "応待",
-    "suggestion": "応対",
-    "message": "誤変換です。応対の間違いです。"
-  },
-  {
     "id": "OOBANNHURUMAI",
     "category": "誤変換",
     "pattern": "大番振る舞い\\|ふるまい",
@@ -1645,32 +1505,11 @@
     "message": "誤変換です。椀飯振る舞いの間違いです。"
   },
   {
-    "id": "OETU",
-    "category": "誤変換",
-    "pattern": "鳴咽",
-    "suggestion": "嗚咽",
-    "message": "誤変換です。嗚咽の間違いです。"
-  },
-  {
     "id": "OOINI",
     "category": "誤変換",
     "pattern": "多いに",
     "suggestion": "大いに",
     "message": "誤変換です。大いにの間違いです。"
-  },
-  {
-    "id": "OKASIRA",
-    "category": "誤変換",
-    "pattern": "御頭",
-    "suggestion": "尾頭",
-    "message": "誤変換です。尾頭の間違いです。"
-  },
-  {
-    "id": "OKANN",
-    "category": "誤変換",
-    "pattern": "悪感",
-    "suggestion": "悪寒",
-    "message": "誤変換です。悪寒の間違いです。"
   },
   {
     "id": "OKUMENNMONAKU",
@@ -1743,25 +1582,11 @@
     "message": "誤変換です。織り交ぜるの間違いです。"
   },
   {
-    "id": "OURI",
-    "category": "誤変換",
-    "pattern": "御売",
-    "suggestion": "卸売",
-    "message": "誤変換です。卸売の間違いです。"
-  },
-  {
     "id": "ONNNOJI",
     "category": "誤変換",
     "pattern": "恩の字",
     "suggestion": "御の字",
     "message": "誤変換です。御の字の間違いです。"
-  },
-  {
-    "id": "KAWASE",
-    "category": "誤変換",
-    "pattern": "替為",
-    "suggestion": "為替",
-    "message": "誤変換です。為替の間違いです。"
   },
   {
     "id": "KAKURITSUBUNPU",
@@ -1799,20 +1624,6 @@
     "message": "誤変換です。過渡的の間違いです。"
   },
   {
-    "id": "KANNNINN",
-    "category": "誤変換",
-    "pattern": "勘忍",
-    "suggestion": "堪忍",
-    "message": "誤変換です。堪忍の間違いです。"
-  },
-  {
-    "id": "KANNBENN",
-    "category": "誤変換",
-    "pattern": "堪弁",
-    "suggestion": "勘弁",
-    "message": "誤変換です。勘弁の間違いです。"
-  },
-  {
     "id": "MOHANNKAITOU",
     "category": "誤変換",
     "pattern": "模範回答",
@@ -1825,13 +1636,6 @@
     "pattern": "掻き入れ\\|いれ時\\|どき",
     "suggestion": "書き入れ時",
     "message": "誤変換です。書き入れ時の間違いです。"
-  },
-  {
-    "id": "KAKUU",
-    "category": "誤変換",
-    "pattern": "仮空",
-    "suggestion": "架空",
-    "message": "誤変換です。架空の間違い。"
   },
   {
     "id": "GAKEPPUTI",
@@ -1876,32 +1680,11 @@
     "message": "誤変換です。勘違いの間違いです。"
   },
   {
-    "id": "KANNHEKI",
-    "category": "誤変換",
-    "pattern": "完壁",
-    "suggestion": "完璧",
-    "message": "誤変換です。完璧の間違いです。"
-  },
-  {
-    "id": "KANNREKI",
-    "category": "誤変換",
-    "pattern": "還歴",
-    "suggestion": "還暦",
-    "message": "誤変換です。還暦の間違いです。"
-  },
-  {
     "id": "KIKAIGAKUSYUU",
     "category": "誤変換",
     "pattern": "機会学習",
     "suggestion": "機械学習",
     "message": "誤変換です。機械学習の間違いです。"
-  },
-  {
-    "id": "KIKKYUU",
-    "category": "誤変換",
-    "pattern": "喫急",
-    "suggestion": "喫緊",
-    "message": "誤変換です。喫緊の間違いです。"
   },
   {
     "id": "KIBUTUSONGAIZAI",
@@ -1925,13 +1708,6 @@
     "message": "誤変換です。危機一髪の間違いです。"
   },
   {
-    "id": "KIGENN",
-    "category": "誤変換",
-    "pattern": "気嫌",
-    "suggestion": "機嫌",
-    "message": "誤変換です。機嫌の間違いです。"
-  },
-  {
     "id": "KISYOKUMANNSAI",
     "category": "誤変換",
     "pattern": "気色満面",
@@ -1939,39 +1715,11 @@
     "message": "誤変換です。喜色満面の間違いです。"
   },
   {
-    "id": "KYUKYO",
-    "category": "誤変換",
-    "pattern": "急拠",
-    "suggestion": "急遽",
-    "message": "誤変換です。急遽の間違いです。"
-  },
-  {
-    "id": "KYUUTEI",
-    "category": "誤変換",
-    "pattern": "宮庭",
-    "suggestion": "宮廷",
-    "message": "誤変換です。宮廷の間違いです。"
-  },
-  {
-    "id": "KUNOU",
-    "category": "誤変換",
-    "pattern": "苦脳",
-    "suggestion": "苦悩",
-    "message": "誤変換です。苦悩の間違いです"
-  },
-  {
     "id": "KEKKAOURAI",
     "category": "誤変換",
     "pattern": "結果往来",
     "suggestion": "結果オーライ",
     "message": "誤変換です。結果オーライの間違いです。"
-  },
-  {
-    "id": "GEKIYAKU",
-    "category": "誤変換",
-    "pattern": "激薬",
-    "suggestion": "劇薬",
-    "message": "誤変換です。劇薬の間違いです。"
   },
   {
     "id": "KOBURAGAERI",
@@ -1995,13 +1743,6 @@
     "message": "誤変換です。厚顔無恥の間違いです。"
   },
   {
-    "id": "KOUGI",
-    "category": "誤変換",
-    "pattern": "講議",
-    "suggestion": "講義",
-    "message": "誤変換です。講義の間違いです。"
-  },
-  {
     "id": "KOUSEIBUSSITU",
     "category": "誤変換",
     "pattern": "抗性物質",
@@ -2009,39 +1750,11 @@
     "message": "誤変換です。抗生物質の間違いです。"
   },
   {
-    "id": "KOUTYAKU",
-    "category": "誤変換",
-    "pattern": "硬着",
-    "suggestion": "膠着",
-    "message": "誤変換です。膠着の間違いです。"
-  },
-  {
     "id": "KOUTOUBENNRONN",
     "category": "誤変換",
     "pattern": "口答弁論",
     "suggestion": "口頭弁論",
     "message": "誤変換です。口頭弁論の間違いです。"
-  },
-  {
-    "id": "KOUBAI",
-    "category": "誤変換",
-    "pattern": "購売",
-    "suggestion": "購買",
-    "message": "誤変換です。購買の間違いです。"
-  },
-  {
-    "id": "KOUHYOU",
-    "category": "誤変換",
-    "pattern": "公評",
-    "suggestion": "公表",
-    "message": "誤変換です。公表の間違いです。"
-  },
-  {
-    "id": "GOKAKU",
-    "category": "誤変換",
-    "pattern": "互格",
-    "suggestion": "互角",
-    "message": "誤変換です。互角の間違いです。"
   },
   {
     "id": "KOKAISYA",
@@ -2093,27 +1806,6 @@
     "message": "誤変換です。五里霧中の間違いです。"
   },
   {
-    "id": "KONNRANN",
-    "category": "誤変換",
-    "pattern": "困乱",
-    "suggestion": "混乱",
-    "message": "誤変換です。混乱の間違いです。"
-  },
-  {
-    "id": "KAIKETU",
-    "category": "誤変換",
-    "pattern": "快傑",
-    "suggestion": "怪傑",
-    "message": "誤変換です。怪傑の間違いです。"
-  },
-  {
-    "id": "GAITOU",
-    "category": "誤変換",
-    "pattern": "概当",
-    "suggestion": "該当",
-    "message": "誤変換です。該当の間違いです。"
-  },
-  {
     "id": "KAETTEYOKUNAI",
     "category": "誤変換",
     "pattern": "返ってよくない",
@@ -2126,13 +1818,6 @@
     "pattern": "かかあ殿下",
     "suggestion": "嚊天下",
     "message": "誤変換です。嚊天下の間違いです。"
-  },
-  {
-    "id": "GAKAI",
-    "category": "誤変換",
-    "pattern": "瓦壊",
-    "suggestion": "瓦解",
-    "message": "誤変換です。瓦解の間違いです。"
   },
   {
     "id": "KASITANNPOSEKININN",
@@ -2156,13 +1841,6 @@
     "message": "誤変換です。象るの間違いです。"
   },
   {
-    "id": "KATANN",
-    "category": "誤変換",
-    "pattern": "加担",
-    "suggestion": "荷担",
-    "message": "誤変換です。荷担の間違いです。"
-  },
-  {
     "id": "KARITATERU",
     "category": "誤変換",
     "pattern": "狩り立てる",
@@ -2175,13 +1853,6 @@
     "pattern": "画竜点晴",
     "suggestion": "画竜点睛",
     "message": "誤変換です。画竜点睛の間違いです。"
-  },
-  {
-    "id": "GANNMAE",
-    "category": "誤変換",
-    "pattern": "顔前",
-    "suggestion": "眼前",
-    "message": "誤変換です。眼前の間違いです。"
   },
   {
     "id": "KANNZENNTYOUAKU",
@@ -2233,27 +1904,6 @@
     "message": "誤変換です。決まりが良いの間違いです。"
   },
   {
-    "id": "KIMI",
-    "category": "誤変換",
-    "pattern": "黄味",
-    "suggestion": "黄身",
-    "message": "誤変換です。黄身の間違いです。"
-  },
-  {
-    "id": "GIHEI",
-    "category": "誤変換",
-    "pattern": "偽瞞",
-    "suggestion": "欺瞞",
-    "message": "誤変換です。欺瞞の間違いです。"
-  },
-  {
-    "id": "KYUUKYUU",
-    "category": "誤変換",
-    "pattern": "急救",
-    "suggestion": "救急",
-    "message": "誤変換です。救急の間違いです。"
-  },
-  {
     "id": "KYUUYAKUSEISYO",
     "category": "誤変換",
     "pattern": "旧訳聖書",
@@ -2273,27 +1923,6 @@
     "pattern": "興味深深",
     "suggestion": "興味津津",
     "message": "誤変換です。興味津津の間違いです。"
-  },
-  {
-    "id": "KYORON",
-    "category": "誤変換",
-    "pattern": "教論",
-    "suggestion": "教諭",
-    "message": "誤変換です。教諭の間違いです。"
-  },
-  {
-    "id": "KINNKOU",
-    "category": "誤変換",
-    "pattern": "均衝",
-    "suggestion": "均衡",
-    "message": "誤変換です。均衡の間違いです。"
-  },
-  {
-    "id": "KUSSINN",
-    "category": "誤変換",
-    "pattern": "屈身",
-    "suggestion": "屈伸",
-    "message": "誤変換です。屈伸の間違いです。"
   },
   {
     "id": "KUTUNUGI",
@@ -2324,25 +1953,11 @@
     "message": "誤変換です。与し易いの間違いです。"
   },
   {
-    "id": "GUNNKANN",
-    "category": "誤変換",
-    "pattern": "軍鑑",
-    "suggestion": "軍艦",
-    "message": "誤変換です。軍艦の間違いです。"
-  },
-  {
     "id": "KENNKOUKOTU",
     "category": "誤変換",
     "pattern": "健康骨",
     "suggestion": "肩甲骨",
     "message": "誤変換です。肩甲骨の間違いです。"
-  },
-  {
-    "id": "KESINN",
-    "category": "誤変換",
-    "pattern": "化神",
-    "suggestion": "化身",
-    "message": "誤変換です。化身の間違いです。"
   },
   {
     "id": "KESSENNTOUHYOU",
@@ -2371,13 +1986,6 @@
     "pattern": "検討違い\\|ちがい",
     "suggestion": "見当違い",
     "message": "誤変換です。見当違いの間違いです。"
-  },
-  {
-    "id": "GENNSI",
-    "category": "誤変換",
-    "pattern": "元師",
-    "suggestion": "元帥",
-    "message": "誤変換です。元帥の間違いです。"
   },
   {
     "id": "KENNMOHORORO",
@@ -2415,13 +2023,6 @@
     "message": "誤変換です。交感神経の間違いです。"
   },
   {
-    "id": "KOUSYAKU",
-    "category": "誤変換",
-    "pattern": "候爵",
-    "suggestion": "侯爵",
-    "message": "誤変換です。侯爵の間違いです。"
-  },
-  {
     "id": "KOUSEIOSORUBESI",
     "category": "誤変換",
     "pattern": "後世おそるべし",
@@ -2434,13 +2035,6 @@
     "pattern": "虎視耽耽",
     "suggestion": "虎視眈眈",
     "message": "誤変換です。虎視眈眈の間違いです。"
-  },
-  {
-    "id": "GOJINN",
-    "category": "誤変換",
-    "pattern": "御人",
-    "suggestion": "御仁",
-    "message": "誤変換です。御仁の間違いです。"
   },
   {
     "id": "KOPPAMIJINN",
@@ -2499,13 +2093,6 @@
     "message": "誤変換です。凄まじいの間違いです。"
   },
   {
-    "id": "SAKUSUI",
-    "category": "誤変換",
-    "pattern": "散水",
-    "suggestion": "撒水",
-    "message": "誤変換です。撒水の間違いです。"
-  },
-  {
     "id": "SAMEYAMANU",
     "category": "誤変換",
     "pattern": "覚め\\|さめ止まぬ",
@@ -2520,25 +2107,11 @@
     "message": "誤変換です。最高潮の間違いです。"
   },
   {
-    "id": "SATTOU",
-    "category": "誤変換",
-    "pattern": "殺倒",
-    "suggestion": "殺到",
-    "message": "誤変換です。殺到の間違いです。"
-  },
-  {
     "id": "SATOSU",
     "category": "誤変換",
     "pattern": "悟す\\|し",
     "suggestion": "諭す",
     "message": "誤変換です。諭すの間違いです。"
-  },
-  {
-    "id": "SANNZANN",
-    "category": "誤変換",
-    "pattern": "散散",
-    "suggestion": "散々",
-    "message": "誤変換です。散々の間違いです。"
   },
   {
     "id": "SANMIITTAI",
@@ -2590,13 +2163,6 @@
     "message": "誤変換です。しぶといの間違いです。"
   },
   {
-    "id": "SIMATU",
-    "category": "誤変換",
-    "pattern": "仕末",
-    "suggestion": "始末",
-    "message": "誤変換です。始末の間違いです。"
-  },
-  {
     "id": "SEKININNTENNKA",
     "category": "誤変換",
     "pattern": "責任転換",
@@ -2639,13 +2205,6 @@
     "message": "誤変換です。舌鼓の間違いです。"
   },
   {
-    "id": "SYUUKAKU",
-    "category": "誤変換",
-    "pattern": "収獲",
-    "suggestion": "収穫",
-    "message": "誤変換です。収穫の間違いです。"
-  },
-  {
     "id": "SYUUKANNSI",
     "category": "誤変換",
     "pattern": "週間誌",
@@ -2674,25 +2233,11 @@
     "message": "誤変換です。細大漏らさずの間違いです。"
   },
   {
-    "id": "SAIBAI",
-    "category": "誤変換",
-    "pattern": "裁培",
-    "suggestion": "栽培",
-    "message": "誤変換です。栽培の間違いです。"
-  },
-  {
     "id": "SANNHANNKIKANN",
     "category": "誤変換",
     "pattern": "三半器官",
     "suggestion": "三半規管",
     "message": "誤変換です。三半規管の間違いです。"
-  },
-  {
-    "id": "SANNMANN",
-    "category": "誤変換",
-    "pattern": "散慢",
-    "suggestion": "散漫",
-    "message": "誤変換です。散漫の間違いです。"
   },
   {
     "id": "GPANN",
@@ -2730,20 +2275,6 @@
     "message": "誤変換です。沁みるの間違いです。"
   },
   {
-    "id": "JAKKANN",
-    "category": "誤変換",
-    "pattern": "若冠",
-    "suggestion": "弱冠",
-    "message": "誤変換です。弱冠の間違いです。"
-  },
-  {
-    "id": "SYARE",
-    "category": "誤変換",
-    "pattern": "酒落",
-    "suggestion": "洒落",
-    "message": "誤変換です。洒落の間違いです。"
-  },
-  {
     "id": "SYUUSYUUGATUKANAI",
     "category": "誤変換",
     "pattern": "収集がつかない",
@@ -2756,20 +2287,6 @@
     "pattern": "衆人監視",
     "suggestion": "衆人環視",
     "message": "誤変換です。衆人環視の間違いです。"
-  },
-  {
-    "id": "SYUKUSYOU",
-    "category": "誤変換",
-    "pattern": "縮少",
-    "suggestion": "縮小",
-    "message": "誤変換です。縮小の間違いです。"
-  },
-  {
-    "id": "SYUKOU",
-    "category": "誤変換",
-    "pattern": "趣好",
-    "suggestion": "趣向",
-    "message": "誤変換です。趣向の間違いです。"
   },
   {
     "id": "JYUNNSUIMUTI",
@@ -2898,32 +2415,11 @@
     "message": "誤変換です。真犯人の間違いです。"
   },
   {
-    "id": "SINNPYOU",
-    "category": "誤変換",
-    "pattern": "真憑",
-    "suggestion": "信憑",
-    "message": "誤変換です。信憑の間違いです。"
-  },
-  {
-    "id": "SINNBOU",
-    "category": "誤変換",
-    "pattern": "辛棒",
-    "suggestion": "辛抱",
-    "message": "誤変換です。辛抱の間違いです。"
-  },
-  {
     "id": "JISSENNSURU",
     "category": "誤変換",
     "pattern": "実戦する",
     "suggestion": "実践する",
     "message": "誤変換です。実践するの間違いです。"
-  },
-  {
-    "id": "SUIRENN",
-    "category": "誤変換",
-    "pattern": "水蓮",
-    "suggestion": "睡蓮",
-    "message": "誤変換です。睡蓮の間違いです。"
   },
   {
     "id": "SUUDONN",
@@ -2989,13 +2485,6 @@
     "message": "誤変換です。節を曲げるの間違いです。"
   },
   {
-    "id": "ZEHI",
-    "category": "誤変換",
-    "pattern": "是否",
-    "suggestion": "是非",
-    "message": "誤変換です。是非の間違いです。"
-  },
-  {
     "id": "SENNSENNHUKOKU",
     "category": "誤変換",
     "pattern": "戦線布告",
@@ -3017,13 +2506,6 @@
     "message": "誤変換です。全面的の間違いです。"
   },
   {
-    "id": "JINNMONN",
-    "category": "誤変換",
-    "pattern": "専問",
-    "suggestion": "専門",
-    "message": "誤変換です。専門の間違いです。"
-  },
-  {
     "id": "SOUSOUTARUJINNBUTU",
     "category": "誤変換",
     "pattern": "蒼蒼たる",
@@ -3036,13 +2518,6 @@
     "pattern": "速戦速決",
     "suggestion": "速戦即決",
     "message": "誤変換です。速戦即決の間違いです。"
-  },
-  {
-    "id": "SOSSENN",
-    "category": "誤変換",
-    "pattern": "卒先",
-    "suggestion": "率先",
-    "message": "誤変換です。率先の間違いです。"
   },
   {
     "id": "SODEHURIAUMOTASYOUNOENN",
@@ -3059,25 +2534,11 @@
     "message": "誤変換です。話を逸らすの間違いです。"
   },
   {
-    "id": "SONNSYOKU",
-    "category": "誤変換",
-    "pattern": "損色",
-    "suggestion": "遜色",
-    "message": "誤変換です。遜色の間違いです。"
-  },
-  {
     "id": "TYUUDURI",
     "category": "誤変換",
     "pattern": "中吊り",
     "suggestion": "宙吊り",
     "message": "誤変換です。宙吊りの間違いです。"
-  },
-  {
-    "id": "TAIKANN",
-    "category": "誤変換",
-    "pattern": "載冠",
-    "suggestion": "戴冠",
-    "message": "誤変換です。戴冠の間違いです。"
   },
   {
     "id": "TAIGIMEIBUNN",
@@ -3115,13 +2576,6 @@
     "message": "誤変換です。佇むの間違いです。"
   },
   {
-    "id": "TATARI",
-    "category": "誤変換",
-    "pattern": "崇り",
-    "suggestion": "祟り",
-    "message": "誤変換です。祟りの間違いです。"
-  },
-  {
     "id": "TATOEBANASI",
     "category": "誤変換",
     "pattern": "例え話",
@@ -3134,13 +2588,6 @@
     "pattern": "玉の腰",
     "suggestion": "玉の輿",
     "message": "誤変換です。玉の輿の間違いです。"
-  },
-  {
-    "id": "TANNKA",
-    "category": "誤変換",
-    "pattern": "担荷",
-    "suggestion": "担架",
-    "message": "誤変換です。担架の間違いです。"
   },
   {
     "id": "DEBUSYOU",
@@ -3176,20 +2623,6 @@
     "pattern": "淡白質",
     "suggestion": "蛋白質",
     "message": "誤変換です。蛋白質の間違いです。"
-  },
-  {
-    "id": "TYAKUHUKU",
-    "category": "誤変換",
-    "pattern": "着腹",
-    "suggestion": "着服",
-    "message": "誤変換です。着服の間違いです。"
-  },
-  {
-    "id": "TYOUAI",
-    "category": "誤変換",
-    "pattern": "籠愛",
-    "suggestion": "寵愛",
-    "message": "誤変換です。寵愛の間違いです。"
   },
   {
     "id": "TYOUKANNZU",
@@ -3276,13 +2709,6 @@
     "message": "誤変換です。取り沙汰されるの間違いです。"
   },
   {
-    "id": "HINNYOKU",
-    "category": "誤変換",
-    "pattern": "貧欲",
-    "suggestion": "貪欲",
-    "message": "誤変換です。貪欲の間違いです。"
-  },
-  {
     "id": "TOITADASU",
     "category": "誤変換",
     "pattern": "問い正す",
@@ -3332,13 +2758,6 @@
     "message": "誤変換です。泥仕合の間違いです。"
   },
   {
-    "id": "TONKYOU",
-    "category": "誤変換",
-    "pattern": "頓狂",
-    "suggestion": "頓興",
-    "message": "誤変換です。頓興の間違いです。"
-  },
-  {
     "id": "TONNBOGAERI",
     "category": "誤変換",
     "pattern": "とんぼ帰り",
@@ -3351,13 +2770,6 @@
     "pattern": "遠避ける",
     "suggestion": "遠ざける",
     "message": "誤変換です。遠ざけるの間違いです。"
-  },
-  {
-    "id": "TUGI",
-    "category": "誤変換",
-    "pattern": "次ぎ",
-    "suggestion": "次",
-    "message": "誤変換です。次の間違いです。"
   },
   {
     "id": "TUMAYOUJI",
@@ -3416,25 +2828,11 @@
     "message": "誤変換です。鳴かず飛ばずの間違いです。"
   },
   {
-    "id": "NAKABA",
-    "category": "誤変換",
-    "pattern": "中ば",
-    "suggestion": "半ば",
-    "message": "誤変換です。半ばの間違いです。"
-  },
-  {
     "id": "NASINOTUBUTE",
     "category": "誤変換",
     "pattern": "無しの礫\\|つぶて",
     "suggestion": "梨の礫",
     "message": "誤変換です。梨の礫の間違いです。"
-  },
-  {
-    "id": "NIKUHAKU",
-    "category": "誤変換",
-    "pattern": "肉迫",
-    "suggestion": "肉薄",
-    "message": "誤変換です。肉薄の間違いです。"
   },
   {
     "id": "NASEBANARU",
@@ -3465,13 +2863,6 @@
     "message": "誤変換です。年がら年中の間違いです。"
   },
   {
-    "id": "NENNPOU",
-    "category": "誤変換",
-    "pattern": "年棒",
-    "suggestion": "年俸",
-    "message": "誤変換です。年俸の間違いです。"
-  },
-  {
     "id": "NOUKIGU",
     "category": "誤変換",
     "pattern": "農器具",
@@ -3493,27 +2884,6 @@
     "message": "誤変換です。濡れ手で粟の間違いです。"
   },
   {
-    "id": "BAKUSINN",
-    "category": "誤変換",
-    "pattern": "爆進",
-    "suggestion": "驀進",
-    "message": "誤変換です。驀進の間違いです。"
-  },
-  {
-    "id": "BAKUDAI",
-    "category": "誤変換",
-    "pattern": "漠大",
-    "suggestion": "莫大",
-    "message": "誤変換です。莫大の間違いです。"
-  },
-  {
-    "id": "HATYOU",
-    "category": "誤変換",
-    "pattern": "波調",
-    "suggestion": "波長",
-    "message": "誤変換です。波長の間違いです。"
-  },
-  {
     "id": "HAPPOUSUTIRO-RU",
     "category": "誤変換",
     "pattern": "発砲スチロール",
@@ -3533,13 +2903,6 @@
     "pattern": "万事窮す",
     "suggestion": "万事休す",
     "message": "誤変換です。万事休すの間違いです。"
-  },
-  {
-    "id": "BIMYOU",
-    "category": "誤変換",
-    "pattern": "徴妙",
-    "suggestion": "微妙",
-    "message": "誤変換です。微妙の間違いです。"
   },
   {
     "id": "HURI-NOKYAKU",
@@ -3568,13 +2931,6 @@
     "pattern": "不響和音",
     "suggestion": "不協和音",
     "message": "誤変換です。不協和音の間違いです。"
-  },
-  {
-    "id": "HUKUZOU",
-    "category": "誤変換",
-    "pattern": "腹臓",
-    "suggestion": "腹蔵",
-    "message": "誤変換です。腹蔵の間違いです。"
   },
   {
     "id": "BUSYOUHIGE",
@@ -3619,53 +2975,11 @@
     "message": "誤変換です。遜るの間違いです。"
   },
   {
-    "id": "BOINN",
-    "category": "誤変換",
-    "pattern": "母印",
-    "suggestion": "拇印",
-    "message": "誤変換です。拇印の間違いです。"
-  },
-  {
-    "id": "HOUKI",
-    "category": "誤変換",
-    "pattern": "峰起",
-    "suggestion": "蜂起",
-    "message": "誤変換です。蜂起の間違いです。"
-  },
-  {
-    "id": "HOUTUI",
-    "category": "誤変換",
-    "pattern": "放遂",
-    "suggestion": "放逐",
-    "message": "誤変換です。放逐の間違いです。"
-  },
-  {
-    "id": "HOUDOU",
-    "category": "誤変換",
-    "pattern": "報導",
-    "suggestion": "報道",
-    "message": "誤変換です。報道の間違いです。"
-  },
-  {
     "id": "HOHUKUZETTOU",
     "category": "誤変換",
     "pattern": "抱腹絶倒",
     "suggestion": "捧腹絶倒",
     "message": "誤変換です。捧腹絶倒の間違いです。"
-  },
-  {
-    "id": "HOUBENN",
-    "category": "誤変換",
-    "pattern": "方弁",
-    "suggestion": "方便",
-    "message": "誤変換です。方便の間違いです。"
-  },
-  {
-    "id": "HOUMONN",
-    "category": "誤変換",
-    "pattern": "訪門",
-    "suggestion": "訪問",
-    "message": "誤変換です。訪問の間違いです。"
   },
   {
     "id": "HOUYOURYOKU",
@@ -3766,25 +3080,11 @@
     "message": "誤変換です。無我夢中の間違いです。"
   },
   {
-    "id": "MEISI",
-    "category": "誤変換",
-    "pattern": "名剌",
-    "suggestion": "名刺",
-    "message": "誤変換です。名刺の間違いです。"
-  },
-  {
     "id": "MEGURUMEKU",
     "category": "誤変換",
     "pattern": "巡るめく",
     "suggestion": "目眩く",
     "message": "誤変換です。目眩くの間違いです。"
-  },
-  {
-    "id": "MOKUDOKU",
-    "category": "誤変換",
-    "pattern": "目読",
-    "suggestion": "黙読",
-    "message": "誤変換です。黙読の間違いです。"
   },
   {
     "id": "MOKUHIKENN",
@@ -3899,32 +3199,11 @@
     "message": "誤変換です。ロケハンの間違いです。"
   },
   {
-    "id": "WAZAMONO",
-    "category": "誤変換",
-    "pattern": "技物",
-    "suggestion": "業物",
-    "message": "誤変換です。業物の間違いです。"
-  },
-  {
-    "id": "WAIRO",
-    "category": "誤変換",
-    "pattern": "賄路",
-    "suggestion": "賄賂",
-    "message": "誤変換です。賄賂の間違いです。"
-  },
-  {
     "id": "WAKIAIAI",
     "category": "誤変換",
     "pattern": "和気愛愛",
     "suggestion": "和気藹藹",
     "message": "誤変換です。和気藹藹の間違いです。"
-  },
-  {
-    "id": "WAKOU",
-    "category": "誤変換",
-    "pattern": "倭冠",
-    "suggestion": "倭寇",
-    "message": "誤変換です。倭寇の間違いです。"
   },
   {
     "id": "AINOTE",

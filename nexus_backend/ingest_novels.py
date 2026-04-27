@@ -41,8 +41,6 @@ def ingest_novels():
             continue
 
         for root, _, files in os.walk(target_dir):
-            # フォルダ構造（相対パス）を計算
-            # 例: 「ドキュメント/原稿/2026/最新」のような住所を抽出
             rel_path = os.path.relpath(root, BASE_PATH)
             
             for file in files:
@@ -53,25 +51,21 @@ def ingest_novels():
                 content = safe_read(file_path)
                 if not content.strip(): continue
 
-                # 「お膳立て」のための解析
-                file_info = kp.analyze_file(file_path, content)
-                entities_str = ",".join(file_info["entities"])
+                # 解析 (process_fileを使用)
+                file_info = kp.process_file(file_path, content)
+                entities_str = file_info.get("entities", "")
 
-                # 文章を1000文字ずつの断片（チャンク）にする
                 chunks = [content[i:i+1000] for i in range(0, len(content), 1000)]
                 
                 for i, chunk in enumerate(chunks):
                     chunk_id = f"{file}_p{i}"
                     
-                    # タイムアウト対策：3回までリトライ
                     success = False
                     for attempt in range(3):
                         try:
-                            # AIに意味を抽出させる
                             response = ollama.embeddings(model="nomic-embed-text", prompt=chunk)
                             vector = response["embedding"]
                             
-                            # データベースに保存（お膳立て済みメタデータを記録）
                             collection.upsert(
                                 ids=[chunk_id],
                                 embeddings=[vector],
@@ -79,29 +73,41 @@ def ingest_novels():
                                     "file": file,
                                     "path": rel_path,
                                     "full_path": file_path,
-                                    "importance": file_info["importance"],
+                                    "importance": file_info.get("importance", 50),
                                     "entities": entities_str,
-                                    "is_setting": 1 if file_info["is_setting"] else 0,
-                                    "project": file_info["project"]
+                                    "is_setting": 1 if file_info.get("doc_type") == "SETTING" else 0,
+                                    "project": file_info.get("project", "Unknown"),
+                                    "doc_type": file_info.get("doc_type", "OTHER")
                                 },
                                 documents=[chunk]
                             )
                             success = True
                             break
                         except Exception:
-                            time.sleep(2) # 2秒待ってリトライ
+                            time.sleep(2)
                     
                     if success:
                         chunk_count += 1
-                    else:
-                        print(f"❌ 失敗: {file} (ブロック {i})")
                 
-                print(f"✅ 解析完了 ({file_info['importance']}pts) [{rel_path}]: {file}")
+                print(f"✅ 解析完了 ({file_info.get('importance')}pts) [{rel_path}]: {file}")
                 file_count += 1
-                time.sleep(0.05) # Ollamaへの負荷調整
+                time.sleep(0.05)
 
-    print(f"\n🎉 完了！")
-    print(f"あなたの全歴史 {file_count} ファイル（{chunk_count} ブロック）を住所付きで記憶しました。")
+    # 3. 削除されたファイルのクリーンアップ (Task 8)
+    print("\n🧹 クリーンアップ開始...")
+    try:
+        results = collection.get(include=["metadatas"])
+        db_full_paths = {meta["full_path"] for meta in results["metadatas"] if "full_path" in meta}
+        deleted_paths = [p for p in db_full_paths if not os.path.exists(p)]
+        
+        if deleted_paths:
+            print(f"🗑️ {len(deleted_paths)} 件の削除済みファイルをDBから除去中...")
+            for path in deleted_paths:
+                collection.delete(where={"full_path": path})
+    except Exception as e:
+        print(f"⚠️ Cleanup error: {e}")
+
+    print(f"\n🎉 完了！ {file_count} ファイル記憶しました。")
 
 if __name__ == "__main__":
     ingest_novels()

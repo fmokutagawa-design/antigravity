@@ -34,22 +34,26 @@ class AuditBatchProcessor:
     def run_full_audit(self):
         print("🚀 【校正監査モード】大規模監査を開始します...")
         
-        # 0. 最新の原稿をDBに同期（お膳立て）
-        print("📥 原稿の最新状態をデータベースに同期中...")
         from ingest_novels import ingest_novels
         ingest_novels()
         
-        # 1. 最新の物語状態を抽出 (内部で timelines が保持される)
-        states = self.extractor.extract_all_states()
-        print(f"✅ 設定資料から {len(states['characters'])} 名のキャラクター状態を把握しました。")
-
         homework_list = []
         start_time = time.time()
         file_count = 0
 
-        # 2. 全原稿をスキャン
+        # プロジェクトごとに処理
         for target_dir in self.target_dirs:
             if not os.path.exists(target_dir): continue
+
+            # ディレクトリからプロジェクトIDを推測
+            from knowledge_processor import KnowledgeProcessor
+            kp = KnowledgeProcessor()
+            # サンプルのファイルパスを作成してプロジェクトを判定
+            project_id = kp._determine_project(os.path.join(target_dir, "dummy.txt"))
+            
+            print(f"📁 プロジェクト [{project_id}] の監査を開始...")
+            states = self.extractor.extract_all_states(project_id=project_id)
+            print(f"✅ 設定資料から {len(states['characters'])} 名のキャラクター状態を把握しました。")
 
             for root, _, files in os.walk(target_dir):
                 for file in files:
@@ -63,8 +67,9 @@ class AuditBatchProcessor:
                         with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
                             content = f.read()
                         
-                        # 章番号を推測し、その時点でのコンテキストを作成
                         chapter_num = self._extract_chapter_number(file)
+                        
+                        # その時点でのコンテキストを作成
                         current_materials_context = {
                             "characters": {
                                 name: self.extractor.get_state_at_chapter(name, "characters", chapter_num or 999)
@@ -72,8 +77,6 @@ class AuditBatchProcessor:
                             }
                         }
 
-                        # 校正・監査の実行
-                        # chapter_number を明示的に渡すことで時系列チェックを有効化
                         results = self.pr.proofread(
                             content, 
                             mode='all', 
@@ -86,6 +89,7 @@ class AuditBatchProcessor:
                                 homework_list.append({
                                     "file": file,
                                     "full_path": file_path,
+                                    "project": project_id,
                                     "original": res["original"],
                                     "suggested": res["suggested"],
                                     "reason": res["reason"],
@@ -94,9 +98,7 @@ class AuditBatchProcessor:
                         
                         file_count += 1
                     except Exception as e:
-                        import traceback
                         print(f"❌ エラー ({file}): {e}")
-                        traceback.print_exc()
 
         # 3. 結果の保存
         with open(self.report_path, "w", encoding="utf-8") as f:
@@ -104,7 +106,6 @@ class AuditBatchProcessor:
 
         elapsed = time.time() - start_time
         print(f"🎉 監査完了！ {file_count} ファイルを精査しました。")
-        print(f"📝 宿題リストに {len(homework_list)} 件の項目を記録しました。")
         print(f"⏱ 処理時間: {elapsed:.1f} 秒")
 
 if __name__ == "__main__":

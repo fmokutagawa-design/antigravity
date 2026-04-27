@@ -59,104 +59,107 @@ class StoryStateExtractor:
             except Exception:
                 pass
 
-    def extract_all_states(self, project_name="Unknown"):
+    def extract_all_states(self, project_id="Unknown"):
         """
         特定のプロジェクトに関連するすべての設定資料から状態を抽出する
         """
+        where_clause = {"is_setting": 1}
+        if project_id != "Unknown":
+            where_clause["project"] = project_id
+
         results = self.collection.get(
-            where={"is_setting": 1},
+            where=where_clause,
             include=["metadatas", "documents"]
         )
 
-        # 内部管理用のタイムライン
         self.timelines = {} # { name: CharacterTimeline }
-        
-        states = {
-            "characters": {},
-            "terms": {},
-            "locations": {},
-            "timeline": []
-        }
+        states = {"characters": {}, "terms": {}, "locations": {}, "timeline": []}
 
         if not results["ids"]:
             self.all_states = states
             return states
 
-        # 章番号の抽出パターン (本文中)
         chapter_desc_pattern = re.compile(r'(?:第|chapter_?)(\d+)', re.IGNORECASE)
+        death_keywords = ["死亡", "戦死", "亡くなった", "故人", "殺された"]
+        alive_keywords = ["生存", "生きている", "健在"]
+        if_keywords = ["IF", "if", "設定変更", "独自"]
 
         for doc, meta in zip(results["documents"], results["metadatas"]):
             file_name = meta.get("file", "")
-            # ファイル名から章番号を推測 (デフォルトの有効章)
             file_chapter = 0
             match = re.search(r'(?:第|chapter_?)(\d+)', file_name, re.IGNORECASE)
-            if match:
-                file_chapter = int(match.group(1))
+            if match: file_chapter = int(match.group(1))
 
-            death_keywords = ["死亡", "戦死", "亡くなった", "故人", "殺された"]
-            alive_keywords = ["生存", "生きている", "健在"]
-            if_keywords = ["IF", "if", "設定変更", "独自"]
-
+            current_entity = None
             lines = doc.split("\n")
             for line in lines:
-                if "：" in line or ":" in line:
-                    parts = re.split(r'[：:]', line, 1)
-                    name = parts[0].strip()
-                    desc = parts[1].strip()
+                line = line.strip()
+                if not line: continue
 
-                    if name in meta.get("entities", "").split(","):
-                        canonical_name = self.reverse_aliases.get(name, name)
-                        
-                        if canonical_name not in self.timelines:
-                            self.timelines[canonical_name] = CharacterTimeline(canonical_name)
+                # 1. エンティティの特定
+                entity_match = re.match(r'^([#■・]*)?\s*([^：:\[\(\s]{1,20})\s*[：:]', line)
+                if entity_match:
+                    current_entity = entity_match.group(2).strip()
+                    desc = line[entity_match.end():].strip()
+                elif current_entity and line.startswith(('-', '・', '*', ' ')):
+                    desc = line.lstrip('-・* ').strip()
+                else:
+                    matched_entities = [e.strip() for e in meta.get("entities", "").split(",") if e.strip() and e.strip() in line[:30]]
+                    if matched_entities:
+                        current_entity = matched_entities[0]
+                        desc = line
+                    else:
+                        if not current_entity: continue
+                        desc = line
 
-                        # 本文中の章番号を優先、なければファイル名から
-                        ch_match = chapter_desc_pattern.search(desc)
-                        effective_chapter = int(ch_match.group(1)) if ch_match else file_chapter
-                        
-                        # 状態判定
-                        status = "alive"
-                        is_dead = any(k in desc for k in death_keywords)
-                        is_alive = any(k in desc for k in alive_keywords)
-                        is_if = any(k in desc for k in if_keywords)
+                canonical_name = self.reverse_aliases.get(current_entity, current_entity)
+                if canonical_name not in self.timelines:
+                    self.timelines[canonical_name] = CharacterTimeline(canonical_name)
+                    # 初期属性辞書
+                    states["characters"][canonical_name] = {"status": "alive", "attributes": {}, "source": file_name}
 
-                        if is_dead: status = "dead"
-                        elif is_alive: status = "alive"
+                # 章番号の特定
+                ch_match = chapter_desc_pattern.search(desc)
+                effective_chapter = int(ch_match.group(1)) if ch_match else file_chapter
 
-                        self.timelines[canonical_name].add_event(
-                            effective_chapter, 
-                            status, 
-                            source=file_name,
-                            is_if=is_if
-                        )
+                # 状態判定
+                status = "alive"
+                if any(k in desc for k in death_keywords): status = "dead"
+                elif any(k in desc for k in alive_keywords): status = "alive"
+                is_if = any(k in desc for k in if_keywords)
 
-        # states 構造に変換 (互換性のため)
-        for name, tl in self.timelines.items():
-            states["characters"][name] = tl.events
+                self.timelines[canonical_name].add_event(effective_chapter, status, source=file_name, is_if=is_if)
+
+                # 属性抽出 (瞳の色、出身、武器など)
+                attr_keywords = {
+                    "eye_color": ["瞳", "目", "眼"],
+                    "hair": ["髪"],
+                    "origin": ["出身", "故郷"],
+                    "weapon": ["武器", "装備", "剣", "銃"]
+                }
+                for attr_key, keywords in attr_keywords.items():
+                    if any(k in desc for k in keywords):
+                        # 属性値の抽出 (「瞳：青」などの形式)
+                        val_match = re.search(rf'({"|".join(keywords)})[：:\s]*([^\s,，。、]+)', desc)
+                        if val_match:
+                            states["characters"][canonical_name]["attributes"][attr_key] = val_match.group(2)
 
         self.all_states = states
         return states
 
     def get_state_at_chapter(self, entity_name, category, chapter_num):
-        """
-        指定された章時点でのエンティティの状態を取得する
-        """
         if not hasattr(self, 'timelines') or not self.timelines:
-            self.extract_all_states()
+            return None
             
-        if category == "characters" and entity_name in self.timelines:
-            return self.timelines[entity_name].get_status_at(chapter_num)
-        
-        # フォールバック (過去のリスト形式)
-        states = self.all_states.get(category, {}).get(entity_name, [])
-        current_state = None
-        max_from = -1
-        for s in states:
-            eff = s.get("effective_from", s.get("chapter", 0))
-            if eff <= chapter_num and eff > max_from:
-                max_from = eff
-                current_state = s
-        return current_state
+        canonical_name = self.reverse_aliases.get(entity_name, entity_name)
+        if category == "characters" and canonical_name in self.timelines:
+            tl_status = self.timelines[canonical_name].get_status_at(chapter_num)
+            # 基本属性とマージ
+            base_info = self.all_states["characters"].get(canonical_name, {})
+            merged = base_info.copy()
+            merged.update(tl_status)
+            return merged
+        return None
 
 if __name__ == "__main__":
     extractor = StoryStateExtractor()

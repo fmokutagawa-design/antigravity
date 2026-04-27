@@ -184,7 +184,7 @@ export const ollamaService = {
     ragServerUrl: 'http://localhost:8000',
 
     // Chat with Local RAG (via Python Bridge Server)
-    async chatWithRAG(query, model = 'qwen3.5:9b', onChunk = null, signal = null, systemPrompt = '') {
+    async chatWithRAG(query, model = 'qwen3.5:9b', onChunk = null, signal = null, systemPrompt = '', filePath = '') {
         try {
             const response = await fetch(`${this.ragServerUrl}/ask`, {
                 method: 'POST',
@@ -192,7 +192,8 @@ export const ollamaService = {
                 body: JSON.stringify({
                     query: query,
                     model: model,
-                    system_prompt: systemPrompt
+                    system_prompt: systemPrompt,
+                    file_path: filePath
                 }),
                 signal: signal
             });
