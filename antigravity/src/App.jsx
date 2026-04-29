@@ -494,19 +494,10 @@ function App() {
     fileSystem
   });
 
-  useKeyboardShortcuts({
-    setIsSearchOpen,
-    handleSaveFileRef,
-    setIsRapidMode,
-    setShowReader,
-    setInputModalMode,
-    setInputModalValue,
-    setShowInputModal
-  });
-
-  const { handleSavePreset, handleInputModalSubmit, handleLoadPreset, handleDeletePreset } = usePresets({
-    setInputModalMode, setInputModalValue, setShowInputModal, settings, setPresets, inputModalMode, pendingRenameTarget, fileSystem, activeFileHandle, setActiveFileHandle, refreshMaterials, pendingCreateParent, handleCreateFileInProject, handleCreateFolderInProject, pendingTag, projectHandle, latestMetadataRef, setFileTree, handleFileSelect, showToast, pendingAIContent, setText, editorRef, setPendingRenameTarget, setPendingCreateParent, setPendingAIContent, setPendingTag, presets, setSettings, requestConfirm
-  });
+  // --- Dependency Wrappers for Hooks ---
+  // useProjectActions と useFileOperations の間の循環参照を回避する
+  let _handleOpenFile;
+  const handleOpenFileWrapper = (...args) => _handleOpenFile && _handleOpenFile(...args);
 
   const handleLaunchOneDrive = React.useCallback(async () => {
     if (!window.api?.system?.launchApp) {
@@ -550,8 +541,8 @@ function App() {
   } = useProjectActions({
     text,
     setText,
-    textRef, // 追加
-    latestMetadataRef, // 追加
+    textRef,
+    latestMetadataRef,
     projectHandle,
     setProjectHandle,
     fileTree,
@@ -571,7 +562,7 @@ function App() {
     showToast,
     requestConfirm,
     openInputModal,
-    handleOpenFile,
+    handleOpenFile: handleOpenFileWrapper,
     handlePopOutTab,
     editorRef,
     setActiveTab,
@@ -580,17 +571,7 @@ function App() {
     setReferenceFileName,
   });
 
-  const {
-    handleSaveFile,
-    handleSaveFileRef,
-    handleUpdateFile,
-    handleLoadFile,
-    handleDuplicateFile,
-    handleBatchCopy,
-    handleBatchExport,
-    handleOpenFile,
-    handleOpenSegmentFile,
-  } = useFileOperations({
+  const fileOps = useFileOperations({
     text,
     setText,
     activeFileHandle,
@@ -617,6 +598,35 @@ function App() {
     saveProjectHandle,
     setProjectHandle,
     setUsageStats,
+  });
+
+  // ラッパーの実体を更新
+  _handleOpenFile = fileOps.handleOpenFile;
+
+  const {
+    handleSaveFile,
+    handleSaveFileRef,
+    handleUpdateFile,
+    handleLoadFile,
+    handleDuplicateFile,
+    handleBatchCopy,
+    handleBatchExport,
+    handleOpenFile,
+    handleOpenSegmentFile,
+  } = fileOps;
+
+  useKeyboardShortcuts({
+    setIsSearchOpen,
+    handleSaveFileRef,
+    setIsRapidMode,
+    setShowReader,
+    setInputModalMode,
+    setInputModalValue,
+    setShowInputModal
+  });
+
+  const { handleSavePreset, handleInputModalSubmit, handleLoadPreset, handleDeletePreset } = usePresets({
+    setInputModalMode, setInputModalValue, setShowInputModal, settings, setPresets, inputModalMode, pendingRenameTarget, fileSystem, activeFileHandle, setActiveFileHandle, refreshMaterials, pendingCreateParent, handleCreateFileInProject, handleCreateFolderInProject, pendingTag, projectHandle, latestMetadataRef, setFileTree, handleFileSelect, showToast, pendingAIContent, setText, editorRef, setPendingRenameTarget, setPendingCreateParent, setPendingAIContent, setPendingTag, presets, setSettings, requestConfirm
   });
 
   const splitChapters = useSplitByChapters({
