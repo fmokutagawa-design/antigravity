@@ -14,6 +14,12 @@ const isDev = !app.isPackaged;
 let bridgeProcess = null;
 
 function startBridgeServer() {
+    // Windows の場合は暫定的にスキップ（手動起動を推奨）
+    if (process.platform === 'win32') {
+        console.log('ℹ️ Windows detected. AI Bridge Server should be started manually for now.');
+        return;
+    }
+
     const pythonPath = '/usr/bin/python3';
     const scriptPath = '/Users/mokutagawa/Documents/nexus_projects/mem0/bridge_server.py';
 
@@ -23,33 +29,16 @@ function startBridgeServer() {
     }
 
     console.log('🚀 Attempting to start AI Bridge Server...');
-    console.log('   Script:', scriptPath);
-    console.log('   Python:', pythonPath);
-
-    // 子プロセスとしてPythonサーバーを起動
+    // ... (残りの起動処理)
     bridgeProcess = require('child_process').spawn(pythonPath, [scriptPath], {
-        stdio: ['ignore', 'pipe', 'pipe'], // 標準出力をキャプチャ
+        stdio: ['ignore', 'pipe', 'pipe'],
         env: { ...process.env, PYTHONUNBUFFERED: '1' }
     });
 
-    bridgeProcess.stdout.on('data', (data) => {
-        console.log(`[Python STDOUT] ${data}`);
-    });
-
-    bridgeProcess.stderr.on('data', (data) => {
-        console.error(`[Python STDERR] ${data}`);
-    });
-
-    bridgeProcess.on('error', (err) => {
-        console.error('❌ Failed to start AI Bridge Server process:', err.message);
-        if (err.code === 'ENOENT') {
-            console.error('   Hint: "python3" command not found in PATH.');
-        }
-    });
-
-    bridgeProcess.on('close', (code) => {
-        console.log(`[Python] Server process exited with code ${code}`);
-    });
+    bridgeProcess.stdout.on('data', (data) => console.log(`[Python STDOUT] ${data}`));
+    bridgeProcess.stderr.on('data', (data) => console.error(`[Python STDERR] ${data}`));
+    bridgeProcess.on('error', (err) => console.error('❌ Failed to start AI Bridge Server process:', err.message));
+    bridgeProcess.on('close', (code) => console.log(`[Python] Server process exited with code ${code}`));
 
     process.on('exit', () => {
         if (bridgeProcess) bridgeProcess.kill();
