@@ -80,6 +80,7 @@ import { useCorrections } from './hooks/useCorrections';
 import { usePersistentData } from './hooks/usePersistentData';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { usePresets } from './hooks/usePresets';
+import { useSettingsSync } from './hooks/useSettingsSync';
 import { SidebarFilesTab } from './components/SidebarFilesTab';
 import SplitByChaptersModal from './components/SplitByChaptersModal';
 import ImportChaptersModal from './components/ImportChaptersModal';
@@ -539,71 +540,6 @@ function App() {
 
 
 
-  useEffect(() => {
-    localStorage.setItem('novel-editor-presets', JSON.stringify(presets));
-  }, [presets]);
-
-  useEffect(() => {
-    localStorage.setItem('novel-editor-dark-mode', isDarkMode.toString());
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark-mode');
-    } else {
-      document.documentElement.classList.remove('dark-mode');
-    }
-  }, [isDarkMode]);
-
-  // OS判定: Windows向けフォント補正クラスを付与
-  useEffect(() => {
-    const isWindows = navigator.userAgent.includes('Windows');
-    if (isWindows) {
-      document.body.classList.add('os-windows');
-    }
-  }, []);
-
-  // UIスケール反映
-  useEffect(() => {
-    const scale = (settings.uiScale || 100) / 100;
-    document.documentElement.style.setProperty('--ui-scale', scale);
-
-    // 以前の方式のクリーンアップ
-    const root = document.getElementById('root');
-    if (root) {
-      root.style.transform = '';
-      root.style.transformOrigin = '';
-      root.style.width = '';
-      root.style.height = '';
-    }
-    document.body.style.zoom = '';
-
-    // Electron: webFrame.setZoomFactor が最も正確（ブラウザのネイティブズーム相当）
-    if (isElectron && window.api && window.api.setZoomFactor) {
-      window.api.setZoomFactor(scale);
-    } else if (scale !== 1) {
-      // ブラウザ: CSS zoom + サイズ補正で余白を防ぐ
-      document.body.style.zoom = scale;
-      document.documentElement.style.width = `${100 / scale}%`;
-      document.documentElement.style.height = `${100 / scale}%`;
-    } else {
-      document.documentElement.style.width = '';
-      document.documentElement.style.height = '';
-    }
-  }, [settings.uiScale]);
-
-  // Custom CSS injection
-  useEffect(() => {
-    let styleEl = document.getElementById('nexus-custom-css');
-    if (settings.customCSS) {
-      if (!styleEl) {
-        styleEl = document.createElement('style');
-        styleEl.id = 'nexus-custom-css';
-        document.head.appendChild(styleEl);
-      }
-      styleEl.textContent = settings.customCSS;
-    } else if (styleEl) {
-      styleEl.remove();
-    }
-  }, [settings.customCSS]);
-
   // SearchReplace State
   const [searchReplaceInitialTerm, setSearchReplaceInitialTerm] = useState('');
   const [searchReplaceInitialGrepMode, setSearchReplaceInitialGrepMode] = useState(false);
@@ -701,6 +637,8 @@ function App() {
 
 
   // --- Extracted Hooks ---
+  useSettingsSync({ presets, isDarkMode, settings, isElectron });
+
   const { handleFormat, handleEpubExport, handleDocxExport, handlePrint } = useExport(
     text, setText, activeFileHandle, projectHandle, settings, allMaterialFiles, showToast, activeTab, setActiveTab
   );
@@ -964,10 +902,6 @@ function App() {
     const settingsKey = isWindowMode ? 'novel-editor-settings-window' : 'novel-editor-settings';
     localStorage.setItem(settingsKey, JSON.stringify(settings));
   }, [settings, isWindowMode]);
-
-  useEffect(() => {
-    localStorage.setItem('novel-editor-presets', JSON.stringify(presets));
-  }, [presets]);
 
   useEffect(() => {
     // Apply theme and style to body dataset for clean CSS
