@@ -437,13 +437,14 @@ function App() {
     return () => window.removeEventListener('nexus-update-search-path', handleUpdatePath);
   }, []);
 
+  // activeFileHandle からパス文字列を安定した値として抽出
+  const activeFilePath = typeof activeFileHandle === 'string'
+    ? activeFileHandle
+    : (activeFileHandle?.path || activeFileHandle?.handle || '');
+
   // 検索スコープの自動計算（開いているファイルの .nexus 親フォルダを特定）
   useEffect(() => {
-    let base = null;
-    // 1. 開いているファイルのパスから特定（最優先）
-    if (activeFileHandle) {
-      base = typeof activeFileHandle === 'string' ? activeFileHandle : (activeFileHandle.path || '');
-    }
+    let base = activeFilePath || null;
     // 2. materialsTree の先頭ファイルのパス
     if (!base) {
       const firstChild = materialsTree?.[0]?.children?.[0];
@@ -471,7 +472,7 @@ function App() {
     }
     // 計算結果が現在値と異なる場合のみ更新
     setActiveWorkFolderPath(prev => prev === norm ? prev : norm);
-  }, [activeFileHandle, (typeof activeFileHandle === 'string' ? activeFileHandle : activeFileHandle?.path), materialsTree, projectHandle]);
+  }, [activeFilePath, materialsTree, projectHandle]);
 
 
   // (colorTheme/paperStyle sync は下方の統合版に集約)
