@@ -212,10 +212,6 @@ function App() {
     return showMetadata ? debouncedText : parsedNote.body;
   }, [parsedNote, showMetadata, debouncedText]);
 
-  // Ghost Text (hook)
-  const { ghostText, setGhostText, handleCursorStats } = useGhostText(text, debouncedText, settings.enableGhostText, selectedLocalModel);
-
-
   // Custom UI Management
   const { toasts, showToast, removeToast, confirmConfig, requestConfirm } = useToastConfirm();
   const [notesText, setNotesText] = useState('');
@@ -228,6 +224,9 @@ function App() {
     setSidebarTab,
     setActiveTab,
   });
+
+  // Ghost Text (hook)
+  const { ghostText, setGhostText, handleCursorStats } = useGhostText(text, debouncedText, settings.enableGhostText, selectedLocalModel);
 
 
 
