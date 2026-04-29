@@ -98,21 +98,21 @@ const SearchPanel = ({
     return (
         <div className="search-panel-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', color: '#ddd', background: 'var(--bg-dark)' }}>
             <div style={{ padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.15)' }}>
-                {/* フォルダパス — 以前の視認性に合わせて明るく */}
-                <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                {/* フォルダパス */}
+                <div style={{ fontSize: '11px', color: '#ccc', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         <span>📂</span>
                         <span title={activeWorkFolderPath}>{displayPath}</span>
                     </div>
                     <button 
                         onClick={handleSelectFolder}
-                        style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid #666', color: '#bbb', fontSize: '10px', padding: '2px 6px', borderRadius: '3px', cursor: 'pointer' }}
+                        style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid #777', color: '#ccc', fontSize: '10px', padding: '2px 6px', borderRadius: '3px', cursor: 'pointer' }}
                     >
                         変更
                     </button>
                 </div>
 
-                {/* 検索窓 — 白めの背景で目立たせる */}
+                {/* 検索窓 — 白背景で明確に入力欄とわかる */}
                 <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
                     <input 
                         type="text" 
@@ -120,15 +120,15 @@ const SearchPanel = ({
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && performSearch(searchQuery)}
                         placeholder="作品内を検索..."
-                        style={{ flex: 1, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', padding: '6px 10px', fontSize: '13px', borderRadius: '4px' }}
+                        style={{ flex: 1, background: '#fff', border: '1px solid #999', color: '#333', padding: '6px 10px', fontSize: '13px', borderRadius: '4px' }}
                     />
-                    <button onClick={() => performSearch(searchQuery)} style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+                    <button onClick={() => performSearch(searchQuery)} style={{ background: '#5b7bb5', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>
                         検索
                     </button>
                 </div>
 
                 {/* オプション */}
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', fontSize: '11px', color: '#aaa' }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', fontSize: '11px', color: '#ccc' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
                         <input type="checkbox" checked={isRegex} onChange={(e) => setIsRegex(e.target.checked)} style={{ margin: 0 }} />
                         正規表現
@@ -144,7 +144,7 @@ const SearchPanel = ({
                         {results.length} 件のヒット ({engineName})
                     </div>
                 )}
-                {isSearching && <div style={{ fontSize: '11px', marginTop: '8px', color: '#aaa' }}>検索中...</div>}
+                {isSearching && <div style={{ fontSize: '11px', marginTop: '8px', color: '#ccc' }}>検索中...</div>}
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
@@ -154,23 +154,23 @@ const SearchPanel = ({
                         onClick={() => handleResultClick(res)}
                         style={{
                             padding: '8px 12px',
-                            borderBottom: '1px solid rgba(255,255,255,0.06)',
+                            borderBottom: '1px solid rgba(255,255,255,0.08)',
                             cursor: 'pointer',
                         }}
                     >
-                        {/* ファイル名 — 2行まで折り返し + 行番号 */}
+                        {/* ファイル名 — 2行折り返し + 行番号 */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '4px' }}>
                             <span style={{
-                                fontSize: '11.5px', color: '#89b4fa', fontWeight: 'bold',
+                                fontSize: '11.5px', color: '#6cb4ff', fontWeight: 'bold',
                                 display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
                                 overflow: 'hidden', wordBreak: 'break-all', lineHeight: '1.4',
                             }}>
                                 {res.file.name.replace('.txt', '')}
                             </span>
-                            <span style={{ fontSize: '10px', color: '#888', flexShrink: 0, marginTop: '1px' }}>L{res.lineIndex + 1}</span>
+                            <span style={{ fontSize: '10px', color: '#aaa', flexShrink: 0, marginTop: '1px' }}>L{res.lineIndex + 1}</span>
                         </div>
                         {/* プレビュー */}
-                        <div style={{ fontSize: '12px', color: '#999', lineHeight: '1.4', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', wordBreak: 'break-all' }}>
+                        <div style={{ fontSize: '12px', color: '#bbb', lineHeight: '1.4', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', wordBreak: 'break-all' }}>
                             {res.lineContent.trim()}
                         </div>
                     </div>
