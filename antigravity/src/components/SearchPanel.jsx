@@ -96,21 +96,23 @@ const SearchPanel = ({
     }, []);
 
     return (
-        <div className="search-panel-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', color: '#ccc', background: 'var(--bg-dark)' }}>
-            <div style={{ padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                <div style={{ fontSize: '10px', opacity: 0.5, marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="search-panel-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', color: '#ddd', background: 'var(--bg-dark)' }}>
+            <div style={{ padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.15)' }}>
+                {/* フォルダパス — 以前の視認性に合わせて明るく */}
+                <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         <span>📂</span>
                         <span title={activeWorkFolderPath}>{displayPath}</span>
                     </div>
                     <button 
                         onClick={handleSelectFolder}
-                        style={{ background: 'transparent', border: '1px solid #555', color: '#888', fontSize: '9px', padding: '1px 4px', borderRadius: '2px', cursor: 'pointer' }}
+                        style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid #666', color: '#bbb', fontSize: '10px', padding: '2px 6px', borderRadius: '3px', cursor: 'pointer' }}
                     >
                         変更
                     </button>
                 </div>
 
+                {/* 検索窓 — 白めの背景で目立たせる */}
                 <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
                     <input 
                         type="text" 
@@ -118,14 +120,15 @@ const SearchPanel = ({
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && performSearch(searchQuery)}
                         placeholder="作品内を検索..."
-                        style={{ flex: 1, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '6px 10px', fontSize: '13px', borderRadius: '4px' }}
+                        style={{ flex: 1, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', padding: '6px 10px', fontSize: '13px', borderRadius: '4px' }}
                     />
-                    <button onClick={() => performSearch(searchQuery)} style={{ background: '#444', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+                    <button onClick={() => performSearch(searchQuery)} style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
                         検索
                     </button>
                 </div>
 
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', fontSize: '11px', opacity: 0.7 }}>
+                {/* オプション */}
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', fontSize: '11px', color: '#aaa' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
                         <input type="checkbox" checked={isRegex} onChange={(e) => setIsRegex(e.target.checked)} style={{ margin: 0 }} />
                         正規表現
@@ -137,11 +140,11 @@ const SearchPanel = ({
                 </div>
 
                 {!isSearching && results.length > 0 && (
-                    <div style={{ fontSize: '11px', marginTop: '8px', opacity: 0.5, color: '#89b4fa' }}>
+                    <div style={{ fontSize: '11px', marginTop: '8px', color: '#89b4fa' }}>
                         {results.length} 件のヒット ({engineName})
                     </div>
                 )}
-                {isSearching && <div style={{ fontSize: '11px', marginTop: '8px', opacity: 0.5 }}>検索中...</div>}
+                {isSearching && <div style={{ fontSize: '11px', marginTop: '8px', color: '#aaa' }}>検索中...</div>}
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
@@ -150,18 +153,24 @@ const SearchPanel = ({
                         key={i} 
                         onClick={() => handleResultClick(res)}
                         style={{
-                            padding: '10px 16px',
-                            borderBottom: '1px solid rgba(255,255,255,0.03)',
+                            padding: '8px 12px',
+                            borderBottom: '1px solid rgba(255,255,255,0.06)',
                             cursor: 'pointer',
                         }}
                     >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', alignItems: 'center' }}>
-                            <span style={{ fontSize: '12px', color: '#89b4fa', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '75%' }}>
+                        {/* ファイル名 — 2行まで折り返し + 行番号 */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '4px' }}>
+                            <span style={{
+                                fontSize: '11.5px', color: '#89b4fa', fontWeight: 'bold',
+                                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden', wordBreak: 'break-all', lineHeight: '1.4',
+                            }}>
                                 {res.file.name.replace('.txt', '')}
                             </span>
-                            <span style={{ fontSize: '10px', color: '#555' }}>L{res.lineIndex + 1}</span>
+                            <span style={{ fontSize: '10px', color: '#888', flexShrink: 0, marginTop: '1px' }}>L{res.lineIndex + 1}</span>
                         </div>
-                        <div style={{ fontSize: '13px', color: '#aaa', lineHeight: '1.5', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', wordBreak: 'break-all' }}>
+                        {/* プレビュー */}
+                        <div style={{ fontSize: '12px', color: '#999', lineHeight: '1.4', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', wordBreak: 'break-all' }}>
                             {res.lineContent.trim()}
                         </div>
                     </div>
