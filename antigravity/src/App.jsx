@@ -1086,23 +1086,49 @@ function App() {
                           onInsertLink={handleInsertLink}
                         />
                       )}
-                      renderSearchPanel={() => (
-                        <SearchPanel
-                          allFiles={allMaterialFiles}
-                          currentText={debouncedText}
-                          currentFileName={activeFileHandle ? (activeFileHandle.name || (typeof activeFileHandle === 'string' ? activeFileHandle.split(/[/\\]/).pop() : '無題')) : '無題'}
-                          strictManuscriptMode={settings.strictManuscriptMode}
-                          onOpenFile={handleOpenFile}
-                          onProjectReplace={handleProjectReplace}
-                          initialQuery={projectSearchQuery}
-                          projectHandle={materialsTree?.[0]?.handle || projectHandle}
-                          onSwitchToReplace={(query) => {
-                            setIsSearchOpen(true);
-                            setSearchReplaceInitialTerm(query || '');
-                            setSearchReplaceInitialGrepMode(true);
-                          }}
-                        />
-                      )}
+                      renderSearchPanel={() => {
+                        // --- 指示に基づき、現在のアクティブなファイルから「作品フォルダ」を逆算 ---
+                        const activeWorkFolderPath = (() => {
+                          if (!activeFileHandle) return projectHandle;
+                          const filePath = typeof activeFileHandle === 'string'
+                            ? activeFileHandle
+                            : (activeFileHandle.path || activeFileHandle.handle);
+                          if (!filePath || typeof filePath !== 'string') return projectHandle;
+                          const sep = filePath.includes('/') ? '/' : '\\';
+                          const parts = filePath.split(sep);
+                          parts.pop(); // ファイル名を除去 → 作品フォルダのパスになる
+                          return parts.join(sep);
+                        })();
+
+                        // --- allMaterialFiles を作品フォルダ配下だけに絞る ---
+                        const activeWorkFiles = (allMaterialFiles || []).filter(f => {
+                          const p = typeof f === 'string'
+                            ? f
+                            : (f.path || f.handle || '');
+                          if (typeof p !== 'string') return false;
+                          // フォルダ区切り文字を考慮して前方一致
+                          return p.startsWith(activeWorkFolderPath + '/') ||
+                                 p.startsWith(activeWorkFolderPath + '\\') ||
+                                 p === activeWorkFolderPath;
+                        });
+
+                        return (
+                          <SearchPanel
+                            allFiles={activeWorkFiles}
+                            currentText={debouncedText}
+                            currentFileName={activeFileHandle ? (activeFileHandle.name || (typeof activeFileHandle === 'string' ? activeFileHandle.split(/[/\\]/).pop() : '無題')) : '無題'}
+                            onOpenFile={handleOpenFile}
+                            onProjectReplace={handleProjectReplace}
+                            initialQuery={projectSearchQuery}
+                            projectHandle={activeWorkFolderPath}
+                            onSwitchToReplace={(query) => {
+                              setIsSearchOpen(true);
+                              setSearchReplaceInitialTerm(query || '');
+                              setSearchReplaceInitialGrepMode(true);
+                            }}
+                          />
+                        );
+                      }}
                       renderOutlinePanel={() => (
                         <OutlinePanel
                           text={debouncedText}
