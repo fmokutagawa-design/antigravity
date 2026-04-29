@@ -1118,10 +1118,12 @@ function App() {
                           const p = typeof f === 'string' ? f : (f.path || f.handle || '');
                           if (!p || !activeWorkFolderPath) return false;
                           
-                          const normP = p.replace(/\\/g, '/');
-                          const normScope = activeWorkFolderPath.replace(/\\/g, '/');
+                          // 濁点分離(NFD)などを統合(NFC)し、大文字小文字を無視して比較
+                          const normP = p.normalize('NFC').replace(/\\/g, '/').toLowerCase();
+                          const normScope = activeWorkFolderPath.normalize('NFC').replace(/\\/g, '/').toLowerCase();
 
                           // 同一ディレクトリ、またはサブディレクトリ内なら含める
+                          // normScope が "/ai ガンダム" なら、その文字列が含まれていればOK
                           return normP.includes(normScope);
                         });
 
