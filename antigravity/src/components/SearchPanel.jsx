@@ -55,11 +55,27 @@ const SearchPanel = ({ allFiles, onOpenFile, onProjectReplace, initialQuery, pro
                     console.log(`[Search] Attempting Native Grep on: ${targetPath}`);
                     const nativeResults = await window.api.fs.grep(targetPath, searchQuery, { useRegex, caseSensitive });
                     
-                    const validPaths = new Set(allFiles.map(f => f.handle || f.path));
-                    results = nativeResults
-                        .filter(res => validPaths.has(res.path))
-                        .map(res => ({
-                            file: allFiles.find(f => (f.handle || f.path) === res.path) || { name: res.name, handle: res.path, path: res.path },
+                    const validPaths = new Set(
+                        (allFiles || [])
+                            .map(f => typeof f === 'string' ? f : (f.path || f.handle || ''))
+                            .filter(p => p)
+                            .map(p => String(p).normalize('NFC').replace(/\\/g, '/'))
+                    );
+
+                    console.log(`[Search] Validating ${nativeResults.length} native results against ${validPaths.size} paths`);
+                    
+                    const filteredResults = validPaths.size === 0
+                        ? nativeResults
+                        : nativeResults.filter(res => {
+                            const rp = (res.path || '').normalize('NFC').replace(/\\/g, '/');
+                            return validPaths.has(rp);
+                        });
+
+                    results = filteredResults.map(res => ({
+                            file: (allFiles || []).find(f => {
+                                const fp = typeof f === 'string' ? f : (f.path || f.handle || '');
+                                return fp && String(fp).normalize('NFC').replace(/\\/g, '/') === (res.path || '').normalize('NFC').replace(/\\/g, '/');
+                            }) || { name: res.name, handle: res.path, path: res.path },
                             lineIndex: res.lineIndex,
                             lineContent: res.lineContent.trim(),
                             fullLine: res.lineContent,
