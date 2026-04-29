@@ -432,7 +432,44 @@ function App() {
     };
     window.addEventListener('nexus-update-search-path', handleUpdatePath);
     return () => window.removeEventListener('nexus-update-search-path', handleUpdatePath);
-  }, []); // setActiveWorkFolderPath は useState なので依存不要
+  }, []);
+
+  // 検索スコープの自動計算（開いているファイルの .nexus 親フォルダを特定）
+  useEffect(() => {
+    if (activeWorkFolderPath) return; // 手動設定済みなら上書きしない
+
+    let base = null;
+    // 1. 開いているファイルのパスから特定
+    if (activeFileHandle) {
+      base = typeof activeFileHandle === 'string' ? activeFileHandle : (activeFileHandle.path || '');
+    }
+    // 2. materialsTree の先頭ファイルのパス
+    if (!base) {
+      const firstChild = materialsTree?.[0]?.children?.[0];
+      base = firstChild?.path || (typeof firstChild?.handle === 'string' ? firstChild.handle : '');
+    }
+    // 3. projectHandle（最後の手段）
+    if (!base && projectHandle) {
+      base = typeof projectHandle === 'string' ? projectHandle : (projectHandle?.path || '');
+    }
+
+    if (!base) return;
+
+    let norm = String(base).normalize('NFC').replace(/\\/g, '/');
+    // ファイルパスならディレクトリ部分を取得
+    if (norm.match(/\.[^/]+$/)) {
+      norm = norm.substring(0, norm.lastIndexOf('/'));
+    }
+    // .nexus フォルダを見つけたらそこをスコープにする
+    if (norm.includes('.nexus')) {
+      const parts = norm.split('/');
+      const nexusIdx = parts.findIndex(p => p.endsWith('.nexus'));
+      if (nexusIdx !== -1) {
+        norm = parts.slice(0, nexusIdx + 1).join('/');
+      }
+    }
+    setActiveWorkFolderPath(norm);
+  }, [activeFileHandle, materialsTree, projectHandle, activeWorkFolderPath]);
 
 
   // (colorTheme/paperStyle sync は下方の統合版に集約)
@@ -1107,67 +1144,18 @@ function App() {
                         />
                       )}
                       renderSearchPanel={() => {
-                        // --- 初期パスの自動計算 ---
-                        // 優先順位: 開いているファイルの .nexus 親 > materialsTree の先頭 > projectHandle
-                        // projectHandle はプロジェクト群の親ディレクトリの場合があるため、最後の手段
-                        useEffect(() => {
-                          // 候補パスを集める
-                          const candidates = [];
-                          
-                          // 1. 開いているファイルのパスから .nexus 親を特定
-                          if (activeFileHandle) {
-                            const p = typeof activeFileHandle === 'string' ? activeFileHandle : (activeFileHandle.path || '');
-                            if (p) candidates.push(p);
-                          }
-                          
-                          // 2. materialsTree の先頭ファイルのパス
-                          if (candidates.length === 0) {
-                            const firstChild = materialsTree?.[0]?.children?.[0];
-                          }
-                          
-                          if (base) {
-                            let norm = String(base).normalize('NFC').replace(/\\/g, '/');
-                            if (norm.match(/\.[^/]+$/)) {
-                              norm = norm.substring(0, norm.lastIndexOf('/'));
-                            }
-                            if (norm.includes('.nexus')) {
-                              const parts = norm.split('/');
-                              const nexusIdx = parts.findIndex(p => p.includes('.nexus'));
-                              if (nexusIdx !== -1) {
-                                norm = parts.slice(0, nexusIdx + 1).join('/');
-                              }
-                            }
-                            // ステートが未設定の場合のみ初期値をセット（手動変更を尊重）
-                            if (!activeWorkFolderPath) {
-                              setActiveWorkFolderPath(norm);
-                            }
-                          }
-                        }, [activeFileHandle, materialsTree, projectHandle]);
-
-                        // --- ディレクトリを除外し、ファイルのみを抽出 ---
+                        // ディレクトリを除外し、ファイルのみを抽出
                         const onlyFiles = (allMaterialFiles || []).filter(f => {
                           const p = typeof f === 'string' ? f : (f.path || f.handle || '');
-                          // 拡張子があるもの（ファイル）のみを対象にする
                           return p && p.match(/\.[^/]+$/) && !p.endsWith('.nexus');
                         });
-
-                        console.log(`[App] Search Scope: ${activeWorkFolderPath}, Total Files: ${onlyFiles.length}`);
 
                         return (
                           <SearchPanel
                             allFiles={onlyFiles}
-                            currentText={debouncedText}
-                            activeFileHandle={activeFileHandle}
-                            currentFileName={activeFileHandle ? (activeFileHandle.name || (typeof activeFileHandle === 'string' ? activeFileHandle.split(/[/\\]/).pop() : '無題')) : '無題'}
                             onOpenFile={handleOpenFile}
-                            onProjectReplace={handleProjectReplace}
-                            initialQuery={projectSearchQuery}
-                            projectHandle={activeWorkFolderPath}
-                            onSwitchToReplace={(query) => {
-                              setIsSearchOpen(true);
-                              setSearchReplaceInitialTerm(query || '');
-                              setSearchReplaceInitialGrepMode(true);
-                            }}
+                            activeWorkFolderPath={activeWorkFolderPath}
+                            searchQuery={projectSearchQuery}
                           />
                         );
                       }}
