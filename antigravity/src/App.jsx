@@ -471,7 +471,7 @@ function App() {
     }
     // 計算結果が現在値と異なる場合のみ更新
     setActiveWorkFolderPath(prev => prev === norm ? prev : norm);
-  }, [activeFileHandle, materialsTree, projectHandle]);
+  }, [activeFileHandle, (typeof activeFileHandle === 'string' ? activeFileHandle : activeFileHandle?.path), materialsTree, projectHandle]);
 
 
   // (colorTheme/paperStyle sync は下方の統合版に集約)
