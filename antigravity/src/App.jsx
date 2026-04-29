@@ -212,9 +212,6 @@ function App() {
     return showMetadata ? debouncedText : parsedNote.body;
   }, [parsedNote, showMetadata, debouncedText]);
 
-  // AI Connection (hook)
-  const { aiModel, setAiModel, localModels, selectedLocalModel, setSelectedLocalModel, isLocalConnected, checkLocalConnection } = useAIConnection();
-
   // Ghost Text (hook)
   const { ghostText, setGhostText, handleCursorStats } = useGhostText(text, debouncedText, settings.enableGhostText, selectedLocalModel);
 
@@ -222,6 +219,15 @@ function App() {
   // Custom UI Management
   const { toasts, showToast, removeToast, confirmConfig, requestConfirm } = useToastConfirm();
   const [notesText, setNotesText] = useState('');
+
+  // AI Connection (hook)
+  const { aiModel, setAiModel, localModels, selectedLocalModel, setSelectedLocalModel, isLocalConnected, checkLocalConnection, handleLaunchAI } = useAIConnection({
+    showToast,
+    setAiAction,
+    setAiOptions,
+    setSidebarTab,
+    setActiveTab,
+  });
 
 
 
@@ -310,20 +316,6 @@ function App() {
 
   // Session Stats (hook)
   const { currentSessionChars, handleResetSession } = useSessionStats(allMaterialFiles, activeFileHandle, editorValue);
-
-
-
-  const handleLaunchAI = useCallback((mode, options = {}) => {
-    const modeNames = {
-      rewrite: 'リライト', proofread: '校正', shorten: '短縮',
-      describe: '描写追加', analysis: '分析', summarize: '要約',
-      relextract: '関係抽出', continue: '続き生成'
-    };
-    showToast(`🤖 ${modeNames[mode] || mode} を実行中...`);
-    setAiAction(mode);
-    setAiOptions(options);
-    setSidebarTab('ai');
-  }, [showToast]);
 
 
 
