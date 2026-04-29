@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './SearchPanel.css';
 
-const SearchPanel = ({ allFiles, onOpenFile, onProjectReplace, initialQuery, projectHandle }) => {
+const SearchPanel = ({ allFiles, onOpenFile, onProjectReplace, initialQuery, projectHandle, currentText, activeFileHandle }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [replaceQuery, setReplaceQuery] = useState('');
     const [useRegex, setUseRegex] = useState(false);
@@ -46,10 +46,13 @@ const SearchPanel = ({ allFiles, onOpenFile, onProjectReplace, initialQuery, pro
             let results = [];
             let engineName = "🐌 JS スキャン";
 
+            console.log(`[Search] Starting search: "${searchQuery}" in ${allFiles?.length} files`);
+
             // 1. Try Native Grep
             if (window.api?.fs?.grep && currentScopeHandle) {
                 try {
                     const targetPath = typeof currentScopeHandle === 'string' ? currentScopeHandle : (currentScopeHandle.path || currentScopeHandle.handle);
+                    console.log(`[Search] Attempting Native Grep on: ${targetPath}`);
                     const nativeResults = await window.api.fs.grep(targetPath, searchQuery, { useRegex, caseSensitive });
                     
                     const validPaths = new Set(allFiles.map(f => f.handle || f.path));
@@ -63,13 +66,15 @@ const SearchPanel = ({ allFiles, onOpenFile, onProjectReplace, initialQuery, pro
                             position: 0
                         }));
                     engineName = "⚡ 高速 Grep";
+                    console.log(`[Search] Grep found ${results.length} valid matches`);
                 } catch (grepError) {
-                    console.warn("Grep failed:", grepError);
+                    console.warn("[Search] Grep failed:", grepError);
                 }
             }
 
             // 2. JS Fallback
             if (results.length === 0) {
+                console.log(`[Search] Falling back to JS Scan...`);
                 const normalizedQuery = searchQuery.normalize('NFC');
                 let pattern;
                 try {
@@ -80,6 +85,7 @@ const SearchPanel = ({ allFiles, onOpenFile, onProjectReplace, initialQuery, pro
                 }
 
                 const BATCH_SIZE = 8;
+                let scanCount = 0;
                 for (let i = 0; i < allFiles.length; i += BATCH_SIZE) {
                     const batch = allFiles.slice(i, i + BATCH_SIZE);
                     await Promise.all(batch.map(async (file) => {
@@ -93,8 +99,12 @@ const SearchPanel = ({ allFiles, onOpenFile, onProjectReplace, initialQuery, pro
                             if (!content && !isCurrentFile && window.api?.fs?.readFile) {
                                 content = await window.api.fs.readFile(fileH);
                             }
-                            if (!content) return;
+                            if (!content) {
+                                // console.log(`[Search] Skipping empty file: ${file.name}`);
+                                return;
+                            }
                             
+                            scanCount++;
                             const lines = content.normalize('NFC').split('\n');
                             lines.forEach((line, lineIdx) => {
                                 pattern.lastIndex = 0;
@@ -102,10 +112,13 @@ const SearchPanel = ({ allFiles, onOpenFile, onProjectReplace, initialQuery, pro
                                     results.push({ file, lineIndex: lineIdx, lineContent: line.trim(), fullLine: line, position: 0 });
                                 }
                             });
-                        } catch (err) {}
+                        } catch (err) {
+                            console.error(`[Search] Error scanning ${file.name}:`, err);
+                        }
                     }));
                 }
                 engineName = "🐌 JS スキャン";
+                console.log(`[Search] JS Scan complete. Scanned ${scanCount} files, found ${results.length} hits`);
             }
 
             setSearchResults(results);
@@ -169,7 +182,6 @@ const SearchPanel = ({ allFiles, onOpenFile, onProjectReplace, initialQuery, pro
         }
     };
 
-    // Initial query sync and auto-search
     useEffect(() => {
         if (initialQuery) {
             const term = typeof initialQuery === 'object' ? initialQuery.term : initialQuery;
@@ -192,7 +204,7 @@ const SearchPanel = ({ allFiles, onOpenFile, onProjectReplace, initialQuery, pro
         return () => clearTimeout(timer);
     }, [searchQuery, useRegex, caseSensitive, currentScopeHandle, allFiles]);
 
-    const targetPathStr = typeof currentScopeHandle === 'string' ? currentScopeHandle : (currentScopeHandle?.path || currentScopeHandle?.handle || '不明');
+    const targetPathStr = typeof currentScopeHandle === 'string' ? currentScopeHandle : (currentScopeHandle?.path || currentScopeHandle?.handle || '');
     const pathParts = targetPathStr.split(/[/\\]/).filter(p => p && p !== ' ');
     const displayPath = pathParts.slice(-2).join('/');
 
