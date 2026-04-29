@@ -84,9 +84,14 @@ const SearchPanel = ({ allFiles, onOpenFile, onProjectReplace, initialQuery, pro
                     const batch = allFiles.slice(i, i + BATCH_SIZE);
                     await Promise.all(batch.map(async (file) => {
                         try {
-                            let content = file.content;
-                            if (!content && window.api?.fs?.readFile) {
-                                content = await window.api.fs.readFile(file.handle || file.path);
+                            const targetH = activeFileHandle?.handle || activeFileHandle?.path || activeFileHandle;
+                            const fileH = file.handle || file.path;
+                            const isCurrentFile = targetH && fileH === targetH;
+                            
+                            let content = isCurrentFile ? currentText : file.content;
+                            
+                            if (!content && !isCurrentFile && window.api?.fs?.readFile) {
+                                content = await window.api.fs.readFile(fileH);
                             }
                             if (!content) return;
                             

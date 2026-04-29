@@ -1112,22 +1112,29 @@ function App() {
                         })();
 
                         // --- allMaterialFiles を作品フォルダ配下だけに絞る ---
-                        const activeWorkFiles = !activeWorkFolderPath
-                          ? []
-                          : (allMaterialFiles || []).filter(f => {
-                            const p = typeof f === 'string'
-                              ? f
-                              : (f.path || f.handle || '');
-                            if (typeof p !== 'string') return false;
-                            const normP = p.replace(/\\/g, '/');
-                            return normP.startsWith(activeWorkFolderPath + '/') ||
-                                   normP === activeWorkFolderPath;
-                          });
+                        const activeWorkFiles = (allMaterialFiles || []).filter(f => {
+                          const p = typeof f === 'string' ? f : (f.path || f.handle || '');
+                          if (typeof p !== 'string') return false;
+                          
+                          // パスの正規化
+                          const normP = p.replace(/\\/g, '/');
+                          const normScope = (activeWorkFolderPath || '').replace(/\\/g, '/');
+
+                          // 現在開いているファイルそのものは絶対に含める
+                          const activeP = activeFileHandle ? (typeof activeFileHandle === 'string' ? activeFileHandle : (activeFileHandle.path || activeFileHandle.handle)) : null;
+                          if (activeP && p === activeP) return true;
+
+                          if (!normScope) return false;
+
+                          // フォルダ配下判定
+                          return normP.startsWith(normScope + '/') || normP === normScope;
+                        });
 
                         return (
                           <SearchPanel
                             allFiles={activeWorkFiles}
                             currentText={debouncedText}
+                            activeFileHandle={activeFileHandle}
                             currentFileName={activeFileHandle ? (activeFileHandle.name || (typeof activeFileHandle === 'string' ? activeFileHandle.split(/[/\\]/).pop() : '無題')) : '無題'}
                             onOpenFile={handleOpenFile}
                             onProjectReplace={handleProjectReplace}
