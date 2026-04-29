@@ -14,23 +14,35 @@ const isDev = !app.isPackaged;
 let bridgeProcess = null;
 
 function startBridgeServer() {
-    // Windows の場合は暫定的にスキップ（手動起動を推奨）
-    if (process.platform === 'win32') {
-        console.log('ℹ️ Windows detected. AI Bridge Server should be started manually for now.');
+    const isWin = process.platform === 'win32';
+    const pythonCmd = isWin ? 'python' : 'python3';
+    
+    // プロジェクトルートからの相対パスでスクリプトを探す
+    // 開発時はプロジェクト直下、ビルド後は resources 等を考慮
+    const scriptRelativePath = 'nexus_backend/bridge_server.py';
+    const possiblePaths = [
+        path.join(__dirname, '..', scriptRelativePath), // 開発時
+        path.join(process.resourcesPath, scriptRelativePath), // ビルド後
+        path.join(app.getAppPath(), scriptRelativePath) // その他
+    ];
+
+    let scriptPath = possiblePaths.find(p => fs.existsSync(p));
+
+    if (!scriptPath) {
+        // フォールバック：以前の固定パス（Mac用）
+        const fallbackPath = '/Users/mokutagawa/Documents/nexus_projects/mem0/bridge_server.py';
+        if (fs.existsSync(fallbackPath)) scriptPath = fallbackPath;
+    }
+
+    if (!scriptPath) {
+        console.log('ℹ️ AI Bridge Server script not found. AI features will be disabled.');
         return;
     }
 
-    const pythonPath = '/usr/bin/python3';
-    const scriptPath = '/Users/mokutagawa/Documents/nexus_projects/mem0/bridge_server.py';
+    console.log(`🚀 Starting AI Bridge Server (${pythonCmd})...`);
+    console.log(`   Path: ${scriptPath}`);
 
-    if (!fs.existsSync(scriptPath)) {
-        console.error('❌ AI Bridge Server script not found at:', scriptPath);
-        return;
-    }
-
-    console.log('🚀 Attempting to start AI Bridge Server...');
-    // ... (残りの起動処理)
-    bridgeProcess = require('child_process').spawn(pythonPath, [scriptPath], {
+    bridgeProcess = require('child_process').spawn(pythonCmd, [scriptPath], {
         stdio: ['ignore', 'pipe', 'pipe'],
         env: { ...process.env, PYTHONUNBUFFERED: '1' }
     });
