@@ -1102,24 +1102,30 @@ function App() {
                           // パスをスラッシュに統一し、正規化(NFC)
                           let norm = String(base).normalize('NFC').replace(/\\/g, '/');
                           
-                          // ファイル名が含まれている（拡張子がある）場合は、その親フォルダへ
+                          // もし末尾が .nexus なら親へ、ファイル名なら親へ。
+                          // 確実に「作品のルートフォルダ」を指すまで遡る
                           if (norm.match(/\.[^/]+$/)) {
                             norm = norm.substring(0, norm.lastIndexOf('/'));
                           }
-                          
-                          // もしその結果が .nexus フォルダ内なら、もう一階層上（作品ルート）へ
-                          if (norm.endsWith('/.nexus') || norm.endsWith('/.nexus/')) {
-                            norm = norm.substring(0, norm.lastIndexOf('/.nexus'));
+                          if (norm.endsWith('/.nexus') || norm.endsWith('.nexus')) {
+                            norm = norm.substring(0, norm.lastIndexOf('/'));
                           }
 
                           return norm;
                         })();
 
-                        console.log(`[App] Search Scope: ${activeWorkFolderPath}, Total Files: ${allMaterialFiles?.length}`);
+                        // --- ディレクトリを除外し、ファイルのみを抽出 ---
+                        const onlyFiles = (allMaterialFiles || []).filter(f => {
+                          const p = typeof f === 'string' ? f : (f.path || f.handle || '');
+                          // 拡張子があるもの（ファイル）のみを対象にする
+                          return p && p.match(/\.[^/]+$/) && !p.endsWith('.nexus');
+                        });
+
+                        console.log(`[App] Search Scope: ${activeWorkFolderPath}, Total Files: ${onlyFiles.length}`);
 
                         return (
                           <SearchPanel
-                            allFiles={allMaterialFiles}
+                            allFiles={onlyFiles}
                             currentText={debouncedText}
                             activeFileHandle={activeFileHandle}
                             currentFileName={activeFileHandle ? (activeFileHandle.name || (typeof activeFileHandle === 'string' ? activeFileHandle.split(/[/\\]/).pop() : '無題')) : '無題'}
