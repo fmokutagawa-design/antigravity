@@ -400,18 +400,21 @@ function App() {
 
             const tryJumpToLine = (attempts = 0) => {
                 const editor = editorRef.current;
-                // テキストがまだ空、または極端に短い場合は「読み込み中」とみなして待機
-                const currentTextLength = (typeof textRef.current === 'string' ? textRef.current.length : 0);
+                const currentText = typeof textRef.current === 'string' ? textRef.current : '';
                 
-                if (editor?.jumpToLine && currentTextLength > 10) {
-                    console.log(`[Jump] Executing jump to line ${line}. TextLen: ${currentTextLength} (Attempt ${attempts})`);
-                    editor.jumpToLine(line);
+                if (editor?.jumpToPosition && currentText.length > 10) {
+                    // 行番号 → 文字位置に変換
+                    const lines = currentText.split('\n');
+                    let charPos = 0;
+                    for (let i = 0; i < Math.min(line, lines.length); i++) {
+                        charPos += lines[i].length + 1; // +1 for \n
+                    }
+                    console.log(`[Jump] Line ${line} → charPos ${charPos}. TextLen: ${currentText.length} (Attempt ${attempts})`);
+                    editor.jumpToPosition(charPos, charPos);
                 } else if (attempts < 50) {
-                    // 最大10秒間、テキストが充填されるのを待つ
                     setTimeout(() => tryJumpToLine(attempts + 1), 200);
                 }
             };
-            // ファイル切り替えのトリガー後、少し待ってから監視開始
             setTimeout(() => tryJumpToLine(0), 400);
         } else {
             showToast(`ジャンプ先のファイル "${file}" が見会えませんでした。`, 'error');
@@ -436,10 +439,8 @@ function App() {
 
   // 検索スコープの自動計算（開いているファイルの .nexus 親フォルダを特定）
   useEffect(() => {
-    if (activeWorkFolderPath) return; // 手動設定済みなら上書きしない
-
     let base = null;
-    // 1. 開いているファイルのパスから特定
+    // 1. 開いているファイルのパスから特定（最優先）
     if (activeFileHandle) {
       base = typeof activeFileHandle === 'string' ? activeFileHandle : (activeFileHandle.path || '');
     }
@@ -468,8 +469,9 @@ function App() {
         norm = parts.slice(0, nexusIdx + 1).join('/');
       }
     }
-    setActiveWorkFolderPath(norm);
-  }, [activeFileHandle, materialsTree, projectHandle, activeWorkFolderPath]);
+    // 計算結果が現在値と異なる場合のみ更新
+    setActiveWorkFolderPath(prev => prev === norm ? prev : norm);
+  }, [activeFileHandle, materialsTree, projectHandle]);
 
 
   // (colorTheme/paperStyle sync は下方の統合版に集約)
