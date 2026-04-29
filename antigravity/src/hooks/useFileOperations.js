@@ -114,6 +114,165 @@ export function useFileOperations({
     }
   }, [setText, showToast]);
 
+  const handleOpenFile = useCallback(async (fileHandle, fileName, options = {}) => {
+    try {
+      let targetHandle = fileHandle;
+      if (!targetHandle && fileName && allMaterialFiles) {
+        const found = allMaterialFiles.find(f => f.name === fileName || (f.handle && typeof f.handle === 'string' && f.handle.endsWith(fileName)));
+        if (found) {
+          targetHandle = found.handle;
+        } else {
+          const foundTxt = allMaterialFiles.find(f => f.name === `${fileName}.txt`);
+          if (foundTxt) targetHandle = foundTxt.handle;
+        }
+      }
+
+      if (!targetHandle) {
+        console.warn(`File not found: ${fileName} (handle is null)`);
+        showToast(`ファイル "${fileName}" が見つかりませんでした。`);
+        return;
+      }
+
+      // デバッグログ: 開こうとしている項目の詳細
+      const name = fileName || (typeof targetHandle === 'string' ? targetHandle : targetHandle.name);
+      console.log('[handleOpenFile] Opening:', { name, type: typeof targetHandle, targetHandle });
+
+      // .nexus フォルダ（プロジェクト）の場合はプロジェクトを切り替える
+      // 文字列パス（Electron）またはオブジェクト名から判定
+      const cleanPath = typeof targetHandle === 'string' ? targetHandle.replace(/[/\\]$/, '') : '';
+      const isNexusFolder = (cleanPath.toLowerCase().endsWith('.nexus')) || 
+                            (name && name.toLowerCase().endsWith('.nexus'));
+
+      if (isNexusFolder) {
+          console.log('[handleOpenFile] Recognized as .nexus folder. Switching project...');
+          try {
+              if (setProjectHandle) setProjectHandle(targetHandle);
+              if (saveProjectHandle) saveProjectHandle(targetHandle);
+              if (setIsProjectMode) setIsProjectMode(true);
+              const folderName = typeof targetHandle === 'string' ? targetHandle.split(/[/\\]/).pop() : targetHandle.name;
+              showToast(`プロジェクト "${folderName}" を開きました。`);
+              return;
+          } catch (e) {
+              console.error('[handleOpenFile] Failed to switch project:', e);
+              // プロジェクト切り替え失敗時は続行せずエラー表示
+              throw e; 
+          }
+      }
+
+      // 通常のファイル読み込み
+      const content = await fileSystem.readFile(targetHandle);
+      setText(content);
+      if (setDebouncedText) setDebouncedText(content);
+      lastSavedTextRef.current = content;
+      // Bug A 対策: ファイル読み込み時に最新メタデータを Ref に保持する
+      const { metadata } = parseNote(content);
+      if (latestMetadataRef) latestMetadataRef.current = metadata;
+      setActiveFileHandle(targetHandle);
+      setActiveTab('editor');
+
+      try {
+        const usageKey = `file_usage_${projectHandle ? (typeof projectHandle === 'string' ? projectHandle : projectHandle.name) : 'default'}`;
+        let filePath = fileName;
+        if (options.path) {
+          filePath = options.path;
+        } else {
+          const matched = allMaterialFiles.find(f => f.name === fileName);
+          if (matched) filePath = matched.path;
+        }
+
+        if (setUsageStats) {
+          setUsageStats(prev => {
+            const newStats = { ...prev, [filePath]: (prev[filePath] || 0) + 1 };
+            localStorage.setItem(usageKey, JSON.stringify(newStats));
+            return newStats;
+          });
+        }
+      } catch (e) {
+        console.error('Failed to track usage:', e);
+      }
+
+      if (options.position !== undefined && editorRef?.current) {
+        setTimeout(() => {
+          if (editorRef.current && editorRef.current.setCursorPosition) {
+            editorRef.current.setCursorPosition(options.position);
+          }
+        }, 100);
+      }
+    } catch (error) {
+      console.error('Failed to open file:', error);
+      if (error.message === 'CLOUD_SYNC_TIMEOUT') {
+        const launch = await requestConfirm(
+          '同期タイムアウト',
+          'OneDrive 等のクラウド同期が遅延している可能性があります。OneDrive を起動しますか？'
+        );
+        if (launch && handleLaunchOneDrive) {
+          handleLaunchOneDrive();
+        }
+      } else {
+        showToast(`ファイルを開けませんでした: ${error.message || error}`);
+      }
+    }
+  }, [allMaterialFiles, projectHandle, showToast, setText, setDebouncedText, lastSavedTextRef, latestMetadataRef, setActiveFileHandle, setActiveTab, setUsageStats, editorRef, requestConfirm, handleLaunchOneDrive, setProjectHandle, saveProjectHandle, setIsProjectMode]);
+
+  const handleOpenSegmentFile = useCallback(async (fileName, localOffset) => {
+    // まず既存の allMaterialFiles から検索
+    const found = allMaterialFiles?.find(f =>
+      f.name === fileName ||
+      (f.handle && typeof f.handle === 'string' && f.handle.endsWith(fileName))
+    );
+
+    if (found) {
+      await handleOpenFile(found.handle, fileName);
+    } else {
+      // フォールバック: .nexus/segments/ から直接読み込む
+      try {
+        const entries = await fileSystem.readDirectory(projectHandle);
+        let loaded = false;
+
+        for (const entry of (entries || [])) {
+          if (entry.kind === 'directory' && entry.name.endsWith('.nexus')) {
+            const nexusDirHandle = entry.handle || entry;
+            const nexusEntries = await fileSystem.readDirectory(nexusDirHandle);
+            const segDir = nexusEntries.find(e => e.name === 'segments' && e.kind === 'directory');
+
+            if (segDir) {
+              const segDirHandle = segDir.handle || segDir;
+              const segEntries = await fileSystem.readDirectory(segDirHandle);
+              const targetFile = segEntries.find(e => e.name === fileName);
+
+              if (targetFile) {
+                const fileHandle = targetFile.handle || targetFile;
+                await handleOpenFile(fileHandle, fileName);
+                loaded = true;
+                break;
+              }
+            }
+          }
+        }
+
+        if (!loaded) {
+          showToast(`ファイル "${fileName}" が見つかりません`);
+          return;
+        }
+      } catch (e) {
+        console.error('[openSegmentFile] fallback failed:', e);
+        showToast(`ファイルを開けませんでした: ${e.message}`);
+        return;
+      }
+    }
+
+    // カーソル位置をリトライ付きで設定（エディタのレンダリング完了を待つ）
+    const tryJump = (attempts = 0) => {
+      if (editorRef?.current?.jumpToIndex) {
+        editorRef.current.jumpToIndex(localOffset);
+      } else if (attempts < 10) {
+        setTimeout(() => tryJump(attempts + 1), 150);
+      }
+    };
+    setTimeout(() => tryJump(0), 150);
+  }, [handleOpenFile, allMaterialFiles, projectHandle, showToast, editorRef]);
+
+
   const handleDuplicateFile = useCallback(async (handleToDup = activeFileHandle) => {
     if (!handleToDup) return;
 
@@ -338,163 +497,6 @@ export function useFileOperations({
     }
   }, [allMaterialFiles, projectHandle, showToast]);
 
-  const handleOpenFile = useCallback(async (fileHandle, fileName, options = {}) => {
-    try {
-      let targetHandle = fileHandle;
-      if (!targetHandle && fileName && allMaterialFiles) {
-        const found = allMaterialFiles.find(f => f.name === fileName || (f.handle && typeof f.handle === 'string' && f.handle.endsWith(fileName)));
-        if (found) {
-          targetHandle = found.handle;
-        } else {
-          const foundTxt = allMaterialFiles.find(f => f.name === `${fileName}.txt`);
-          if (foundTxt) targetHandle = foundTxt.handle;
-        }
-      }
-
-      if (!targetHandle) {
-        console.warn(`File not found: ${fileName} (handle is null)`);
-        showToast(`ファイル "${fileName}" が見つかりませんでした。`);
-        return;
-      }
-
-      // デバッグログ: 開こうとしている項目の詳細
-      const name = fileName || (typeof targetHandle === 'string' ? targetHandle : targetHandle.name);
-      console.log('[handleOpenFile] Opening:', { name, type: typeof targetHandle, targetHandle });
-
-      // .nexus フォルダ（プロジェクト）の場合はプロジェクトを切り替える
-      // 文字列パス（Electron）またはオブジェクト名から判定
-      const cleanPath = typeof targetHandle === 'string' ? targetHandle.replace(/[/\\]$/, '') : '';
-      const isNexusFolder = (cleanPath.toLowerCase().endsWith('.nexus')) || 
-                            (name && name.toLowerCase().endsWith('.nexus'));
-
-      if (isNexusFolder) {
-          console.log('[handleOpenFile] Recognized as .nexus folder. Switching project...');
-          try {
-              if (setProjectHandle) setProjectHandle(targetHandle);
-              if (saveProjectHandle) saveProjectHandle(targetHandle);
-              if (setIsProjectMode) setIsProjectMode(true);
-              const folderName = typeof targetHandle === 'string' ? targetHandle.split(/[/\\]/).pop() : targetHandle.name;
-              showToast(`プロジェクト "${folderName}" を開きました。`);
-              return;
-          } catch (e) {
-              console.error('[handleOpenFile] Failed to switch project:', e);
-              // プロジェクト切り替え失敗時は続行せずエラー表示
-              throw e; 
-          }
-      }
-
-      // 通常のファイル読み込み
-      const content = await fileSystem.readFile(targetHandle);
-      setText(content);
-      if (setDebouncedText) setDebouncedText(content);
-      lastSavedTextRef.current = content;
-      // Bug A 対策: ファイル読み込み時に最新メタデータを Ref に保持する
-      const { metadata } = parseNote(content);
-      if (latestMetadataRef) latestMetadataRef.current = metadata;
-      setActiveFileHandle(targetHandle);
-      setActiveTab('editor');
-
-      try {
-        const usageKey = `file_usage_${projectHandle ? (typeof projectHandle === 'string' ? projectHandle : projectHandle.name) : 'default'}`;
-        let filePath = fileName;
-        if (options.path) {
-          filePath = options.path;
-        } else {
-          const matched = allMaterialFiles.find(f => f.name === fileName);
-          if (matched) filePath = matched.path;
-        }
-
-        if (setUsageStats) {
-          setUsageStats(prev => {
-            const newStats = { ...prev, [filePath]: (prev[filePath] || 0) + 1 };
-            localStorage.setItem(usageKey, JSON.stringify(newStats));
-            return newStats;
-          });
-        }
-      } catch (e) {
-        console.error('Failed to track usage:', e);
-      }
-
-      if (options.position !== undefined && editorRef?.current) {
-        setTimeout(() => {
-          if (editorRef.current && editorRef.current.setCursorPosition) {
-            editorRef.current.setCursorPosition(options.position);
-          }
-        }, 100);
-      }
-    } catch (error) {
-      console.error('Failed to open file:', error);
-      if (error.message === 'CLOUD_SYNC_TIMEOUT') {
-        const launch = await requestConfirm(
-          '同期タイムアウト',
-          'OneDrive 等のクラウド同期が遅延している可能性があります。OneDrive を起動しますか？'
-        );
-        if (launch && handleLaunchOneDrive) {
-          handleLaunchOneDrive();
-        }
-      } else {
-        showToast(`ファイルを開けませんでした: ${error.message || error}`);
-      }
-    }
-  }, [allMaterialFiles, projectHandle, showToast, setText, setDebouncedText, lastSavedTextRef, latestMetadataRef, setActiveFileHandle, setActiveTab, setUsageStats, editorRef, requestConfirm, handleLaunchOneDrive, setProjectHandle, saveProjectHandle, setIsProjectMode]);
-
-  const handleOpenSegmentFile = useCallback(async (fileName, localOffset) => {
-    // まず既存の allMaterialFiles から検索
-    const found = allMaterialFiles?.find(f =>
-      f.name === fileName ||
-      (f.handle && typeof f.handle === 'string' && f.handle.endsWith(fileName))
-    );
-
-    if (found) {
-      await handleOpenFile(found.handle, fileName);
-    } else {
-      // フォールバック: .nexus/segments/ から直接読み込む
-      try {
-        const entries = await fileSystem.readDirectory(projectHandle);
-        let loaded = false;
-
-        for (const entry of (entries || [])) {
-          if (entry.kind === 'directory' && entry.name.endsWith('.nexus')) {
-            const nexusDirHandle = entry.handle || entry;
-            const nexusEntries = await fileSystem.readDirectory(nexusDirHandle);
-            const segDir = nexusEntries.find(e => e.name === 'segments' && e.kind === 'directory');
-
-            if (segDir) {
-              const segDirHandle = segDir.handle || segDir;
-              const segEntries = await fileSystem.readDirectory(segDirHandle);
-              const targetFile = segEntries.find(e => e.name === fileName);
-
-              if (targetFile) {
-                const fileHandle = targetFile.handle || targetFile;
-                await handleOpenFile(fileHandle, fileName);
-                loaded = true;
-                break;
-              }
-            }
-          }
-        }
-
-        if (!loaded) {
-          showToast(`ファイル "${fileName}" が見つかりません`);
-          return;
-        }
-      } catch (e) {
-        console.error('[openSegmentFile] fallback failed:', e);
-        showToast(`ファイルを開けませんでした: ${e.message}`);
-        return;
-      }
-    }
-
-    // カーソル位置をリトライ付きで設定（エディタのレンダリング完了を待つ）
-    const tryJump = (attempts = 0) => {
-      if (editorRef?.current?.jumpToIndex) {
-        editorRef.current.jumpToIndex(localOffset);
-      } else if (attempts < 10) {
-        setTimeout(() => tryJump(attempts + 1), 150);
-      }
-    };
-    setTimeout(() => tryJump(0), 150);
-  }, [handleOpenFile, allMaterialFiles, projectHandle, showToast, editorRef]);
 
   return {
     handleSaveFile,
