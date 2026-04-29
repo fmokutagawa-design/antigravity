@@ -1107,20 +1107,22 @@ function App() {
                         />
                       )}
                       renderSearchPanel={() => {
-                        // --- 初期パスの自動計算（ステートが空の場合のみ、またはファイル変更時） ---
-                        // Note: 実際にはファイルを開いた際 (handleOpenFile) 等で更新するのが望ましいが、
-                        // 既存ロジックとの互換性のため、ここでステートを同期する。
+                        // --- 初期パスの自動計算 ---
+                        // 優先順位: 開いているファイルの .nexus 親 > materialsTree の先頭 > projectHandle
+                        // projectHandle はプロジェクト群の親ディレクトリの場合があるため、最後の手段
                         useEffect(() => {
-                          let base = null;
+                          // 候補パスを集める
+                          const candidates = [];
+                          
+                          // 1. 開いているファイルのパスから .nexus 親を特定
                           if (activeFileHandle) {
-                            base = typeof activeFileHandle === 'string' ? activeFileHandle : (activeFileHandle.path || activeFileHandle.handle);
+                            const p = typeof activeFileHandle === 'string' ? activeFileHandle : (activeFileHandle.path || '');
+                            if (p) candidates.push(p);
                           }
-                          if (!base) {
+                          
+                          // 2. materialsTree の先頭ファイルのパス
+                          if (candidates.length === 0) {
                             const firstChild = materialsTree?.[0]?.children?.[0];
-                            base = firstChild?.handle || firstChild?.path;
-                          }
-                          if (!base && projectHandle) {
-                             base = typeof projectHandle === 'string' ? projectHandle : projectHandle?.path || '';
                           }
                           
                           if (base) {

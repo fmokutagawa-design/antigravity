@@ -11,7 +11,6 @@ const SearchPanel = ({
     const [isSearching, setIsSearching] = useState(false);
     const [engineName, setEngineName] = useState('');
     
-    // 検索オプション
     const [isRegex, setIsRegex] = useState(false);
     const [caseSensitive, setCaseSensitive] = useState(false);
 
@@ -25,32 +24,35 @@ const SearchPanel = ({
             let rawResults = [];
             
             if (isElectron && window.api.fs.grep) {
-                // Grep にオプションを渡す (backend側が対応している前提)
                 rawResults = await window.api.fs.grep(activeWorkFolderPath, term, {
                     isRegex,
                     caseSensitive
                 });
-                setEngineName('⚡ 高速 Grep');
+                setEngineName('Grep');
             } else {
-                setEngineName('JS Scan (低速)');
+                setEngineName('JS Scan');
             }
 
-            // マニフェスト順にソート
-            const fileOrderMap = new Map();
+            // allFiles のインデックスマップを「ファイル名」で構築
+            // grep は絶対パスを返し allFiles は相対パスを持つため、
+            // パス全体ではなくファイル名で突き合わせる
+            const fileByName = new Map();
+            const fileOrderByName = new Map();
             (allFiles || []).forEach((f, idx) => {
-                const fp = typeof f === 'string' ? f : (f.path || f.handle || '');
-                if (fp) fileOrderMap.set(String(fp).normalize('NFC').replace(/\\/g, '/'), idx);
+                const name = f.name || (typeof f === 'string' ? f.split(/[/\\]/).pop() : '');
+                if (name && !fileByName.has(name)) {
+                    fileByName.set(name, f);
+                    fileOrderByName.set(name, idx);
+                }
             });
 
             const mappedResults = rawResults.map(res => {
-                const rp = (res.path || '').normalize('NFC').replace(/\\/g, '/');
+                const name = res.name || '';
+                const matchedFile = fileByName.get(name);
                 return {
                     ...res,
-                    file: (allFiles || []).find(f => {
-                        const fp = typeof f === 'string' ? f : (f.path || f.handle || '');
-                        return fp && String(fp).normalize('NFC').replace(/\\/g, '/') === rp;
-                    }) || { name: res.name || 'Unknown', path: res.path },
-                    fileOrder: fileOrderMap.get(rp) ?? 9999
+                    file: matchedFile || { name: name || 'Unknown', path: res.path },
+                    fileOrder: fileOrderByName.get(name) ?? 9999
                 };
             }).sort((a, b) => (a.fileOrder - b.fileOrder) || (a.lineIndex - b.lineIndex));
 
@@ -69,15 +71,14 @@ const SearchPanel = ({
         }
     }, [initialQuery, performSearch]);
 
-    // フォルダ表示用のパス加工
-    const displayPath = activeWorkFolderPath ? activeWorkFolderPath.split(/[/\\]/).slice(-2).join(' / ') : '未設定';
+    const displayPath = activeWorkFolderPath 
+        ? activeWorkFolderPath.split(/[/\\]/).slice(-2).join(' / ') 
+        : '未設定';
 
     const handleSelectFolder = async () => {
         if (window.api?.fs?.selectFolder) {
             const newPath = await window.api.fs.selectFolder();
             if (newPath) {
-                // 親コンポーネント（App.jsx）に通知してステートを更新する
-                // NavigatePanel -> App.jsx へとイベントを伝播させる
                 window.dispatchEvent(new CustomEvent('nexus-update-search-path', {
                     detail: { path: newPath }
                 }));
@@ -85,10 +86,18 @@ const SearchPanel = ({
         }
     };
 
+    const handleResultClick = useCallback((res) => {
+        // nexus-jump-to-text だけを使う。
+        // App.jsx 側の handleJumpEvent が handleOpenFile → tryJumpToLine を
+        // 正しい順序で実行するので、ここでは onOpenFile を直接呼ばない。
+        window.dispatchEvent(new CustomEvent('nexus-jump-to-text', {
+            detail: { file: res.file.name, line: res.lineIndex, path: res.file.path }
+        }));
+    }, []);
+
     return (
         <div className="search-panel-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', color: '#ccc', background: 'var(--bg-dark)' }}>
             <div style={{ padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                {/* 検索スコープ表示 */}
                 <div style={{ fontSize: '10px', opacity: 0.5, marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         <span>📂</span>
@@ -116,7 +125,6 @@ const SearchPanel = ({
                     </button>
                 </div>
 
-                {/* 検索オプション */}
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center', fontSize: '11px', opacity: 0.7 }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
                         <input type="checkbox" checked={isRegex} onChange={(e) => setIsRegex(e.target.checked)} style={{ margin: 0 }} />
@@ -140,19 +148,12 @@ const SearchPanel = ({
                 {results.map((res, i) => (
                     <div 
                         key={i} 
-                        onClick={() => {
-                            // ファイルを開き、ジャンプイベントを発行
-                            onOpenFile(res.file.handle || res.file.path, res.file.name, { line: res.lineIndex });
-                            window.dispatchEvent(new CustomEvent('nexus-jump-to-text', {
-                                detail: { file: res.file.name, line: res.lineIndex, path: res.file.path }
-                            }));
-                        }}
+                        onClick={() => handleResultClick(res)}
                         style={{
                             padding: '10px 16px',
                             borderBottom: '1px solid rgba(255,255,255,0.03)',
                             cursor: 'pointer',
                         }}
-                        className="search-result-item"
                     >
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', alignItems: 'center' }}>
                             <span style={{ fontSize: '12px', color: '#89b4fa', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '75%' }}>
