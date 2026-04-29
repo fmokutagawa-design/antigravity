@@ -1118,10 +1118,13 @@ function App() {
                           const normP = p.normalize('NFC').replace(/\\/g, '/').toLowerCase();
                           const normScope = activeWorkFolderPath.normalize('NFC').replace(/\\/g, '/').toLowerCase();
 
+                          // projectHandle から文字列パスを安全に取得
+                          const rootStr = (typeof projectHandle === 'string' ? projectHandle : (projectHandle?.path || projectHandle?.handle || '')).replace(/\\/g, '/').toLowerCase();
+
                           // OneDrive 等でパスが大きくズレる場合を考慮し、
                           // スコープの末尾（作品フォルダ名）が含まれているか、またはプロジェクトルート配下なら含める
                           const folderName = normScope.split('/').pop();
-                          return normP.includes(folderName) || normP.startsWith(projectHandle.replace(/\\/g, '/').toLowerCase());
+                          return normP.includes(folderName) || (rootStr && normP.startsWith(rootStr));
                         });
 
                         console.log(`[App] Search Scope: ${activeWorkFolderPath}, Files: ${activeWorkFiles.length}`);
