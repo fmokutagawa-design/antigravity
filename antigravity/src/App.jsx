@@ -1087,47 +1087,42 @@ function App() {
                         />
                       )}
                       renderSearchPanel={() => {
-                        // --- 指示に基づき、現在のアクティブなファイルから「作品フォルダ」を計算 ---
+                        // --- 現在の作品フォルダを計算 ---
                         const activeWorkFolderPath = (() => {
+                          let base = null;
                           if (activeFileHandle) {
-                            let filePath = typeof activeFileHandle === 'string'
-                              ? activeFileHandle
-                              : (activeFileHandle.path || activeFileHandle.handle);
-                            if (filePath && typeof filePath === 'string') {
-                              // パスをスラッシュに統一して正規化
-                              const normPath = filePath.replace(/\\/g, '/');
-                              const parts = normPath.split('/');
-                              parts.pop(); // ファイル名を除去
-                              return parts.join('/');
-                            }
+                            const filePath = typeof activeFileHandle === 'string' ? activeFileHandle : (activeFileHandle.path || activeFileHandle.handle);
+                            if (filePath) base = filePath;
                           }
-                          const firstChild = materialsTree?.[0]?.children?.[0];
-                          if (firstChild) {
-                            const p = typeof firstChild.handle === 'string'
-                              ? firstChild.handle
-                              : (firstChild.path || null);
-                            if (p) return p.replace(/\\/g, '/');
+                          if (!base) {
+                            const firstChild = materialsTree?.[0]?.children?.[0];
+                            base = firstChild?.handle || firstChild?.path;
                           }
-                          return null;
+                          if (!base) return null;
+
+                          // パスを正規化
+                          let norm = base.replace(/\\/g, '/');
+                          // もしファイルパスなら1階層上げる
+                          if (norm.endsWith('.txt') || norm.endsWith('.md')) {
+                            norm = norm.substring(0, norm.lastIndexOf('/'));
+                          }
+                          // もし .nexus を指していたらさらに1階層上げる
+                          if (norm.endsWith('/.nexus') || norm.endsWith('.nexus')) {
+                            norm = norm.substring(0, norm.lastIndexOf('/'));
+                          }
+                          return norm;
                         })();
 
-                        // --- allMaterialFiles を作品フォルダ配下だけに絞る ---
+                        // --- 作品フォルダ配下のファイルのみを抽出 ---
                         const activeWorkFiles = (allMaterialFiles || []).filter(f => {
                           const p = typeof f === 'string' ? f : (f.path || f.handle || '');
-                          if (typeof p !== 'string') return false;
+                          if (!p || !activeWorkFolderPath) return false;
                           
-                          // パスの正規化
                           const normP = p.replace(/\\/g, '/');
-                          const normScope = (activeWorkFolderPath || '').replace(/\\/g, '/');
+                          const normScope = activeWorkFolderPath.replace(/\\/g, '/');
 
-                          // 現在開いているファイルそのものは絶対に含める
-                          const activeP = activeFileHandle ? (typeof activeFileHandle === 'string' ? activeFileHandle : (activeFileHandle.path || activeFileHandle.handle)) : null;
-                          if (activeP && p === activeP) return true;
-
-                          if (!normScope) return false;
-
-                          // フォルダ配下判定
-                          return normP.startsWith(normScope + '/') || normP === normScope;
+                          // 同一ディレクトリ、またはサブディレクトリ内なら含める
+                          return normP.includes(normScope);
                         });
 
                         return (
