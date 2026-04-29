@@ -216,20 +216,6 @@ function App() {
   const { toasts, showToast, removeToast, confirmConfig, requestConfirm } = useToastConfirm();
   const [notesText, setNotesText] = useState('');
 
-  // AI Connection (hook)
-  const { aiModel, setAiModel, localModels, selectedLocalModel, setSelectedLocalModel, isLocalConnected, checkLocalConnection, handleLaunchAI } = useAIConnection({
-    showToast,
-    setAiAction,
-    setAiOptions,
-    setSidebarTab,
-    setActiveTab,
-  });
-
-  // Ghost Text (hook)
-  const { ghostText, setGhostText, handleCursorStats } = useGhostText(text, debouncedText, settings.enableGhostText, selectedLocalModel);
-
-
-
   const handleImageDrop = useCallback(async (imageFile) => {
     if (!isProjectMode || !projectHandle) {
       showToast('画像の挿入はプロジェクトモードでのみ使用できます。');
@@ -295,6 +281,18 @@ function App() {
   const fileInputRef = useRef(null);
   const [projectContextMenu, setProjectContextMenu] = useState(null); // { x, y }
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  // AI Connection (hook)
+  const { aiModel, setAiModel, localModels, selectedLocalModel, setSelectedLocalModel, isLocalConnected, checkLocalConnection, handleLaunchAI } = useAIConnection({
+    showToast,
+    setAiAction,
+    setAiOptions,
+    setSidebarTab,
+    setActiveTab,
+  });
+
+  // Ghost Text (hook)
+  const { ghostText, setGhostText, handleCursorStats } = useGhostText(text, debouncedText, settings.enableGhostText, selectedLocalModel);
 
   const {
     materialsTree,
