@@ -74,16 +74,34 @@ const SearchPanel = ({ allFiles, onOpenFile, onProjectReplace, initialQuery, pro
                     // 最終ガード：もしフィルターで全滅した場合は、フィルタリングせずに全件出す（パス正規化問題への対応）
                     const finalResults = (filteredResults.length === 0 && nativeResults.length > 0) ? nativeResults : filteredResults;
 
-                    results = finalResults.map(res => ({
-                            file: (allFiles || []).find(f => {
-                                const fp = typeof f === 'string' ? f : (f.path || f.handle || '');
-                                return fp && String(fp).normalize('NFC').replace(/\\/g, '/') === (res.path || '').normalize('NFC').replace(/\\/g, '/');
-                            }) || { name: res.name, handle: res.path, path: res.path },
-                            lineIndex: res.lineIndex,
-                            lineContent: res.lineContent.trim(),
-                            fullLine: res.lineContent,
-                            position: 0
-                        }));
+                    // 章の順番（allFiles のインデックス順）でソートする
+                    const fileOrderMap = new Map();
+                    (allFiles || []).forEach((f, idx) => {
+                        const fp = typeof f === 'string' ? f : (f.path || f.handle || '');
+                        if (fp) fileOrderMap.set(String(fp).normalize('NFC').replace(/\\/g, '/'), idx);
+                    });
+
+                    results = finalResults
+                        .map(res => {
+                            const rp = (res.path || '').normalize('NFC').replace(/\\/g, '/');
+                            return {
+                                file: (allFiles || []).find(f => {
+                                    const fp = typeof f === 'string' ? f : (f.path || f.handle || '');
+                                    return fp && String(fp).normalize('NFC').replace(/\\/g, '/') === rp;
+                                }) || { name: res.name, handle: res.path, path: res.path },
+                                lineIndex: res.lineIndex,
+                                lineContent: res.lineContent.trim(),
+                                fullLine: res.lineContent,
+                                position: 0,
+                                fileOrder: fileOrderMap.has(rp) ? fileOrderMap.get(rp) : 9999
+                            };
+                        })
+                        .sort((a, b) => {
+                            // 1. ファイル（章）の順番
+                            if (a.fileOrder !== b.fileOrder) return a.fileOrder - b.fileOrder;
+                            // 2. 同じファイル内なら行番号順
+                            return a.lineIndex - b.lineIndex;
+                        });
                     engineName = "⚡ 高速 Grep";
                     console.log(`[Search] Grep found ${results.length} valid matches`);
                 } catch (grepError) {
