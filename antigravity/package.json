@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "electron:dev": "concurrently -k \"npm run dev\" \"wait-on tcp:5173 && electron .\"",
-    "electron:build": "vite build && electron-builder"
+    "electron:build": "vite build && electron-builder",
+    "electron:build:win": "vite build && electron-builder --win"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -53,7 +54,7 @@
   "build": {
     "appId": "com.nexus.antigravity",
     "productName": "Antigravity",
-    "asar": false,
+    "asar": true,
     "directories": {
       "output": "release"
     },
@@ -63,14 +64,23 @@
       "package.json"
     ],
     "mac": {
-      "target": "dmg",
-      "identity": null
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.productivity"
     },
     "win": {
-      "target": "nsis"
+      "target": [
+        "nsis"
+      ],
+      "icon": "public/favicon.ico"
     },
-    "linux": {
-      "target": "AppImage"
+    "nsis": {
+      "oneClick": true,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Antigravity"
     }
   }
 }
