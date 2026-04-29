@@ -318,7 +318,22 @@ const SearchPanel = ({ allFiles, onOpenFile, onProjectReplace, initialQuery, pro
                                 <div
                                     key={i}
                                     className="result-item-card"
-                                    onClick={() => onOpenFile(res.file.handle || res.file.path, res.file.name, { position: res.position })}
+                                    onClick={() => {
+                                        // 1. ファイルを開く
+                                        onOpenFile(res.file.handle || res.file.path, res.file.name, { 
+                                            position: res.position,
+                                            line: res.lineIndex,
+                                            searchQuery: searchQuery 
+                                        });
+                                        // 2. 行ジャンプイベントを発行（App.jsx のリスナーが捕捉する）
+                                        window.dispatchEvent(new CustomEvent('nexus-jump-to-text', {
+                                            detail: {
+                                                file: res.file.name,
+                                                line: res.lineIndex,
+                                                path: res.file.handle || res.file.path
+                                            }
+                                        }));
+                                    }}
                                 >
                                     <div className="result-card-header">
                                         <span className="res-file-tag">{res.file.name}</span>
