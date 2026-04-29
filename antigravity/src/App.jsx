@@ -421,6 +421,18 @@ function App() {
     return () => window.removeEventListener('nexus-jump-to-text', handleJumpEvent);
   }, [allMaterialFiles, handleOpenFile, showToast]);
 
+  // 検索パスの外部更新（SearchPanel からの変更）
+  useEffect(() => {
+    const handleUpdatePath = (e) => {
+      const { path } = e.detail;
+      if (path && setActiveWorkFolderPath) {
+        setActiveWorkFolderPath(path);
+      }
+    };
+    window.addEventListener('nexus-update-search-path', handleUpdatePath);
+    return () => window.removeEventListener('nexus-update-search-path', handleUpdatePath);
+  }, [setActiveWorkFolderPath]);
+
 
   // (colorTheme/paperStyle sync は下方の統合版に集約)
 

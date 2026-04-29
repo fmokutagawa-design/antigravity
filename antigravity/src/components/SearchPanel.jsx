@@ -69,16 +69,37 @@ const SearchPanel = ({
         }
     }, [initialQuery, performSearch]);
 
-    // フォルダ表示用のパス加工（末尾の作品名だけ見せる）
+    // フォルダ表示用のパス加工
     const displayPath = activeWorkFolderPath ? activeWorkFolderPath.split(/[/\\]/).slice(-2).join(' / ') : '未設定';
+
+    const handleSelectFolder = async () => {
+        if (window.api?.fs?.selectFolder) {
+            const newPath = await window.api.fs.selectFolder();
+            if (newPath) {
+                // 親コンポーネント（App.jsx）に通知してステートを更新する
+                // NavigatePanel -> App.jsx へとイベントを伝播させる
+                window.dispatchEvent(new CustomEvent('nexus-update-search-path', {
+                    detail: { path: newPath }
+                }));
+            }
+        }
+    };
 
     return (
         <div className="search-panel-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', color: '#ccc', background: 'var(--bg-dark)' }}>
             <div style={{ padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                 {/* 検索スコープ表示 */}
-                <div style={{ fontSize: '10px', opacity: 0.5, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    <span>📂</span>
-                    <span>{displayPath}</span>
+                <div style={{ fontSize: '10px', opacity: 0.5, marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span>📂</span>
+                        <span title={activeWorkFolderPath}>{displayPath}</span>
+                    </div>
+                    <button 
+                        onClick={handleSelectFolder}
+                        style={{ background: 'transparent', border: '1px solid #555', color: '#888', fontSize: '9px', padding: '1px 4px', borderRadius: '2px', cursor: 'pointer' }}
+                    >
+                        変更
+                    </button>
                 </div>
 
                 <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
