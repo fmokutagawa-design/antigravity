@@ -1099,7 +1099,7 @@ function App() {
                           }
                           if (!base) return projectHandle;
 
-                          let norm = base.replace(/\\/g, '/');
+                          let norm = String(base).replace(/\\/g, '/');
                           if (norm.endsWith('.txt') || norm.endsWith('.md')) {
                             norm = norm.substring(0, norm.lastIndexOf('/'));
                           }
@@ -1109,29 +1109,11 @@ function App() {
                           return norm;
                         })();
 
-                        // --- フィルタリングを緩和：作品フォルダが含まれていればOK、失敗時は全ファイルを渡す ---
-                        const activeWorkFiles = (allMaterialFiles || []).filter(f => {
-                          const p = typeof f === 'string' ? f : (f.path || f.handle || '');
-                          if (!p) return false;
-                          
-                          // 濁点分離(NFD)などを統合(NFC)
-                          const normP = p.normalize('NFC').replace(/\\/g, '/').toLowerCase();
-                          const normScope = activeWorkFolderPath.normalize('NFC').replace(/\\/g, '/').toLowerCase();
-
-                          // projectHandle から文字列パスを安全に取得
-                          const rootStr = (typeof projectHandle === 'string' ? projectHandle : (projectHandle?.path || projectHandle?.handle || '')).replace(/\\/g, '/').toLowerCase();
-
-                          // OneDrive 等でパスが大きくズレる場合を考慮し、
-                          // スコープの末尾（作品フォルダ名）が含まれているか、またはプロジェクトルート配下なら含める
-                          const folderName = normScope.split('/').pop();
-                          return normP.includes(folderName) || (rootStr && normP.startsWith(rootStr));
-                        });
-
-                        console.log(`[App] Search Scope: ${activeWorkFolderPath}, Files: ${activeWorkFiles.length}`);
+                        console.log(`[App] Search Scope: ${activeWorkFolderPath}, Total Files: ${allMaterialFiles?.length}`);
 
                         return (
                           <SearchPanel
-                            allFiles={activeWorkFiles}
+                            allFiles={allMaterialFiles}
                             currentText={debouncedText}
                             activeFileHandle={activeFileHandle}
                             currentFileName={activeFileHandle ? (activeFileHandle.name || (typeof activeFileHandle === 'string' ? activeFileHandle.split(/[/\\]/).pop() : '無題')) : '無題'}
