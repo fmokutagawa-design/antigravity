@@ -10,6 +10,10 @@ const SearchPanel = ({
     const [results, setResults] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
     const [engineName, setEngineName] = useState('');
+    
+    // 検索オプション
+    const [isRegex, setIsRegex] = useState(false);
+    const [caseSensitive, setCaseSensitive] = useState(false);
 
     const performSearch = useCallback(async (term) => {
         if (!term || !activeWorkFolderPath) return;
@@ -21,10 +25,14 @@ const SearchPanel = ({
             let rawResults = [];
             
             if (isElectron && window.api.fs.grep) {
-                rawResults = await window.api.fs.grep(activeWorkFolderPath, term);
-                setEngineName('Grep');
+                // Grep にオプションを渡す (backend側が対応している前提)
+                rawResults = await window.api.fs.grep(activeWorkFolderPath, term, {
+                    isRegex,
+                    caseSensitive
+                });
+                setEngineName('⚡ 高速 Grep');
             } else {
-                setEngineName('JS Scan');
+                setEngineName('JS Scan (低速)');
             }
 
             // マニフェスト順にソート
@@ -52,7 +60,7 @@ const SearchPanel = ({
         } finally {
             setIsSearching(false);
         }
-    }, [activeWorkFolderPath, allFiles]);
+    }, [activeWorkFolderPath, allFiles, isRegex, caseSensitive]);
 
     useEffect(() => {
         if (initialQuery?.term) {
@@ -61,10 +69,19 @@ const SearchPanel = ({
         }
     }, [initialQuery, performSearch]);
 
+    // フォルダ表示用のパス加工（末尾の作品名だけ見せる）
+    const displayPath = activeWorkFolderPath ? activeWorkFolderPath.split(/[/\\]/).slice(-2).join(' / ') : '未設定';
+
     return (
         <div className="search-panel-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', color: '#ccc', background: 'var(--bg-dark)' }}>
             <div style={{ padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                <div style={{ display: 'flex', gap: '4px' }}>
+                {/* 検索スコープ表示 */}
+                <div style={{ fontSize: '10px', opacity: 0.5, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span>📂</span>
+                    <span>{displayPath}</span>
+                </div>
+
+                <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
                     <input 
                         type="text" 
                         value={searchQuery}
@@ -77,12 +94,25 @@ const SearchPanel = ({
                         検索
                     </button>
                 </div>
+
+                {/* 検索オプション */}
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', fontSize: '11px', opacity: 0.7 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={isRegex} onChange={(e) => setIsRegex(e.target.checked)} style={{ margin: 0 }} />
+                        正規表現
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={caseSensitive} onChange={(e) => setCaseSensitive(e.target.checked)} style={{ margin: 0 }} />
+                        大文字/小文字
+                    </label>
+                </div>
+
                 {!isSearching && results.length > 0 && (
-                    <div style={{ fontSize: '11px', marginTop: '6px', opacity: 0.5, letterSpacing: '0.02em' }}>
+                    <div style={{ fontSize: '11px', marginTop: '8px', opacity: 0.5, color: '#89b4fa' }}>
                         {results.length} 件のヒット ({engineName})
                     </div>
                 )}
-                {isSearching && <div style={{ fontSize: '11px', marginTop: '6px', opacity: 0.5 }}>検索中...</div>}
+                {isSearching && <div style={{ fontSize: '11px', marginTop: '8px', opacity: 0.5 }}>検索中...</div>}
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
@@ -90,6 +120,7 @@ const SearchPanel = ({
                     <div 
                         key={i} 
                         onClick={() => {
+                            // ファイルを開き、ジャンプイベントを発行
                             onOpenFile(res.file.handle || res.file.path, res.file.name, { line: res.lineIndex });
                             window.dispatchEvent(new CustomEvent('nexus-jump-to-text', {
                                 detail: { file: res.file.name, line: res.lineIndex, path: res.file.path }
@@ -100,6 +131,7 @@ const SearchPanel = ({
                             borderBottom: '1px solid rgba(255,255,255,0.03)',
                             cursor: 'pointer',
                         }}
+                        className="search-result-item"
                     >
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', alignItems: 'center' }}>
                             <span style={{ fontSize: '12px', color: '#89b4fa', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '75%' }}>
