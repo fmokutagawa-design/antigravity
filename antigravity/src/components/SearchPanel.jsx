@@ -32,6 +32,13 @@ const SearchPanel = ({ allFiles, onOpenFile, onProjectReplace, initialQuery, pro
             return;
         }
 
+        if (!currentScopeHandle && (!allFiles || allFiles.length === 0)) {
+            setSearchResults([]);
+            setIsSearching(false);
+            setSearchEngine('❌ 作品未選択');
+            return;
+        }
+
         setIsSearching(true);
         const startTime = performance.now();
         
