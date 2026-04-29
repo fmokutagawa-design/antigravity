@@ -437,23 +437,26 @@ ipcMain.handle('fs:delete', async (event, targetPath) => {
     return true;
 });
 
-// Grep (Global Search)
+// Grep (Global Search) — Cross-platform: Unix grep / Windows Node.js fallback
 ipcMain.removeHandler('fs:grep');
 ipcMain.handle('fs:grep', async (event, projectPath, query, options = {}) => {
-    // 起動時の settings から projectPath が取れる場合がある
     const targetPath = projectPath || globalProjectRoot;
     console.log(`[fs:grep] start search: "${query}" in "${targetPath}"`);
     if (!targetPath || !query) return [];
     
     const { useRegex = false, caseSensitive = false } = options;
+    const pathMod = require('path');
+
+    // Windows では grep コマンドがないので Node.js でファイルスキャンする
+    if (process.platform === 'win32') {
+        return await nodeGrep(targetPath, query, { useRegex, caseSensitive, pathMod });
+    }
+
+    // Unix: grep コマンドを使用（高速）
     const { spawn } = require('child_process');
-    
-    // Construct grep arguments
     const args = ['-rnI'];
     if (!caseSensitive) args.push('-i');
     if (useRegex) args.push('-E');
-    
-    // 検索ワードを最後に追加し、検索対象ディレクトリを "." (cwd) に固定する
     args.push(query, ".");
 
     return new Promise((resolve) => {
@@ -464,13 +467,10 @@ ipcMain.handle('fs:grep', async (event, projectPath, query, options = {}) => {
         child.stderr.on('data', data => stderr += data);
         
         child.on('close', (code) => {
-            if (code !== 0 && code !== 1) { // 0: matches, 1: no matches
+            if (code !== 0 && code !== 1) {
                 console.error(`[fs:grep] grep process exited with code ${code}: ${stderr}`);
                 return resolve([]);
             }
-            
-            console.log(`[fs:grep] found matches`);
-
             const results = stdout.split('\n')
                 .filter(line => line.trim())
                 .map(line => {
@@ -479,18 +479,9 @@ ipcMain.handle('fs:grep', async (event, projectPath, query, options = {}) => {
                     const relPath = parts[0];
                     const lineIndex = parseInt(parts[1]) - 1;
                     const lineContent = parts.slice(2).join(':');
-                    
-                    // 相対パスを絶対パスに復元
-                    const path = require('path');
-                    const fullPath = path.resolve(targetPath, relPath);
-                    const name = path.basename(fullPath);
-
-                    return {
-                        name,
-                        path: fullPath,
-                        lineIndex,
-                        lineContent
-                    };
+                    const fullPath = pathMod.resolve(targetPath, relPath);
+                    const name = pathMod.basename(fullPath);
+                    return { name, path: fullPath, lineIndex, lineContent };
                 })
                 .filter(res => res !== null);
             resolve(results);
@@ -501,6 +492,79 @@ ipcMain.handle('fs:grep', async (event, projectPath, query, options = {}) => {
         });
     });
 });
+
+// Node.js による純粋なファイルスキャン（Windows 用フォールバック）
+async function nodeGrep(dirPath, query, { useRegex, caseSensitive, pathMod }) {
+    const fsPromises = require('fs').promises;
+    const results = [];
+
+    // テキストファイル拡張子（バイナリを除外）
+    const textExts = new Set(['.txt', '.md', '.json', '.xml', '.yml', '.yaml', '.html', '.css', '.js', '.jsx', '.ts', '.tsx', '.py', '.csv', '.log']);
+
+    // 検索パターンを構築
+    let pattern;
+    try {
+        const flags = caseSensitive ? 'g' : 'gi';
+        pattern = useRegex ? new RegExp(query, flags) : new RegExp(escapeRegExp(query), flags);
+    } catch (e) {
+        console.error('[nodeGrep] Invalid regex:', e.message);
+        return [];
+    }
+
+    // 再帰的にファイルを収集
+    async function collectFiles(dir) {
+        const files = [];
+        try {
+            const entries = await fsPromises.readdir(dir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (entry.name.startsWith('.') && entry.name !== '.nexus' && !entry.name.endsWith('.nexus')) continue;
+                const full = pathMod.join(dir, entry.name);
+                if (entry.isDirectory()) {
+                    files.push(...await collectFiles(full));
+                } else if (entry.isFile()) {
+                    const ext = pathMod.extname(entry.name).toLowerCase();
+                    if (textExts.has(ext)) {
+                        files.push(full);
+                    }
+                }
+            }
+        } catch (e) {
+            // アクセス不可のディレクトリはスキップ
+        }
+        return files;
+    }
+
+    const files = await collectFiles(dirPath);
+    console.log(`[nodeGrep] Scanning ${files.length} files...`);
+
+    for (const filePath of files) {
+        try {
+            const content = await fsPromises.readFile(filePath, 'utf-8');
+            const lines = content.split('\n');
+            for (let i = 0; i < lines.length; i++) {
+                if (pattern.test(lines[i])) {
+                    pattern.lastIndex = 0; // reset regex state
+                    results.push({
+                        name: pathMod.basename(filePath),
+                        path: filePath,
+                        lineIndex: i,
+                        lineContent: lines[i]
+                    });
+                }
+            }
+        } catch (e) {
+            // 読み取り不可のファイルはスキップ
+        }
+    }
+
+    console.log(`[nodeGrep] Found ${results.length} matches`);
+    return results;
+}
+
+function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 
 // Show in Explorer
 ipcMain.handle('fs:showInExplorer', async (event, path) => {
