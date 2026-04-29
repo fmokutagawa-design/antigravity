@@ -282,6 +282,11 @@ function App() {
   const [projectContextMenu, setProjectContextMenu] = useState(null); // { x, y }
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
+  // --- Dependency Wrappers for Hooks ---
+  // 循環依存および上部での useEffect による TDZ を回避するためのラッパー
+  let _handleOpenFile;
+  const handleOpenFile = useCallback((...args) => _handleOpenFile && _handleOpenFile(...args), []);
+
   // AI Connection (hook)
   const { aiModel, setAiModel, localModels, selectedLocalModel, setSelectedLocalModel, isLocalConnected, checkLocalConnection, handleLaunchAI } = useAIConnection({
     showToast,
@@ -491,11 +496,6 @@ function App() {
     fileSystem
   });
 
-  // --- Dependency Wrappers for Hooks ---
-  // useProjectActions と useFileOperations の間の循環参照を回避する
-  let _handleOpenFile;
-  const handleOpenFileWrapper = (...args) => _handleOpenFile && _handleOpenFile(...args);
-
   const handleLaunchOneDrive = React.useCallback(async () => {
     if (!window.api?.system?.launchApp) {
       showToast('デスクトップ版でのみ利用可能です。', 'error');
@@ -559,7 +559,7 @@ function App() {
     showToast,
     requestConfirm,
     openInputModal,
-    handleOpenFile: handleOpenFileWrapper,
+    handleOpenFile,
     handlePopOutTab,
     editorRef,
     setActiveTab,
@@ -608,7 +608,6 @@ function App() {
     handleDuplicateFile,
     handleBatchCopy,
     handleBatchExport,
-    handleOpenFile,
     handleOpenSegmentFile,
   } = fileOps;
 
