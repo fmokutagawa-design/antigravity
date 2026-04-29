@@ -357,28 +357,7 @@ const SearchPanel = ({ allFiles, onOpenFile, onProjectReplace, initialQuery, pro
                                         <div className="res-file-info">
                                             <span className="res-file-icon">📖</span>
                                             <span className="res-file-tag">
-                                                {(() => {
-                                                    const name = res.file.name.replace('.txt', '').replace('.md', '');
-                                                    // 全体ファイルリストから共通のプレフィックスを探す
-                                                    const allNames = (allFiles || []).map(f => (typeof f === 'string' ? f : f.name) || '');
-                                                    if (allNames.length > 1) {
-                                                        // 最初のファイルと最後のファイルで共通部分を推定（簡易的だが有効）
-                                                        const first = allNames[0];
-                                                        let common = '';
-                                                        for(let i=0; i<first.length; i++) {
-                                                            if (allNames.every(n => n[i] === first[i])) {
-                                                                common += first[i];
-                                                            } else {
-                                                                break;
-                                                            }
-                                                        }
-                                                        // 共通部分が長すぎる場合（作品名が含まれている場合）は削る
-                                                        if (common.length > 5 && name.startsWith(common)) {
-                                                            return name.slice(common.length).replace(/^[_‐—―\s:]+/, '') || name;
-                                                        }
-                                                    }
-                                                    return name;
-                                                })()}
+                                                {res.file.name.replace('.txt', '').replace('.md', '')}
                                             </span>
                                         </div>
                                         <span className="res-line-number">{res.lineIndex + 1}行目</span>
