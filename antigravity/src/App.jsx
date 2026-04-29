@@ -201,6 +201,7 @@ function App() {
 
   const [showSemanticGraph, setShowSemanticGraph] = useState(false);
   const [showMatrixOutliner, setShowMatrixOutliner] = useState(false);
+  const [activeWorkFolderPath, setActiveWorkFolderPath] = useState(''); // NEW: 検索対象パスのステート化
 
   // Memoize editor value to avoid re-parsing on every render and stabilize reference for React.memo
   // ★ parseNote は debouncedText ベース → 毎キー入力での14万字パースを回避
@@ -425,13 +426,13 @@ function App() {
   useEffect(() => {
     const handleUpdatePath = (e) => {
       const { path } = e.detail;
-      if (path && setActiveWorkFolderPath) {
+      if (path) {
         setActiveWorkFolderPath(path);
       }
     };
     window.addEventListener('nexus-update-search-path', handleUpdatePath);
     return () => window.removeEventListener('nexus-update-search-path', handleUpdatePath);
-  }, [setActiveWorkFolderPath]);
+  }, []); // setActiveWorkFolderPath は useState なので依存不要
 
 
   // (colorTheme/paperStyle sync は下方の統合版に集約)
@@ -1106,8 +1107,10 @@ function App() {
                         />
                       )}
                       renderSearchPanel={() => {
-                        // --- 検索範囲となるフォルダパスを計算 ---
-                        const activeWorkFolderPath = (() => {
+                        // --- 初期パスの自動計算（ステートが空の場合のみ、またはファイル変更時） ---
+                        // Note: 実際にはファイルを開いた際 (handleOpenFile) 等で更新するのが望ましいが、
+                        // 既存ロジックとの互換性のため、ここでステートを同期する。
+                        useEffect(() => {
                           let base = null;
                           if (activeFileHandle) {
                             base = typeof activeFileHandle === 'string' ? activeFileHandle : (activeFileHandle.path || activeFileHandle.handle);
@@ -1116,30 +1119,28 @@ function App() {
                             const firstChild = materialsTree?.[0]?.children?.[0];
                             base = firstChild?.handle || firstChild?.path;
                           }
-                          if (!base) return (typeof projectHandle === 'string' ? projectHandle : projectHandle?.path || '');
-
-                          let norm = String(base).normalize('NFC').replace(/\\/g, '/');
-
-                          // 1. ファイル名（拡張子あり）なら親へ
-                          if (norm.match(/\.[^/]+$/)) {
-                            norm = norm.substring(0, norm.lastIndexOf('/'));
+                          if (!base && projectHandle) {
+                             base = typeof projectHandle === 'string' ? projectHandle : projectHandle?.path || '';
                           }
-
-                          // 2. もしパスのどこかに .nexus が含まれていたら、その親を作品ルートとみなす
-                          if (norm.includes('.nexus')) {
-                            // "/path/to/work.nexus/file.txt" -> "/path/to" ではなく、
-                            // "/path/to/work.nexus" -> "/path/to" となるように、
-                            // .nexus の直前のスラッシュを探す
-                            const parts = norm.split('/');
-                            const nexusIdx = parts.findIndex(p => p.includes('.nexus'));
-                            if (nexusIdx !== -1) {
-                              // nexusIdx そのものが作品フォルダなので、そこまでを含める
-                              norm = parts.slice(0, nexusIdx + 1).join('/');
+                          
+                          if (base) {
+                            let norm = String(base).normalize('NFC').replace(/\\/g, '/');
+                            if (norm.match(/\.[^/]+$/)) {
+                              norm = norm.substring(0, norm.lastIndexOf('/'));
+                            }
+                            if (norm.includes('.nexus')) {
+                              const parts = norm.split('/');
+                              const nexusIdx = parts.findIndex(p => p.includes('.nexus'));
+                              if (nexusIdx !== -1) {
+                                norm = parts.slice(0, nexusIdx + 1).join('/');
+                              }
+                            }
+                            // ステートが未設定の場合のみ初期値をセット（手動変更を尊重）
+                            if (!activeWorkFolderPath) {
+                              setActiveWorkFolderPath(norm);
                             }
                           }
-
-                          return norm;
-                        })();
+                        }, [activeFileHandle, materialsTree, projectHandle]);
 
                         // --- ディレクトリを除外し、ファイルのみを抽出 ---
                         const onlyFiles = (allMaterialFiles || []).filter(f => {
