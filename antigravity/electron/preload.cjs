@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('api', {
         rename: (oldPath, newName) => ipcRenderer.invoke('fs:rename', toPath(oldPath), newName),
         delete: (path) => ipcRenderer.invoke('fs:delete', toPath(path)),
         showInExplorer: (path) => ipcRenderer.invoke('fs:showInExplorer', toPath(path)),
+        grep: (path, query, options = {}) => ipcRenderer.invoke('fs:grep', toPath(path), query, options),
     },
     system: {
         getFonts: () => ipcRenderer.invoke('system:getFonts'),

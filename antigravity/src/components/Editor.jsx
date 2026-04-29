@@ -7,6 +7,7 @@ import { useClipboardHistory } from '../hooks/useClipboardHistory';
 import { perfNow, perfLog, perfMeasure } from '../utils/perfProbe';
 import PositionWorker from '../utils/positionWorker?worker';
 import { textToDocument, documentToText, updateDocument } from '../utils/documentModel';
+import { cleanRuby, compressBlankLines, convertToFullWidth } from '../utils/formatText';
 
 
 /**
@@ -133,7 +134,7 @@ function computeTotalLines(text, maxPerLine) {
 
 import ReactDOM from 'react-dom';
 
-const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertRuby, onInsertLink, onLaunchAI, ghostText, setGhostText, corrections = [], onImageDrop, fileId = '' }, ref) => {
+const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertRuby, onInsertLink, onSearchRequested, onLaunchAI, ghostText, setGhostText, corrections = [], onImageDrop, fileId = '' }, ref) => {
   const textareaRef = useRef(null);
   const [editorContextMenu, setEditorContextMenu] = React.useState(null);
 
@@ -409,7 +410,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
   //    42万字規模では全文座標配列の生成・保持・再レンダリングが
   //    ブラウザ・React の両方を破綻させるため、highlights を諦めて
   //    打鍵だけを軽くする方針。
-  const MASSIVE_TEXT_THRESHOLD = 40000; // 40万字規模フリーズ対策
+  const MASSIVE_TEXT_THRESHOLD = 100000; // 10万字まで着色を維持（章分割運用を前提とした実用的なしきい値）
   const isMassiveText = useMemo(() => {
     return debouncedDocument.reduce((acc, p) => acc + p.text.length, 0) > MASSIVE_TEXT_THRESHOLD;
   }, [debouncedDocument]);
@@ -806,7 +807,6 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       { type: 'conversation', regex: /「.*?」/g,                  color: settings.syntaxColors?.conversation || '#27ae60', isConversation: true },
       { type: 'ruby',         regex: /《.*?》/g,                  color: settings.syntaxColors?.ruby || '#e67e22' },
       { type: 'aozora',       regex: /［＃.*?］/g,                color: settings.syntaxColors?.aozora || '#8e44ad' },
-      { type: 'font',         regex: /\{font[:：].*?\}|\{\/font\}/g, color: settings.syntaxColors?.aozora || '#8e44ad' },
       { type: 'bold',         regex: /\*\*.*?\*\*/g,             color: settings.syntaxColors?.emphasis || '#c0392b' },
     ];
  
@@ -1108,6 +1108,10 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
       .editor-container::-webkit-scrollbar-track { background: ${trackColor} !important; }
       .editor-container::-webkit-scrollbar-thumb { ${scrollbarCSS} }
       .editor-container::-webkit-scrollbar-thumb:hover { background: ${thumbHover} !important; }
+      
+      .context-menu-item.has-submenu:hover > .format-submenu {
+        display: block !important;
+      }
     `;
 
     return () => {
@@ -1514,6 +1518,13 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
               setGhostText('');
             }
           }
+          if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            e.preventDefault();
+            const ta = textareaRef.current;
+            const selected = ta ? ta.value.substring(ta.selectionStart, ta.selectionEnd) : '';
+            if (onSearchRequested) onSearchRequested(selected);
+            return;
+          }
           undoKeyDown(e);
         }}
         onScroll={handleCursor}
@@ -1541,7 +1552,8 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
           position: 'fixed',
           top: editorContextMenu.y,
           left: editorContextMenu.x,
-          zIndex: 99999
+          zIndex: 99999,
+          overflow: 'visible'
         }} onClick={(e) => e.stopPropagation()}>
           <div className="context-menu-item" onClick={() => {
             if (onInsertRuby) onInsertRuby();
@@ -1558,61 +1570,22 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
           {editorContextMenu.hasSelection && (
             <>
               <div style={{ height: '1px', background: 'var(--border-color, #eee)', margin: '4px 0' }}></div>
-              {/* Font change submenu */}
-              <div className="context-menu-item" style={{ position: 'relative' }}
-                onMouseEnter={(e) => {
-                  const sub = e.currentTarget.querySelector('.font-submenu');
-                  if (sub) sub.style.display = 'block';
-                }}
-                onMouseLeave={(e) => {
-                  const sub = e.currentTarget.querySelector('.font-submenu');
-                  if (sub) sub.style.display = 'none';
-                }}
-              >
-                🔤 フォント変更 ▸
-                <div className="font-submenu context-menu" style={{
+              {/* Text formatting submenu */}
+              <div className="context-menu-item has-submenu" style={{ position: 'relative', overflow: 'visible' }}>
+                ✨ 文字整形 ▸
+                <div className="format-submenu context-menu" style={{
                   display: 'none',
                   position: 'absolute',
                   left: '100%',
-                  top: 0,
-                  minWidth: '140px',
-                  zIndex: 100000,
-                  maxHeight: '300px',
-                  overflowY: 'auto'
+                  top: '-5px',
+                  minWidth: '160px',
+                  zIndex: 200000,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                  backgroundColor: document.body.classList.contains('dark-mode') ? '#2c3e50' : '#ffffff',
+                  border: '1px solid var(--border-color, #ccc)',
+                  borderRadius: '4px',
+                  padding: '4px 0'
                 }}>
-                  {[
-                    { label: '明朝', name: '明朝' },
-                    { label: 'ゴシック', name: 'ゴシック' },
-                    { label: 'ヒラギノ明朝', name: 'ヒラギノ明朝' },
-                    { label: '筑紫A', name: '筑紫A' },
-                    { label: '筑紫B', name: '筑紫B' },
-                    { label: 'クレー', name: 'クレー' },
-                    { label: '游明朝', name: '游明朝' },
-                    { label: 'Noto明朝', name: 'Noto明朝' },
-                    { label: 'キウイ丸', name: 'キウイ丸' },
-                    { label: 'ひな明朝', name: 'ひな明朝' },
-                    { label: 'うつくし明朝', name: 'うつくし明朝' },
-                    { label: '紅道', name: '紅道' },
-                  ].map(f => (
-                    <div key={f.name} className="context-menu-item" onClick={() => {
-                      const ta = textareaRef.current;
-                      if (!ta) return;
-                      const start = ta.selectionStart;
-                      const end = ta.selectionEnd;
-                      const rawValue = settings.isVertical ? fromVerticalDisplay(ta.value) : ta.value;
-                      const selected = rawValue.substring(start, end);
-                      const wrapped = `{font:${f.name}}${selected}{/font}`;
-                      const newValue = rawValue.substring(0, start) + wrapped + rawValue.substring(end);
-                      const newCursor = start + wrapped.length;
-                      pushHistory(localTextRef.current, newValue, start);
-                      applyText(newValue, newCursor);
-                      appNotifyTimerRef.current = setTimeout(() => onChange(newValue), 500);
-                      setEditorContextMenu(null);
-                    }}>
-                      {f.label}
-                    </div>
-                  ))}
-                  <div style={{ height: '1px', background: 'var(--border-color, #eee)', margin: '4px 0' }}></div>
                   <div className="context-menu-item" onClick={() => {
                     const ta = textareaRef.current;
                     if (!ta) return;
@@ -1620,8 +1593,7 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
                     const end = ta.selectionEnd;
                     const rawValue = settings.isVertical ? fromVerticalDisplay(ta.value) : ta.value;
                     const selected = rawValue.substring(start, end);
-                    // Remove font tags from selection
-                    const cleaned = selected.replace(/\{font[:：][^}]*\}/g, '').replace(/\{\/font\}/g, '');
+                    const cleaned = cleanRuby(selected);
                     const newValue = rawValue.substring(0, start) + cleaned + rawValue.substring(end);
                     const newCursor = start + cleaned.length;
                     pushHistory(localTextRef.current, newValue, start);
@@ -1629,7 +1601,41 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
                     appNotifyTimerRef.current = setTimeout(() => onChange(newValue), 500);
                     setEditorContextMenu(null);
                   }}>
-                    ❌ フォント解除
+                    ルビを削除
+                  </div>
+                  <div className="context-menu-item" onClick={() => {
+                    const ta = textareaRef.current;
+                    if (!ta) return;
+                    const start = ta.selectionStart;
+                    const end = ta.selectionEnd;
+                    const rawValue = settings.isVertical ? fromVerticalDisplay(ta.value) : ta.value;
+                    const selected = rawValue.substring(start, end);
+                    const converted = convertToFullWidth(selected);
+                    const newValue = rawValue.substring(0, start) + converted + rawValue.substring(end);
+                    const newCursor = start + converted.length;
+                    pushHistory(localTextRef.current, newValue, start);
+                    applyText(newValue, newCursor);
+                    appNotifyTimerRef.current = setTimeout(() => onChange(newValue), 500);
+                    setEditorContextMenu(null);
+                  }}>
+                    半角を全角に
+                  </div>
+                  <div className="context-menu-item" onClick={() => {
+                    const ta = textareaRef.current;
+                    if (!ta) return;
+                    const start = ta.selectionStart;
+                    const end = ta.selectionEnd;
+                    const rawValue = settings.isVertical ? fromVerticalDisplay(ta.value) : ta.value;
+                    const selected = rawValue.substring(start, end);
+                    const compressed = compressBlankLines(selected);
+                    const newValue = rawValue.substring(0, start) + compressed + rawValue.substring(end);
+                    const newCursor = start + compressed.length;
+                    pushHistory(localTextRef.current, newValue, start);
+                    applyText(newValue, newCursor);
+                    appNotifyTimerRef.current = setTimeout(() => onChange(newValue), 500);
+                    setEditorContextMenu(null);
+                  }}>
+                    空行を整理
                   </div>
                 </div>
               </div>

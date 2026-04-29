@@ -141,6 +141,7 @@ function App() {
     enableJournaling: true, // ジャーナリング (操作ログ) のオン・オフ
     enablePerfLogging: false, // 開発・分析用ログ (PERF) のオン・オフ
     customCSS: '', // User custom CSS
+    rubyFontFamily: 'inherit', // Ruby specific font
   });
 
   const [aiAction, setAiAction] = useState(null);
@@ -270,8 +271,9 @@ function App() {
   const { showReference, setShowReference, referenceContent, setReferenceContent, referenceFileName, setReferenceFileName, referenceWidth, startResizing, isResizing } = useReferencePanel();
   const [usageStats, setUsageStats] = useState({}); // Track file access frequency
 
+  const [projectSearchQuery, setProjectSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('editor'); // 'editor' or 'preview'
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [sidebarSubTab, setSidebarSubTab] = useState('outline');
   const [showOutline, setShowOutline] = useState(false); // Outline Panel State
 
   const [lastSaved, setLastSaved] = useState(null);
@@ -612,7 +614,12 @@ function App() {
   } = fileOps;
 
   useKeyboardShortcuts({
-    setIsSearchOpen,
+    onSearchRequested: (query) => {
+      setProjectSearchQuery({ term: query || '', timestamp: Date.now() });
+      setSidebarTab('navigate');
+      setSidebarSubTab('search');
+      setIsSidebarVisible(true);
+    },
     handleSaveFileRef,
     setIsRapidMode,
     setShowReader,
@@ -1029,6 +1036,8 @@ function App() {
                     />
                   ) : sidebarTab === 'navigate' ? (
                     <NavigatePanel
+                      activeSubTab={sidebarSubTab}
+                      onSubTabChange={setSidebarSubTab}
                       renderTagPanel={() => (
                         activeFileHandle ? (() => {
                           const currentMetadata = parsedNote.metadata || {};
@@ -1085,6 +1094,8 @@ function App() {
                           strictManuscriptMode={settings.strictManuscriptMode}
                           onOpenFile={handleOpenFile}
                           onProjectReplace={handleProjectReplace}
+                          initialQuery={projectSearchQuery}
+                          projectHandle={materialsTree?.[0]?.handle || projectHandle}
                           onSwitchToReplace={(query) => {
                             setIsSearchOpen(true);
                             setSearchReplaceInitialTerm(query || '');
@@ -1363,7 +1374,7 @@ function App() {
             </aside>
           );
           // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [isSidebarVisible, sidebarTab, activeTab, projectHandle, fileTree, activeFileHandle, isProjectMode, settings, projectContextMenu, savedProjectHandle, showCardCreator, isMaterialsLoading, allMaterialFiles, linkGraph, projectSettings, currentSessionChars, aiAction, aiOptions, corrections, aiModel, localModels, selectedLocalModel, isLocalConnected, candidates, snippets, notesText, presets, isDarkMode, showMetadata, debouncedText])}
+        }, [isSidebarVisible, sidebarTab, activeTab, projectHandle, fileTree, activeFileHandle, isProjectMode, settings, projectContextMenu, savedProjectHandle, showCardCreator, isMaterialsLoading, allMaterialFiles, linkGraph, projectSettings, currentSessionChars, aiAction, aiOptions, corrections, aiModel, localModels, selectedLocalModel, isLocalConnected, candidates, snippets, notesText, presets, isDarkMode, showMetadata, debouncedText, projectSearchQuery])}
 
         <div className="content-wrapper" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <main className={`main-content ${showReference && activeTab !== 'reference' ? 'split-view' : ''}`} style={{ flex: 1, display: 'flex', overflow: 'hidden', flexDirection: 'column' }}>
@@ -1425,6 +1436,10 @@ function App() {
                       const newCursorPos = selectedText ? start + insertion.length : start + 2;
                       textarea.setSelectionRange(newCursorPos, newCursorPos);
                     }, 0);
+                  }}
+                  onSearchRequested={(query) => {
+                    setProjectSearchQuery({ term: query, timestamp: Date.now() });
+                    setSidebarTab('navigate');
                   }}
                 />
 
@@ -1775,20 +1790,7 @@ function App() {
         )
       }
       {/* Search Replace Panel */}
-      <SearchReplace
-        text={text}
-        onReplace={(newText) => setText(newText)}
-        isOpen={isSearchOpen}
-        onClose={() => setIsSearchOpen(false)}
-        editorRef={editorRef}
-        allFiles={allMaterialFiles}
-        onOpenFile={handleOpenFile}
-        onProjectReplace={handleProjectReplace}
-        initialTerm={searchReplaceInitialTerm}
-        initialIsGrepMode={searchReplaceInitialGrepMode}
-        showToast={showToast}
-        requestConfirm={requestConfirm}
-      />
+      {/* Old search modal removed */}
 
       {/* Custom UI Overlays for non-blocking notifications and modern dialogs */}
       <NotificationToast toasts={toasts} onRemove={removeToast} />

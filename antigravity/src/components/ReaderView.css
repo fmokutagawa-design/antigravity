@@ -260,7 +260,7 @@ h4.reader-paragraph {
 /* ===== ルビ ===== */
 .reader-body rt {
     font-size: 0.5em;
-    font-family: 'Hiragino Sans', sans-serif;
+    font-family: var(--reader-ruby-font, inherit);
 }
 
 .theme-dark .reader-body rt { opacity: 0.8; }

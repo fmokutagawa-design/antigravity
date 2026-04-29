@@ -437,6 +437,70 @@ ipcMain.handle('fs:delete', async (event, targetPath) => {
     return true;
 });
 
+// Grep (Global Search)
+ipcMain.handle('fs:grep', async (event, projectPath, query, options = {}) => {
+    // 起動時の settings から projectPath が取れる場合がある
+    const targetPath = projectPath || globalProjectRoot;
+    console.log(`[fs:grep] start search: "${query}" in "${targetPath}"`);
+    if (!targetPath || !query) return [];
+    
+    const { useRegex = false, caseSensitive = false } = options;
+    const { spawn } = require('child_process');
+    
+    // Construct grep arguments
+    const args = ['-rnI'];
+    if (!caseSensitive) args.push('-i');
+    if (useRegex) args.push('-E');
+    
+    // 検索ワードを最後に追加し、検索対象ディレクトリを "." (cwd) に固定する
+    args.push(query, ".");
+
+    return new Promise((resolve) => {
+        const child = spawn('grep', args, { cwd: targetPath });
+        let stdout = '';
+        let stderr = '';
+        child.stdout.on('data', data => stdout += data);
+        child.stderr.on('data', data => stderr += data);
+        
+        child.on('close', (code) => {
+            if (code !== 0 && code !== 1) { // 0: matches, 1: no matches
+                console.error(`[fs:grep] grep process exited with code ${code}: ${stderr}`);
+                return resolve([]);
+            }
+            
+            console.log(`[fs:grep] found matches`);
+
+            const results = stdout.split('\n')
+                .filter(line => line.trim())
+                .map(line => {
+                    const parts = line.split(':');
+                    if (parts.length < 3) return null;
+                    const relPath = parts[0];
+                    const lineIndex = parseInt(parts[1]) - 1;
+                    const lineContent = parts.slice(2).join(':');
+                    
+                    // 相対パスを絶対パスに復元
+                    const path = require('path');
+                    const fullPath = path.resolve(targetPath, relPath);
+                    const name = path.basename(fullPath);
+
+                    return {
+                        name,
+                        path: fullPath,
+                        lineIndex,
+                        lineContent
+                    };
+                })
+                .filter(res => res !== null);
+            resolve(results);
+        });
+        child.on('error', (err) => {
+            console.error('[fs:grep] spawn error:', err);
+            resolve([]);
+        });
+    });
+});
+
 // Show in Explorer
 ipcMain.handle('fs:showInExplorer', async (event, path) => {
     shell.showItemInFolder(path);

@@ -14,9 +14,19 @@ const NavigatePanel = ({
     // To keep it clean, App.jsx can pass the specific props.
     // However, existing panels are imported in App.jsx.
     // Let's pass the render functions or props.
-    renderTagPanel, renderLinkPanel, renderSearchPanel, renderOutlinePanel
+    renderTagPanel, renderLinkPanel, renderSearchPanel, renderOutlinePanel,
+    onSubTabChange
 }) => {
     const [subTab, setSubTab] = useState(activeSubTab);
+
+    React.useEffect(() => {
+        if (activeSubTab) setSubTab(activeSubTab);
+    }, [activeSubTab]);
+
+    const handleTabClick = (newTab) => {
+        setSubTab(newTab);
+        if (onSubTabChange) onSubTabChange(newTab);
+    };
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -28,7 +38,7 @@ const NavigatePanel = ({
                 fontSize: '12px'
             }}>
                 <button
-                    onClick={() => setSubTab('outline')}
+                    onClick={() => handleTabClick('outline')}
                     style={{
                         flex: 1, padding: '8px', border: 'none', background: 'transparent',
                         borderBottom: subTab === 'outline' ? '2px solid var(--accent-color)' : 'none',
@@ -40,7 +50,7 @@ const NavigatePanel = ({
                     📖 目次
                 </button>
                 <button
-                    onClick={() => setSubTab('tags')}
+                    onClick={() => handleTabClick('tags')}
                     style={{
                         flex: 1, padding: '8px', border: 'none', background: 'transparent',
                         borderBottom: subTab === 'tags' ? '2px solid var(--accent-color)' : 'none',
@@ -52,7 +62,7 @@ const NavigatePanel = ({
                     🏷️ タグ
                 </button>
                 <button
-                    onClick={() => setSubTab('links')}
+                    onClick={() => handleTabClick('links')}
                     style={{
                         flex: 1, padding: '8px', border: 'none', background: 'transparent',
                         borderBottom: subTab === 'links' ? '2px solid var(--accent-color)' : 'none',
@@ -64,7 +74,7 @@ const NavigatePanel = ({
                     🔗 リンク
                 </button>
                 <button
-                    onClick={() => setSubTab('search')}
+                    onClick={() => handleTabClick('search')}
                     style={{
                         flex: 1, padding: '8px', border: 'none', background: 'transparent',
                         borderBottom: subTab === 'search' ? '2px solid var(--accent-color)' : 'none',

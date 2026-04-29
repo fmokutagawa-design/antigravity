@@ -37,6 +37,7 @@ const Toolbar = ({
     const [isLoadingFonts, setIsLoadingFonts] = useState(false);
     const [visibleCount, setVisibleCount] = useState(40);
     const [lastScrollTop, setLastScrollTop] = useState(0); // スクロール位置の記憶
+    const [fontTarget, setFontTarget] = useState('fontFamily'); // 'fontFamily' or 'rubyFontFamily'
 
     const PRESET_FONTS = [
         { label: '明朝 (標準)', value: 'var(--font-mincho)' },
@@ -211,7 +212,7 @@ const Toolbar = ({
                     <div className="control-item" style={{ position: 'relative' }}>
                         <label>書体</label>
                         <div 
-                            onClick={() => setIsFontMenuOpen(!isFontMenuOpen)}
+                            onClick={() => { setFontTarget('fontFamily'); setIsFontMenuOpen(!isFontMenuOpen); }}
                             style={{ 
                                 fontSize: '10px', width: '100%', padding: '4px 8px', 
                                 border: '1px solid rgba(0,0,0,0.1)', borderRadius: '4px', 
@@ -223,6 +224,23 @@ const Toolbar = ({
                             <span>{PRESET_FONTS.find(f => f.value === settings.fontFamily)?.label || settings.fontFamily || '選択...'}</span>
                             <span style={{ fontSize: '8px', opacity: 0.5 }}>▼</span>
                         </div>
+                    </div>
+                    <div className="control-item" style={{ position: 'relative' }}>
+                        <label>ルビ書体</label>
+                        <div 
+                            onClick={() => { setFontTarget('rubyFontFamily'); setIsFontMenuOpen(!isFontMenuOpen); }}
+                            style={{ 
+                                fontSize: '10px', width: '100%', padding: '4px 8px', 
+                                border: '1px solid rgba(0,0,0,0.1)', borderRadius: '4px', 
+                                background: 'rgba(0,0,0,0.02)', cursor: 'pointer',
+                                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                            }}
+                        >
+                            <span>{settings.rubyFontFamily === 'inherit' ? '本文と同じ' : (PRESET_FONTS.find(f => f.value === settings.rubyFontFamily)?.label || settings.rubyFontFamily || '選択...')}</span>
+                            <span style={{ fontSize: '8px', opacity: 0.5 }}>▼</span>
+                        </div>
+                    </div>
 
                         {isFontMenuOpen && (
                             <div 
@@ -285,6 +303,16 @@ const Toolbar = ({
                                                 isJp: true,
                                                 subLabel: p.value
                                             }));
+
+                                            if (fontTarget === 'rubyFontFamily') {
+                                                presetItems.unshift({
+                                                    label: '本文と同じ',
+                                                    value: 'inherit',
+                                                    isPreset: true,
+                                                    isJp: true,
+                                                    subLabel: 'inherit'
+                                                });
+                                            }
 
                                             // システムフォントの展開と和名表示用オブジェクト作成
                                             const systemItems = [];
@@ -355,7 +383,12 @@ const Toolbar = ({
                                                                     </div>
                                                                 )}
                                                                 <div 
-                                                                    onClick={(e) => { e.stopPropagation(); handleChange('fontFamily', item.value); setIsFontMenuOpen(false); setFontSearch(''); }}
+                                                                    onClick={(e) => { 
+                                                                        e.stopPropagation(); 
+                                                                        handleChange(fontTarget, item.value); 
+                                                                        setIsFontMenuOpen(false); 
+                                                                        setFontSearch(''); 
+                                                                    }}
                                                                     style={{ 
                                                                         padding: '10px 14px', fontSize: '14px', cursor: 'pointer',
                                                                         background: settings.fontFamily === item.value ? 'rgba(142,68,173,0.1)' : 'transparent',
@@ -396,7 +429,6 @@ const Toolbar = ({
                             </div>
                         )}
                     </div>
-                </div>
 
                 {/* 3列カラーグリッド */}
                 {/* 5 列カラーグリッド + Toggle */}

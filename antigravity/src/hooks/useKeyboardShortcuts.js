@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 
 export function useKeyboardShortcuts({
-  setIsSearchOpen,
+  onSearchRequested,
   handleSaveFileRef,
   setIsRapidMode,
   setShowReader,
@@ -13,7 +13,7 @@ export function useKeyboardShortcuts({
     const handleKeyDown = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
         e.preventDefault();
-        setIsSearchOpen(true);
+        if (onSearchRequested) onSearchRequested('');
       }
       // Cmd+S: Save
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
@@ -42,7 +42,7 @@ export function useKeyboardShortcuts({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
-    setIsSearchOpen,
+    onSearchRequested,
     handleSaveFileRef,
     setIsRapidMode,
     setShowReader,

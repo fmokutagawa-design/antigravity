@@ -12,6 +12,11 @@ const FONT_OPTIONS = [
     { label: 'クレー', value: "'Klee One', cursive" },
 ];
 
+const RUBY_FONT_OPTIONS = [
+    { label: 'ルビ: 本文と同じ', value: 'inherit' },
+    ...FONT_OPTIONS
+];
+
 const SIZE_OPTIONS = [14, 16, 18, 20, 22, 24, 28, 32];
 
 const ReaderView = ({ text, settings, onClose, cursorOffset = 0, onJumpToEditor, workText, isNexusFile, workTitle, resolveOffset, onOpenSegmentFile }) => {
@@ -22,6 +27,7 @@ const ReaderView = ({ text, settings, onClose, cursorOffset = 0, onJumpToEditor,
 
     // リーダー独自の表示設定（親の settings を初期値に使う）
     const [readerFont, setReaderFont] = useState(settings.fontFamily || 'var(--font-mincho)');
+    const [readerRubyFont, setReaderRubyFont] = useState(settings.rubyFontFamily || 'inherit');
     const [readerSize, setReaderSize] = useState(settings.fontSize || 18);
     const [readerVertical, setReaderVertical] = useState(settings.isVertical ?? true);
     const [readerTheme, setReaderTheme] = useState(settings.colorTheme || 'light');
@@ -186,6 +192,17 @@ const ReaderView = ({ text, settings, onClose, cursorOffset = 0, onJumpToEditor,
 
                     <select
                         className="reader-select"
+                        value={readerRubyFont}
+                        onChange={(e) => setReaderRubyFont(e.target.value)}
+                        title="ルビのフォント"
+                    >
+                        {RUBY_FONT_OPTIONS.map(f => (
+                            <option key={f.value} value={f.value}>{f.label}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        className="reader-select"
                         value={readerSize}
                         onChange={(e) => setReaderSize(Number(e.target.value))}
                     >
@@ -259,6 +276,7 @@ const ReaderView = ({ text, settings, onClose, cursorOffset = 0, onJumpToEditor,
                     writingMode: readerVertical ? 'vertical-rl' : 'horizontal-tb',
                     fontFamily: `${readerFont}, serif`,
                     fontSize: `${readerSize}px`,
+                    '--reader-ruby-font': readerRubyFont,
                 }}
             >
                 <div className="reader-body">

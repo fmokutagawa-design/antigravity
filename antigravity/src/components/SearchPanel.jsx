@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import './SearchPanel.css';
 
-const SearchPanel = ({ allFiles, currentText, currentFileName, onOpenFile, onProjectReplace }) => {
+const SearchPanel = ({ allFiles, onOpenFile, onProjectReplace, initialQuery, projectHandle }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [replaceQuery, setReplaceQuery] = useState('');
     const [useRegex, setUseRegex] = useState(false);
     const [caseSensitive, setCaseSensitive] = useState(false);
-    const [targetBodyOnly, setTargetBodyOnly] = useState(true); // Default: Ignore frontmatter
+
+    const searchInputRef = React.useRef(null);
 
     // Results
     const [searchResults, setSearchResults] = useState([]);
@@ -16,98 +17,101 @@ const SearchPanel = ({ allFiles, currentText, currentFileName, onOpenFile, onPro
     // Replace Preview State
     const [showReplaceUI, setShowReplaceUI] = useState(false);
 
-    // Perform search
+    // Engine and Scope
+    const [searchEngine, setSearchEngine] = useState('');
+    const [currentScopeHandle, setCurrentScopeHandle] = useState(projectHandle);
+
     useEffect(() => {
+        setCurrentScopeHandle(projectHandle);
+    }, [projectHandle]);
+
+    const performSearch = async () => {
         if (!searchQuery) {
             setSearchResults([]);
+            setSearchEngine('');
             return;
         }
 
-        const timer = setTimeout(() => {
-            setIsSearching(true);
-            const startTime = performance.now();
-            const results = [];
+        setIsSearching(true);
+        const startTime = performance.now();
+        
+        try {
+            let results = [];
+            let engineName = "🐌 JS スキャン";
 
-            try {
+            // 1. Try Native Grep
+            if (window.api?.fs?.grep && currentScopeHandle) {
+                try {
+                    const targetPath = typeof currentScopeHandle === 'string' ? currentScopeHandle : (currentScopeHandle.path || currentScopeHandle.handle);
+                    const nativeResults = await window.api.fs.grep(targetPath, searchQuery, { useRegex, caseSensitive });
+                    
+                    const validPaths = new Set(allFiles.map(f => f.handle || f.path));
+                    results = nativeResults
+                        .filter(res => validPaths.has(res.path))
+                        .map(res => ({
+                            file: allFiles.find(f => (f.handle || f.path) === res.path) || { name: res.name, handle: res.path, path: res.path },
+                            lineIndex: res.lineIndex,
+                            lineContent: res.lineContent.trim(),
+                            fullLine: res.lineContent,
+                            position: 0
+                        }));
+                    engineName = "⚡ 高速 Grep";
+                } catch (grepError) {
+                    console.warn("Grep failed:", grepError);
+                }
+            }
+
+            // 2. JS Fallback
+            if (results.length === 0) {
                 const normalizedQuery = searchQuery.normalize('NFC');
                 let pattern;
-                if (useRegex) {
-                    try {
-                        pattern = new RegExp(normalizedQuery, caseSensitive ? 'g' : 'gi');
-                    } catch (e) {
-                        pattern = new RegExp(normalizedQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), caseSensitive ? 'g' : 'gi');
-                    }
-                } else {
-                    const escaped = normalizedQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                try {
+                    const escaped = useRegex ? normalizedQuery : normalizedQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                     pattern = new RegExp(escaped, caseSensitive ? 'g' : 'gi');
+                } catch (e) {
+                    pattern = new RegExp(normalizedQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), caseSensitive ? 'g' : 'gi');
                 }
 
-                // Search current document first (unsaved state)
-                if (currentText) {
-                    searchSingleContent(
-                        { name: currentFileName || '未保存の文書', isCurrent: true },
-                        currentText.normalize('NFC'),
-                        pattern,
-                        results
-                    );
-                }
-
-                // Search other files
-                allFiles.forEach(file => {
-                    // Skip if it's the current file (already searched)
-                    if (currentFileName && (file.name === currentFileName || file.path === currentFileName)) return;
-
-                    const content = (file.content || "").normalize('NFC');
-                    searchSingleContent(file, content, pattern, results);
-                });
-
-                setSearchResults(results);
-            } catch (e) {
-                console.error("Search invalid", e);
-            } finally {
-                setIsSearching(false);
-                setSearchTime(performance.now() - startTime);
-            }
-
-        }, 300); // Debounce
-
-        return () => clearTimeout(timer);
-
-        function searchSingleContent(file, content, pattern, resultsList) {
-            // Frontmatter boundary detection
-            let bodyStartIndex = 0;
-            if (targetBodyOnly) {
-                // Support both --- and ［METADATA］
-                const fmMatch = content.match(/^---\n([\s\S]*?)\n---\n/) ||
-                    content.match(/^［METADATA］\n([\s\S]*?)\n［\/METADATA］\n/);
-                if (fmMatch) {
-                    bodyStartIndex = fmMatch[0].length;
+                const BATCH_SIZE = 5;
+                for (let i = 0; i < allFiles.length; i += BATCH_SIZE) {
+                    const batch = allFiles.slice(i, i + BATCH_SIZE);
+                    await Promise.all(batch.map(async (file) => {
+                        try {
+                            let content = file.content;
+                            if (!content && window.api?.fs?.readFile) {
+                                content = await window.api.fs.readFile(file.handle || file.path);
+                            }
+                            if (!content) return;
+                            
+                            const lines = content.normalize('NFC').split('\n');
+                            lines.forEach((line, lineIdx) => {
+                                if (pattern.test(line)) {
+                                    results.push({ file, lineIndex: lineIdx, lineContent: line.trim(), fullLine: line, position: 0 });
+                                }
+                            });
+                        } catch (err) {}
+                    }));
                 }
             }
 
-            const lines = content.split('\n');
-            let currentCharIndex = 0;
-
-            lines.forEach((line, lineIdx) => {
-                const lineStartChar = currentCharIndex;
-                const lineEndChar = lineStartChar + line.length;
-                currentCharIndex += line.length + 1;
-
-                if (targetBodyOnly && lineEndChar <= bodyStartIndex) return;
-
-                if (pattern.global) pattern.lastIndex = 0;
-                if (pattern.test(line)) {
-                    resultsList.push({
-                        file,
-                        lineIndex: lineIdx,
-                        lineContent: line.trim(),
-                        fullLine: line,
-                        position: lineStartChar
-                    });
-                }
-            });
+            setSearchResults(results);
+            setSearchEngine(engineName);
+        } catch (e) {
+            console.error("Search failed", e);
+        } finally {
+            setIsSearching(false);
+            setSearchTime(performance.now() - startTime);
         }
-    }, [searchQuery, useRegex, caseSensitive, targetBodyOnly, allFiles, currentText, currentFileName]);
+    };
+
+    const handleChangeScope = async () => {
+        if (window.api?.fs?.selectFolder) {
+            const newFolder = await window.api.fs.selectFolder();
+            if (newFolder) {
+                setCurrentScopeHandle(newFolder);
+            }
+        }
+    };
 
     const handleReplaceAllPreview = () => {
         if (!replaceQuery || searchResults.length === 0) return;
@@ -115,9 +119,7 @@ const SearchPanel = ({ allFiles, currentText, currentFileName, onOpenFile, onPro
         const confirmed = confirm(`${searchResults.length}箇所を「${replaceQuery}」に置換しますか？\n(この操作は取り消せません)`);
         if (!confirmed) return;
 
-        // Calculate changes
         const changes = [];
-        // Re-run regex to get strict replacement
         try {
             let pattern;
             if (useRegex) {
@@ -127,16 +129,11 @@ const SearchPanel = ({ allFiles, currentText, currentFileName, onOpenFile, onPro
                 pattern = new RegExp(escaped, caseSensitive ? 'g' : 'gi');
             }
 
-            // We need to group by file to do safe replace
-            // But onProjectReplace accepts flat list of changes?
-            // Let's construct changes object compatible with handleProjectReplace
-            // It expects: { fileHandle, fileName, lineIndex, newContent }
-
             searchResults.forEach(res => {
                 const newLine = res.fullLine.replace(pattern, replaceQuery);
                 if (newLine !== res.fullLine) {
                     changes.push({
-                        fileHandle: res.file.handle, // Verify this handle exists!
+                        fileHandle: res.file.handle || res.file.path,
                         fileName: res.file.name,
                         lineIndex: res.lineIndex,
                         lineContent: res.fullLine,
@@ -152,38 +149,87 @@ const SearchPanel = ({ allFiles, currentText, currentFileName, onOpenFile, onPro
 
             if (onProjectReplace) {
                 onProjectReplace(changes);
-            } else {
-                alert("エラー: onProjectReplace 関数が見つかりません。");
             }
-
         } catch (e) {
             alert('置換エラー: ' + e.message);
         }
     };
 
+    // Initial query sync and auto-search
+    useEffect(() => {
+        if (initialQuery) {
+            const term = typeof initialQuery === 'object' ? initialQuery.term : initialQuery;
+            setSearchQuery(term || '');
+            if (term) setTimeout(performSearch, 50);
+            
+            if (searchInputRef.current) {
+                searchInputRef.current.focus();
+                searchInputRef.current.select();
+            }
+        }
+    }, [initialQuery]);
+
+    useEffect(() => {
+        if (!searchQuery) {
+            setSearchResults([]);
+            return;
+        }
+        const timer = setTimeout(performSearch, 500);
+        return () => clearTimeout(timer);
+    }, [searchQuery, useRegex, caseSensitive, currentScopeHandle]);
+
+    const targetPathStr = typeof currentScopeHandle === 'string' ? currentScopeHandle : (currentScopeHandle?.path || currentScopeHandle?.handle || '不明');
+    const displayPath = targetPathStr.split(/[/\\]/).slice(-2).join('/');
+
     return (
         <div className="search-panel">
+            <div className="search-status-bar">
+                <span className="scope-badge">範囲</span>
+                <span className="path-text" title={targetPathStr}>.../{displayPath}</span>
+                <button className="change-scope-btn" onClick={handleChangeScope} title="検索範囲を変更">
+                    📁 変更
+                </button>
+                {searchEngine && <span className="engine-badge">{searchEngine}</span>}
+            </div>
+
             <div className="search-header-advanced">
-                <div className="search-row">
+                <div className="search-row main-search-row">
                     <input
+                        ref={searchInputRef}
                         type="text"
                         className="search-input"
-                        placeholder="🔍 検索..."
+                        placeholder="🔍 検索ワード..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        autoFocus
+                        onKeyDown={(e) => e.key === 'Enter' && performSearch()}
                     />
-                    <button
-                        className={`toggle-btn ${showReplaceUI ? 'active' : ''}`}
-                        onClick={() => setShowReplaceUI(!showReplaceUI)}
-                        title="置換パネルを表示"
-                    >
-                        ↪
+                    <button className="primary-search-btn" onClick={performSearch} disabled={isSearching}>
+                        {isSearching ? '...' : '検索'}
                     </button>
                 </div>
 
+                <div className="search-controls-secondary">
+                    <button
+                        className={`toggle-replace-btn ${showReplaceUI ? 'active' : ''}`}
+                        onClick={() => setShowReplaceUI(!showReplaceUI)}
+                    >
+                        {showReplaceUI ? '▲ 置換を隠す' : '▼ 置換を表示'}
+                    </button>
+                    
+                    <div className="search-options-mini">
+                        <label className={`option-chip ${caseSensitive ? 'on' : ''}`}>
+                            <input type="checkbox" checked={caseSensitive} onChange={e => setCaseSensitive(e.target.checked)} />
+                            Aa
+                        </label>
+                        <label className={`option-chip ${useRegex ? 'on' : ''}`}>
+                            <input type="checkbox" checked={useRegex} onChange={e => setUseRegex(e.target.checked)} />
+                            .* (正規表現)
+                        </label>
+                    </div>
+                </div>
+
                 {showReplaceUI && (
-                    <div className="search-row replace-row">
+                    <div className="replace-container-box">
                         <input
                             type="text"
                             className="search-input replace-input"
@@ -192,59 +238,48 @@ const SearchPanel = ({ allFiles, currentText, currentFileName, onOpenFile, onPro
                             onChange={(e) => setReplaceQuery(e.target.value)}
                         />
                         <button
-                            className="action-btn"
+                            className="primary-replace-btn"
                             onClick={handleReplaceAllPreview}
                             disabled={!searchQuery || searchResults.length === 0}
                         >
-                            全置換
+                            全ファイルで一括置換
                         </button>
                     </div>
                 )}
-
-                <div className="search-options">
-                    <label title="正規表現を使用">
-                        <input type="checkbox" checked={useRegex} onChange={e => setUseRegex(e.target.checked)} />
-                        .*
-                    </label>
-                    <label title="大文字・小文字を区別">
-                        <input type="checkbox" checked={caseSensitive} onChange={e => setCaseSensitive(e.target.checked)} />
-                        Aa
-                    </label>
-                    <label title="本文のみ検索 (Frontmatterを除外)">
-                        <input type="checkbox" checked={targetBodyOnly} onChange={e => setTargetBodyOnly(e.target.checked)} />
-                        本文のみ
-                    </label>
-                </div>
             </div>
 
-            <div className="search-results">
+            <div className="search-results-container">
                 {isSearching ? (
-                    <div className="search-loading">検索中...</div>
+                    <div className="search-loading-spinner">走査中...</div>
                 ) : (
                     <>
-                        <div className="search-meta">
-                            {searchResults.length} 件 ({searchTime.toFixed(0)}ms)
+                        <div className="search-meta-info">
+                            {searchResults.length > 0 ? (
+                                <span>ヒット: <strong>{searchResults.length}</strong> 件</span>
+                            ) : searchQuery ? (
+                                <span className="no-hits">見つかりませんでした</span>
+                            ) : null}
+                            {searchTime > 0 && <span className="time-tag">{searchTime.toFixed(0)}ms</span>}
                         </div>
-                        <div className="results-list">
+                        
+                        <div className="results-list-scrollable">
                             {searchResults.map((res, i) => (
                                 <div
                                     key={i}
-                                    className="result-item"
-                                    onClick={() => onOpenFile(res.file.handle, res.file.name, { position: res.position })}
-                                    title={`${res.file.name}:${res.lineIndex + 1}`}
+                                    className="result-item-card"
+                                    onClick={() => onOpenFile(res.file.handle || res.file.path, res.file.name, { position: res.position })}
                                 >
-                                    <div className="result-header">
-                                        <span className="file-name">{res.file.name}</span>
-                                        <span className="line-num">Line {res.lineIndex + 1}</span>
+                                    <div className="result-card-header">
+                                        <span className="res-file-tag">{res.file.name}</span>
+                                        <span className="res-line-tag">L{res.lineIndex + 1}</span>
                                     </div>
-                                    <div className="preview">{res.lineContent}</div>
+                                    <div className="res-preview-text">{res.lineContent}</div>
                                 </div>
                             ))}
                         </div>
                     </>
                 )}
             </div>
-            {/* Removed inline style jsx in favor of external CSS */}
         </div>
     );
 };
