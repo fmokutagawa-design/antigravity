@@ -71,7 +71,10 @@ const SearchPanel = ({ allFiles, onOpenFile, onProjectReplace, initialQuery, pro
                             return validPaths.has(rp);
                         });
 
-                    results = filteredResults.map(res => ({
+                    // 最終ガード：もしフィルターで全滅した場合は、フィルタリングせずに全件出す（パス正規化問題への対応）
+                    const finalResults = (filteredResults.length === 0 && nativeResults.length > 0) ? nativeResults : filteredResults;
+
+                    results = finalResults.map(res => ({
                             file: (allFiles || []).find(f => {
                                 const fp = typeof f === 'string' ? f : (f.path || f.handle || '');
                                 return fp && String(fp).normalize('NFC').replace(/\\/g, '/') === (res.path || '').normalize('NFC').replace(/\\/g, '/');

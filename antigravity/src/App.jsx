@@ -1106,10 +1106,16 @@ function App() {
                             norm = norm.substring(0, norm.lastIndexOf('/'));
                           }
 
-                          // 2. もし今 .nexus フォルダ内なら、さらにもう一段上（本当の作品ルート）へ
-                          if (norm.endsWith('/.nexus') || norm.includes('/.nexus/')) {
-                            const idx = norm.indexOf('/.nexus');
-                            norm = norm.substring(0, idx);
+                          // 2. もしパスのどこかに .nexus が含まれていたら、その親を作品ルートとみなす
+                          if (norm.includes('.nexus')) {
+                            // "/path/to/work.nexus/file.txt" -> "/path/to" ではなく、
+                            // "/path/to/work.nexus" -> "/path/to" となるように、
+                            // .nexus の直前のスラッシュを探す
+                            const parts = norm.split('/');
+                            const nexusIdx = parts.findIndex(p => p.includes('.nexus'));
+                            if (nexusIdx !== -1) {
+                              norm = parts.slice(0, nexusIdx).join('/');
+                            }
                           }
 
                           return norm;
