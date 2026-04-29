@@ -354,8 +354,11 @@ const SearchPanel = ({ allFiles, onOpenFile, onProjectReplace, initialQuery, pro
                                     }}
                                 >
                                     <div className="result-card-header">
-                                        <span className="res-file-tag">{res.file.name}</span>
-                                        <span className="res-line-tag">L{res.lineIndex + 1}</span>
+                                        <div className="res-file-info">
+                                            <span className="res-file-icon">📖</span>
+                                            <span className="res-file-tag">{res.file.name.replace('.txt', '').replace('.md', '')}</span>
+                                        </div>
+                                        <span className="res-line-number">{res.lineIndex + 1}行目</span>
                                     </div>
                                     <div className="res-preview-text">{res.lineContent}</div>
                                 </div>

@@ -398,13 +398,18 @@ function App() {
             await handleOpenFile(targetFile.handle, targetFile.name, { path: targetFile.path });
 
             const tryJumpToLine = (attempts = 0) => {
-                if (editorRef.current?.jumpToLine) {
-                    editorRef.current.jumpToLine(line);
-                } else if (attempts < 20) {
-                    setTimeout(() => tryJumpToLine(attempts + 1), 100);
+                const editor = editorRef.current;
+                // エディタが存在し、かつジャンプ機能が準備できているか確認
+                if (editor?.jumpToLine) {
+                    console.log(`[Jump] Executing jump to line ${line} (Attempt ${attempts})`);
+                    editor.jumpToLine(line);
+                } else if (attempts < 30) {
+                    // 30回（最大6秒）まで粘り強く待機する
+                    setTimeout(() => tryJumpToLine(attempts + 1), 200);
                 }
             };
-            setTimeout(() => tryJumpToLine(0), 300);
+            // 巨大なファイル読み込みを考慮し、少し長めに待ってから開始
+            setTimeout(() => tryJumpToLine(0), 500);
         } else {
             showToast(`ジャンプ先のファイル "${file}" が見会えませんでした。`, 'error');
         }
