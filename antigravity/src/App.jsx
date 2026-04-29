@@ -1097,15 +1097,21 @@ function App() {
                             const firstChild = materialsTree?.[0]?.children?.[0];
                             base = firstChild?.handle || firstChild?.path;
                           }
-                          if (!base) return projectHandle;
+                          if (!base) return (typeof projectHandle === 'string' ? projectHandle : projectHandle?.path || '');
 
-                          let norm = String(base).replace(/\\/g, '/');
-                          if (norm.endsWith('.txt') || norm.endsWith('.md')) {
+                          // パスをスラッシュに統一し、正規化(NFC)
+                          let norm = String(base).normalize('NFC').replace(/\\/g, '/');
+                          
+                          // ファイル名が含まれている（拡張子がある）場合は、その親フォルダへ
+                          if (norm.match(/\.[^/]+$/)) {
                             norm = norm.substring(0, norm.lastIndexOf('/'));
                           }
-                          if (norm.endsWith('/.nexus') || norm.endsWith('.nexus')) {
-                            norm = norm.substring(0, norm.lastIndexOf('/'));
+                          
+                          // もしその結果が .nexus フォルダ内なら、もう一階層上（作品ルート）へ
+                          if (norm.endsWith('/.nexus') || norm.endsWith('/.nexus/')) {
+                            norm = norm.substring(0, norm.lastIndexOf('/.nexus'));
                           }
+
                           return norm;
                         })();
 
