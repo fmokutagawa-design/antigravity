@@ -1087,45 +1087,44 @@ function App() {
                         />
                       )}
                       renderSearchPanel={() => {
-                        // --- 現在の作品フォルダを計算 ---
+                        // --- 検索範囲となるフォルダパスを計算 ---
                         const activeWorkFolderPath = (() => {
                           let base = null;
                           if (activeFileHandle) {
-                            const filePath = typeof activeFileHandle === 'string' ? activeFileHandle : (activeFileHandle.path || activeFileHandle.handle);
-                            if (filePath) base = filePath;
+                            base = typeof activeFileHandle === 'string' ? activeFileHandle : (activeFileHandle.path || activeFileHandle.handle);
                           }
                           if (!base) {
                             const firstChild = materialsTree?.[0]?.children?.[0];
                             base = firstChild?.handle || firstChild?.path;
                           }
-                          if (!base) return null;
+                          if (!base) return projectHandle;
 
-                          // パスを正規化
                           let norm = base.replace(/\\/g, '/');
-                          // もしファイルパスなら1階層上げる
                           if (norm.endsWith('.txt') || norm.endsWith('.md')) {
                             norm = norm.substring(0, norm.lastIndexOf('/'));
                           }
-                          // もし .nexus を指していたらさらに1階層上げる
                           if (norm.endsWith('/.nexus') || norm.endsWith('.nexus')) {
                             norm = norm.substring(0, norm.lastIndexOf('/'));
                           }
                           return norm;
                         })();
 
-                        // --- 作品フォルダ配下のファイルのみを抽出 ---
+                        // --- フィルタリングを緩和：作品フォルダが含まれていればOK、失敗時は全ファイルを渡す ---
                         const activeWorkFiles = (allMaterialFiles || []).filter(f => {
                           const p = typeof f === 'string' ? f : (f.path || f.handle || '');
-                          if (!p || !activeWorkFolderPath) return false;
+                          if (!p) return false;
                           
-                          // 濁点分離(NFD)などを統合(NFC)し、大文字小文字を無視して比較
+                          // 濁点分離(NFD)などを統合(NFC)
                           const normP = p.normalize('NFC').replace(/\\/g, '/').toLowerCase();
                           const normScope = activeWorkFolderPath.normalize('NFC').replace(/\\/g, '/').toLowerCase();
 
-                          // 同一ディレクトリ、またはサブディレクトリ内なら含める
-                          // normScope が "/ai ガンダム" なら、その文字列が含まれていればOK
-                          return normP.includes(normScope);
+                          // OneDrive 等でパスが大きくズレる場合を考慮し、
+                          // スコープの末尾（作品フォルダ名）が含まれているか、またはプロジェクトルート配下なら含める
+                          const folderName = normScope.split('/').pop();
+                          return normP.includes(folderName) || normP.startsWith(projectHandle.replace(/\\/g, '/').toLowerCase());
                         });
+
+                        console.log(`[App] Search Scope: ${activeWorkFolderPath}, Files: ${activeWorkFiles.length}`);
 
                         return (
                           <SearchPanel
