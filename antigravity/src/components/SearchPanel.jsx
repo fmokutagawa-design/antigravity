@@ -96,17 +96,17 @@ const SearchPanel = ({
     }, []);
 
     return (
-        <div className="search-panel-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', color: '#ddd', background: 'var(--bg-dark)' }}>
+        <div className="search-panel-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', color: '#111', background: 'var(--bg-dark)' }}>
             <div style={{ padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.15)' }}>
                 {/* フォルダパス */}
-                <div style={{ fontSize: '11px', color: '#ccc', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ fontSize: '11px', color: '#111', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         <span>📂</span>
                         <span title={activeWorkFolderPath}>{displayPath}</span>
                     </div>
                     <button 
                         onClick={handleSelectFolder}
-                        style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid #777', color: '#ccc', fontSize: '10px', padding: '2px 6px', borderRadius: '3px', cursor: 'pointer' }}
+                        style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid #555', color: '#111', fontSize: '10px', padding: '2px 6px', borderRadius: '3px', cursor: 'pointer' }}
                     >
                         変更
                     </button>
@@ -128,7 +128,7 @@ const SearchPanel = ({
                 </div>
 
                 {/* オプション */}
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', fontSize: '11px', color: '#ccc' }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', fontSize: '11px', color: '#111' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
                         <input type="checkbox" checked={isRegex} onChange={(e) => setIsRegex(e.target.checked)} style={{ margin: 0 }} />
                         正規表現
@@ -140,11 +140,11 @@ const SearchPanel = ({
                 </div>
 
                 {!isSearching && results.length > 0 && (
-                    <div style={{ fontSize: '11px', marginTop: '8px', color: '#89b4fa' }}>
+                    <div style={{ fontSize: '11px', marginTop: '8px', color: '#1e5aad' }}>
                         {results.length} 件のヒット ({engineName})
                     </div>
                 )}
-                {isSearching && <div style={{ fontSize: '11px', marginTop: '8px', color: '#ccc' }}>検索中...</div>}
+                {isSearching && <div style={{ fontSize: '11px', marginTop: '8px', color: '#111' }}>検索中...</div>}
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
@@ -161,16 +161,16 @@ const SearchPanel = ({
                         {/* ファイル名 — 2行折り返し + 行番号 */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '4px' }}>
                             <span style={{
-                                fontSize: '11.5px', color: '#6cb4ff', fontWeight: 'bold',
+                                fontSize: '11.5px', color: '#1e5aad', fontWeight: 'bold',
                                 display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
                                 overflow: 'hidden', wordBreak: 'break-all', lineHeight: '1.4',
                             }}>
                                 {res.file.name.replace('.txt', '')}
                             </span>
-                            <span style={{ fontSize: '10px', color: '#aaa', flexShrink: 0, marginTop: '1px' }}>L{res.lineIndex + 1}</span>
+                            <span style={{ fontSize: '10px', color: '#333', flexShrink: 0, marginTop: '1px' }}>L{res.lineIndex + 1}</span>
                         </div>
                         {/* プレビュー */}
-                        <div style={{ fontSize: '12px', color: '#bbb', lineHeight: '1.4', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', wordBreak: 'break-all' }}>
+                        <div style={{ fontSize: '12px', color: '#222', lineHeight: '1.4', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', wordBreak: 'break-all' }}>
                             {res.lineContent.trim()}
                         </div>
                     </div>
