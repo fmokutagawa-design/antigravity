@@ -399,17 +399,19 @@ function App() {
 
             const tryJumpToLine = (attempts = 0) => {
                 const editor = editorRef.current;
-                // エディタが存在し、かつジャンプ機能が準備できているか確認
-                if (editor?.jumpToLine) {
-                    console.log(`[Jump] Executing jump to line ${line} (Attempt ${attempts})`);
+                // テキストがまだ空、または極端に短い場合は「読み込み中」とみなして待機
+                const currentTextLength = (typeof textRef.current === 'string' ? textRef.current.length : 0);
+                
+                if (editor?.jumpToLine && currentTextLength > 10) {
+                    console.log(`[Jump] Executing jump to line ${line}. TextLen: ${currentTextLength} (Attempt ${attempts})`);
                     editor.jumpToLine(line);
-                } else if (attempts < 30) {
-                    // 30回（最大6秒）まで粘り強く待機する
+                } else if (attempts < 50) {
+                    // 最大10秒間、テキストが充填されるのを待つ
                     setTimeout(() => tryJumpToLine(attempts + 1), 200);
                 }
             };
-            // 巨大なファイル読み込みを考慮し、少し長めに待ってから開始
-            setTimeout(() => tryJumpToLine(0), 500);
+            // ファイル切り替えのトリガー後、少し待ってから監視開始
+            setTimeout(() => tryJumpToLine(0), 400);
         } else {
             showToast(`ジャンプ先のファイル "${file}" が見会えませんでした。`, 'error');
         }

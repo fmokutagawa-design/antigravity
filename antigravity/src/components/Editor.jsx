@@ -1162,6 +1162,13 @@ const Editor = forwardRef(({ value, onChange, onCursorStats, settings, onInsertR
 
     const { maxPerLine, cell, padding } = baseMetrics;
     const currentText = localTextRef.current;
+    
+    // ガード：テキストがまだ読み込まれていないか、インデックスが範囲外の場合は中断
+    if (!currentText || charIndex > currentText.length + 100) {
+      console.warn(`[Scroll] Aborting scroll. Text not ready or index out of range. Len: ${currentText?.length}, Target: ${charIndex}`);
+      return;
+    }
+
     const text = settings.isVertical ? toVerticalDisplay(currentText) : currentText;
 
     let line = 0;
