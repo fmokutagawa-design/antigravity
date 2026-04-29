@@ -1099,16 +1099,17 @@ function App() {
                           }
                           if (!base) return (typeof projectHandle === 'string' ? projectHandle : projectHandle?.path || '');
 
-                          // パスをスラッシュに統一し、正規化(NFC)
                           let norm = String(base).normalize('NFC').replace(/\\/g, '/');
-                          
-                          // もし末尾が .nexus なら親へ、ファイル名なら親へ。
-                          // 確実に「作品のルートフォルダ」を指すまで遡る
+
+                          // 1. ファイル名（拡張子あり）なら親へ
                           if (norm.match(/\.[^/]+$/)) {
                             norm = norm.substring(0, norm.lastIndexOf('/'));
                           }
-                          if (norm.endsWith('/.nexus') || norm.endsWith('.nexus')) {
-                            norm = norm.substring(0, norm.lastIndexOf('/'));
+
+                          // 2. もし今 .nexus フォルダ内なら、さらにもう一段上（本当の作品ルート）へ
+                          if (norm.endsWith('/.nexus') || norm.includes('/.nexus/')) {
+                            const idx = norm.indexOf('/.nexus');
+                            norm = norm.substring(0, idx);
                           }
 
                           return norm;

@@ -110,6 +110,11 @@ const SearchPanel = ({ allFiles, onOpenFile, onProjectReplace, initialQuery, pro
                             const fileH = file.handle || file.path;
                             const isCurrentFile = targetH && fileH === targetH;
                             
+                            // ディレクトリ、または .nexus フォルダ自体をスキップ
+                            if (file.kind === 'directory' || (typeof fileH === 'string' && fileH.endsWith('.nexus'))) {
+                                return;
+                            }
+
                             let content = isCurrentFile ? currentText : file.content;
                             
                             if (!content && !isCurrentFile && window.api?.fs?.readFile) {
