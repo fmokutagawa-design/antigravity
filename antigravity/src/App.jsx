@@ -1114,7 +1114,8 @@ function App() {
                             const parts = norm.split('/');
                             const nexusIdx = parts.findIndex(p => p.includes('.nexus'));
                             if (nexusIdx !== -1) {
-                              norm = parts.slice(0, nexusIdx).join('/');
+                              // nexusIdx そのものが作品フォルダなので、そこまでを含める
+                              norm = parts.slice(0, nexusIdx + 1).join('/');
                             }
                           }
 
