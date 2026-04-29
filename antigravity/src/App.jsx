@@ -1089,28 +1089,25 @@ function App() {
                       renderSearchPanel={() => {
                         // --- 指示に基づき、現在のアクティブなファイルから「作品フォルダ」を計算 ---
                         const activeWorkFolderPath = (() => {
-                          // 1. activeFileHandle があればそのフォルダを使う
                           if (activeFileHandle) {
-                            const filePath = typeof activeFileHandle === 'string'
+                            let filePath = typeof activeFileHandle === 'string'
                               ? activeFileHandle
                               : (activeFileHandle.path || activeFileHandle.handle);
                             if (filePath && typeof filePath === 'string') {
-                              const sep = filePath.includes('/') ? '/' : '\\';
-                              const parts = filePath.split(sep);
-                              parts.pop();
-                              return parts.join(sep);
+                              // パスをスラッシュに統一して正規化
+                              const normPath = filePath.replace(/\\/g, '/');
+                              const parts = normPath.split('/');
+                              parts.pop(); // ファイル名を除去
+                              return parts.join('/');
                             }
                           }
-                          // 2. フォールバック：materialsTree の最初の子フォルダ（最初の作品）を使う
-                          // materialsTree[0] は Nexus_Dev ルート自体なので、その children[0] が最初の作品
                           const firstChild = materialsTree?.[0]?.children?.[0];
                           if (firstChild) {
                             const p = typeof firstChild.handle === 'string'
                               ? firstChild.handle
                               : (firstChild.path || null);
-                            if (p) return p;
+                            if (p) return p.replace(/\\/g, '/');
                           }
-                          // 3. どちらもなければ null を返す（SearchPanel 側で検索をスキップ）
                           return null;
                         })();
 
@@ -1122,9 +1119,9 @@ function App() {
                               ? f
                               : (f.path || f.handle || '');
                             if (typeof p !== 'string') return false;
-                            return p.startsWith(activeWorkFolderPath + '/') ||
-                                   p.startsWith(activeWorkFolderPath + '\\') ||
-                                   p === activeWorkFolderPath;
+                            const normP = p.replace(/\\/g, '/');
+                            return normP.startsWith(activeWorkFolderPath + '/') ||
+                                   normP === activeWorkFolderPath;
                           });
 
                         return (

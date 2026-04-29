@@ -438,6 +438,7 @@ ipcMain.handle('fs:delete', async (event, targetPath) => {
 });
 
 // Grep (Global Search)
+ipcMain.removeHandler('fs:grep');
 ipcMain.handle('fs:grep', async (event, projectPath, query, options = {}) => {
     // 起動時の settings から projectPath が取れる場合がある
     const targetPath = projectPath || globalProjectRoot;

@@ -79,7 +79,7 @@ const SearchPanel = ({ allFiles, onOpenFile, onProjectReplace, initialQuery, pro
                     pattern = new RegExp(normalizedQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), caseSensitive ? 'g' : 'gi');
                 }
 
-                const BATCH_SIZE = 5;
+                const BATCH_SIZE = 8;
                 for (let i = 0; i < allFiles.length; i += BATCH_SIZE) {
                     const batch = allFiles.slice(i, i + BATCH_SIZE);
                     await Promise.all(batch.map(async (file) => {
@@ -92,6 +92,7 @@ const SearchPanel = ({ allFiles, onOpenFile, onProjectReplace, initialQuery, pro
                             
                             const lines = content.normalize('NFC').split('\n');
                             lines.forEach((line, lineIdx) => {
+                                pattern.lastIndex = 0;
                                 if (pattern.test(line)) {
                                     results.push({ file, lineIndex: lineIdx, lineContent: line.trim(), fullLine: line, position: 0 });
                                 }
@@ -99,6 +100,7 @@ const SearchPanel = ({ allFiles, onOpenFile, onProjectReplace, initialQuery, pro
                         } catch (err) {}
                     }));
                 }
+                engineName = "🐌 JS スキャン";
             }
 
             setSearchResults(results);
@@ -183,10 +185,11 @@ const SearchPanel = ({ allFiles, onOpenFile, onProjectReplace, initialQuery, pro
         }
         const timer = setTimeout(performSearch, 500);
         return () => clearTimeout(timer);
-    }, [searchQuery, useRegex, caseSensitive, currentScopeHandle]);
+    }, [searchQuery, useRegex, caseSensitive, currentScopeHandle, allFiles]);
 
     const targetPathStr = typeof currentScopeHandle === 'string' ? currentScopeHandle : (currentScopeHandle?.path || currentScopeHandle?.handle || '不明');
-    const displayPath = targetPathStr.split(/[/\\]/).slice(-2).join('/');
+    const pathParts = targetPathStr.split(/[/\\]/).filter(p => p && p !== ' ');
+    const displayPath = pathParts.slice(-2).join('/');
 
     return (
         <div className="search-panel">
